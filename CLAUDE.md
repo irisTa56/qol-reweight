@@ -21,7 +21,8 @@ So nothing that comes from the data is committed on any branch or published, in 
 
 A reweighted result is not published anywhere else either.
 
-What the platform publishes about the data is not the data, so naming it is fine: an indicator's name, a region's name, a file's name and size, and the formula the values follow.
+A name or a method is not a value, so writing it is fine: an indicator's name, a region's name, a file's name and size, and the formula the values follow.
+That the platform itself shows something does not take it out of the list above: its figures, its map view, and the thresholds of its legend come from the data, so link to them and do not copy them.
 
 Tests run on synthetic data, made up for the purpose and not sampled from the real data.
 
