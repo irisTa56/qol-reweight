@@ -2,6 +2,7 @@
 
 QOL Reweight recomputes the Urban QOL data published on the [MLIT Data Platform](https://data-platform.mlit.go.jp/#/Page?id=dataintro01) with weights its user chooses, and shows the result on a map of 500 m meshes.
 It is a local tool for personal use, and its code is public.
+What it covers, what it leaves out, and the order of its phases are in [`dev/ROADMAP.md`](dev/ROADMAP.md).
 
 ## Development documents
 

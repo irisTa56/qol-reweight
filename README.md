@@ -2,6 +2,8 @@
 
 QOL Reweight recomputes the Urban QOL data with the weight its user gives each indicator, as a multiple of the published one, and shows the result on a map of 500 m meshes on the user's own machine.
 
+Development documents, starting with the [roadmap](dev/ROADMAP.md), live under [`dev/`](dev/).
+
 ## Data
 
 The tool reads the Urban QOL data, which this repository does not contain.
