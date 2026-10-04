@@ -1,0 +1,11 @@
+# Claude Code's nested worktree checkouts, each a full copy of the repo.
+# `hidden = true` in `lychee.toml` would otherwise walk into them.
+.claude/worktrees/
+
+# mise resolves the QA tools at `latest`, so a locally generated lockfile
+# pins nothing and is never committed.
+mise.lock
+
+# Tool caches. lychee's is written by the shared `link-check:staged` task.
+.rumdl_cache/
+.lycheecache
