@@ -8,6 +8,10 @@ exclude = [
     # RFC 2606 reserved example.com (and any subdomain) is non-routable sample
     # data; never a real link.
     "^https?://([a-z0-9-]+\\.)*example\\.com([:/]|$)",
+    # The MLIT data platform answers 403 to every client that is not a browser:
+    # lychee, curl with a browser user agent, and a fetch from another network
+    # all got it on 2026-10-04, while the same pages open in a browser.
+    "^https://data-platform\\.mlit\\.go\\.jp/",
 ]
 
 # The settings every invocation shares -- hence here rather than on each command
