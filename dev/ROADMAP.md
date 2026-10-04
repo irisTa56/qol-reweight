@@ -33,7 +33,9 @@ QOL Reweight lets them say how many times the survey average they value each ind
 - **Several files at once**: the map covers more than one file, such as two neighbouring prefectures.
 - **Totals that are not the sum**: a file whose published total is not the sum of its indicators is handled in a way its user can see.
 - **Multipliers from the paper's weights**: choosing personal attributes, such as sex and age band, fills in the multipliers from the weight parameters that [the paper behind the data](https://doi.org/10.1016/j.cities.2023.104561) publishes by attribute.
-  - They are approximate, because a multiplier is a ratio to the average weight the published values use, and how that average was taken is not in the part of the paper read (pages 1 to 12 of 19, 2026-10-04).
+  - They are approximate, because one multiplier for each indicator carries how the paper's weights differ by attribute and not the whole difference between an attribute group and the average (the paper's sections 3.4, 3.5.4, and 4.3, read 2026-10-04).
+    - The paper's maps average the attribute groups by population within each mesh, and the platform says its values use the average of the adults living in each metropolitan area, so the weight behind a published value is not one number for each indicator.
+    - For an indicator measured as an access time, the value itself depends on the attribute, through which transport mode a person of that attribute chooses.
 
 Published values on a local map comes first and Reweighting second, because the first settles the path from the file to the map against a picture the platform already shows, and the second then adds only what is this tool's own.
 The order of the other three is decided when Reweighting ends.
