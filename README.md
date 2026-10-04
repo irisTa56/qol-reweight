@@ -1,7 +1,9 @@
 # QOL Reweight
 
 QOL Reweight shows the Urban QOL data on a map of 500 m meshes, on its user's own machine.
-Its user says how many times the survey average they value each indicator, and each mesh is coloured by the sum of its published indicator values, each times that multiplier.
+Its user says how much they value each indicator, as a multiple of what the adults living in the area value it on average, and each mesh is coloured by the sum of its published indicator values, each times that multiplier.
+
+Nothing is built yet, and the [roadmap](dev/ROADMAP.md) says what is planned.
 
 ## Data
 

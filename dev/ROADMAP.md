@@ -3,14 +3,14 @@
 ## Purpose
 
 The [Urban QOL data](https://data-platform.mlit.go.jp/#/Page?id=dataintro01) scores 500 m meshes in five metropolitan areas of Japan for how good each is to live in.
-The score is a sum over indicators, such as how near a railway station is or how high the flood risk is, each weighted by how much the adults answering a 2021 survey valued it on average.
+The score is a sum over indicators, such as how near a railway station is or how high the flood risk is, each weighted by how much the adults living in that metropolitan area value it on average, as estimated from a 2021 survey.
 A person whose priorities differ from that average cannot tell from the published map how the same places would look to them.
-QOL Reweight lets them say how many times the survey average they value each indicator, and colours every mesh on a map by the sum of its published indicator values, each times that multiplier.
+QOL Reweight lets them say how many times that average they value each indicator, and colours every mesh on a map by the sum of its published indicator values, each times that multiplier.
 
 ## Scope
 
 - **Reweighting**: the user gives each indicator a multiplier, and the map colours a mesh by the sum of its published indicator values, each times its multiplier.
-  - A multiplier is all a user can set, because the published values are already weighted and converted to yen per year, and the platform publishes neither the unweighted values nor the weights.
+  - A multiplier is all a user can set, because the published values are already weighted and converted to yen per year, and the platform publishes neither the unweighted values nor the weights (its page on the data, its catalogue, and two files, checked 2026-10-04; each record's `metadata.json` was not read).
   - With every multiplier at 1, that sum is the sum of the published indicators, which is the published total wherever that total is such a sum.
   - The tool reads the files, changes nothing in them, and writes no sum out, so the maintainer reads what it does as changing how the data is viewed, outside what the provider's terms call using the data altered. The licence itself [lets adapted material be made for non-commercial purposes and withholds sharing it](https://creativecommons.org/licenses/by-nc-nd/4.0/legalcode).
 - **Data**: one of the CSV files the platform publishes, a prefecture's or a metropolitan area's, which the user downloads from the platform and keeps on their machine [0001].
@@ -25,10 +25,8 @@ QOL Reweight lets them say how many times the survey average they value each ind
 
 - **Publishing a reweighted map, or hosting the tool for others**: the data is licensed CC BY-NC-ND 4.0 and its provider's terms forbid using it altered without permission.
 - **Writing the sums out to a file**: the tool changes how the published values are viewed and produces no data of its own.
-- **Indicators the published data leaves out**: rent, energy performance, and distance to a garbage collection point are part of the provider's method, and the platform's page says its data does not consider them. The two files read carry no indicator by those names (Tokyo's and Aichi's, checked 2026-10-04).
-- **Reproducing the provider's scores for one sex, age band, or other attribute**: [the paper behind the data](https://doi.org/10.1016/j.cities.2023.104561) publishes weights by attribute, but multipliers on the published values cannot turn them into an attribute group's scores (its sections 3.4, 3.5.4, and 4.3, read 2026-10-04).
-  - The published values come from an average over attribute groups, so the weight behind one need not be a single number for each indicator.
-  - For an indicator measured as an access time, the value itself depends on the attribute, through which transport mode a person of that attribute chooses.
+- **Indicators the published data leaves out**: rent, energy performance, and distance to a garbage collection point are part of the provider's method, and the platform's page says its data does not consider them, as the two files read bear out (Tokyo's and Aichi's, checked 2026-10-04).
+- **Reproducing the provider's scores for one sex, age band, or other attribute**: for an indicator measured as an access time the value itself depends on the attribute, so multipliers on the published values cannot turn them into an attribute group's scores ([the paper behind the data](https://doi.org/10.1016/j.cities.2023.104561), sections 3.4 and 3.5.4, read 2026-10-04).
 
 ## Phases
 
