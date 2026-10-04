@@ -1,6 +1,7 @@
 # QOL Reweight
 
-QOL Reweight recomputes the Urban QOL data after its user says how many times the survey average they value each indicator, and shows the result on a map of 500 m meshes on the user's own machine.
+QOL Reweight shows the Urban QOL data on a map of 500 m meshes, on its user's own machine.
+Its user says how many times the survey average they value each indicator, and each mesh is coloured by the sum of its published indicator values, each times that multiplier.
 
 ## Data
 
