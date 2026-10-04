@@ -1,0 +1,111 @@
+name: CI
+
+# Runs the local `mise run pre-commit` gate's checks on every PR (and on pushes
+# to main) by calling the same `qa:` tasks, so what a check runs is mise.toml's
+# to say. One job per top-level `qa:` family. `pre-commit` picks up a new family
+# through its `qa:**` glob and CI does not: a new family needs its own job here,
+# and a place in the main ruleset's required checks, before a merge waits on it.
+# `secrets:commit-scan`, which `pre-commit` names outside that glob, has no job,
+# since it scans staged changes and `secret-scan-gitleaks` below scans a pull
+# request's commits instead. Nor has `link-check:staged`, named there too: it
+# requests the links of staged files over the network, and a third-party host
+# should not gate a PR (link-check-weekly.yml runs every link instead).
+#
+# The weekly schedule re-runs this same workflow so a drift in something no PR
+# exercises surfaces even during a quiet week with no open PRs: the
+# `ubuntu-latest` runner image; the mise binary, which `mise-action` resolves at
+# run time since no step sets its `version` input; the TruffleHog image, which
+# its action pulls at `latest`; the gitleaks binary, which `GITLEAKS_VERSION:
+# latest` below resolves at run time; and every tool mise.toml tracks at
+# `latest`, which each run installs afresh (see `cache: false` below). GitHub
+# disables a `schedule` trigger after 60 days with no repository activity, so
+# this canary goes quiet on a dormant repository.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  # `event_name` in the key: without it, the Monday-morning schedule run and a
+  # same-moment push to `main` would resolve to the same group (both target
+  # `refs/heads/main`) and cancel each other under `cancel-in-progress`.
+  group: ci-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  markdown-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        with:
+          # mise resolves a `latest` tool to a version already installed, and the
+          # action's cache key hashes the config rather than the date, so a
+          # restored cache would hold every tool at the release it was first
+          # saved with until mise.toml changed.
+          cache: false
+      - run: mise run qa:md
+
+  # On a pull request the action reads the PR's commits from one unpaginated API
+  # page, so it scans only the first 30 (gitleaks/gitleaks-action#187), and it
+  # scans `--no-merges --first-parent`, so it skips what a merge commit brings
+  # in (gitleaks/gitleaks-action#236).
+  secret-scan-gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # full history so gitleaks can scan the PR's commits
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Unset, the action installs the gitleaks release hard-coded in it.
+          GITLEAKS_VERSION: latest
+          # Commenting on a PR needs `pull-requests: write`, which this
+          # workflow does not grant.
+          GITLEAKS_ENABLE_COMMENTS: "false"
+
+  # The CI counterpart of `secrets:push-scan`, as `secret-scan-gitleaks` is of
+  # `secrets:commit-scan`. Unlike the push scan it verifies candidates with their
+  # providers: by the time this runs the commits are already on GitHub, and
+  # `--results` keeps an unverified candidate from failing the job.
+  # `--fail-on-scan-errors` because a commit trufflehog cannot resolve otherwise
+  # scans nothing and passes: a force-push to `main`, which only a ruleset bypass
+  # allows, leaves the push run's `event.before` out of the checkout.
+  secret-scan-trufflehog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the action walks from the base commit to the head
+      - uses: trufflesecurity/trufflehog@4dd8831c5f12599465d4d45c3c447b4018a34c85 # v3.97.9
+        with:
+          extra_args: --results=verified,unknown --fail-on-scan-errors
+
+  link-check-offline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        with:
+          cache: false # as in `markdown-lint`
+      - run: mise run qa:links:offline
+
+  # Stays red while dotfiles `main` carries other shared tasks than the pin in
+  # mise.toml does, and for that reason is a reminder rather than a required
+  # check, and skipped on the schedule. Exit 2 (it could not tell) fails it too.
+  shared-tasks-check:
+    runs-on: ubuntu-latest
+    if: github.event_name != 'schedule'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        with:
+          cache: false # as in `markdown-lint`
+      - run: mise run shared-tasks:check

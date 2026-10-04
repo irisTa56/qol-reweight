@@ -1,0 +1,27 @@
+# Dependabot version updates. One entry for now: the GitHub Actions pinned
+# across the workflows (.github/workflows/*.yml). Add an entry when the
+# repository gains a dependency manifest Dependabot reads, such as a uv.lock.
+#
+# The mise-managed tools are out of Dependabot's scope, and can be: lychee and
+# rumdl track `latest`, so `mise upgrade` covers them. So is the dotfiles
+# shared-task pin in mise.toml, which the CI job `shared-tasks-check` watches
+# instead; the tools its tasks declare track `latest` too.
+#
+# `pull-request-branch-name.prefix` is what dependabot-auto-merge.yml matches
+# on, so an entry opts into auto-merge by carrying it; a lost config line then
+# stops an auto-merge rather than starting one. Give it only to an entry whose
+# updates can merge on a green CI alone; dependabot-auto-merge.yml says what a
+# green run leaves unchecked.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "ci"
+    pull-request-branch-name:
+      prefix: "dependabot-automerge"

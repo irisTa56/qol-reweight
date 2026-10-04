@@ -1,0 +1,59 @@
+[tools]
+lychee = "latest"
+rumdl = "latest"
+
+[hooks]
+# Keep the git-hook generation first: a failing step aborts the rest while
+# `mise install` still exits 0, and a missing hook is the failure that stays
+# silent, letting every later commit through ungated or push through unscanned.
+#
+# The pre-push scan is registered in git's config rather than written under
+# `.git/hooks`, where `pre-push` belongs to Entire; how that runs beside a hook
+# file, and the git it needs, is dotfiles' `tasks/README.md`. A git that ignores
+# those keys would leave pushes unscanned in silence, so the last line says so
+# when `git hook list` does not name the scan.
+postinstall = """
+mise generate git-pre-commit --write --task=pre-commit
+git config hook.secrets-push-scan.event pre-push
+git config hook.secrets-push-scan.command 'mise run secrets:push-scan'
+git hook list pre-push 2>/dev/null | grep -qx secrets-push-scan || echo "warning: this git ignores hook.* config, so pushes are not scanned; git 2.54 or later runs it" >&2
+"""
+
+# `secrets:commit-scan` (per commit, gitleaks), `secrets:push-scan` (per push,
+# trufflehog), `link-check:staged` (per commit, lychee over the network) and
+# `shared-tasks:check` come from dotfiles' shared task library, whose
+# `tasks/README.md` is what to read before touching this: why `ref` is a full
+# sha on its `main`, and what an include that fails to load takes with it.
+# `shared-tasks:check` in CI says when the tasks on `main` differ from the pin's.
+[task_config]
+includes = [
+  "git::https://github.com/irisTa56/dotfiles.git//tasks?ref=5ad51daaf26e0ac9bd71e41928a7fb8552587277",
+]
+
+# `**`, not `*`: mise's `*` matches a single task segment, so `qa:*` would leave
+# `qa:links:offline` ungated. The shared tasks are named on their own because
+# they sit outside `qa:`.
+[tasks.pre-commit]
+description = "Run all pre-commit checks"
+depends = ["qa:**", "secrets:commit-scan", "link-check:staged"]
+
+[tasks."qa:md"]
+description = "Lint markdown files"
+run = "rumdl check"
+
+[tasks."fmt:md"]
+description = "Format markdown files"
+run = "rumdl check --fix"
+
+# In `qa:**`: offline-only, so it stays fast and network-independent enough to
+# gate every commit. Shared settings come from `lychee.toml`.
+[tasks."qa:links:offline"]
+description = "Check links offline (no network)"
+run = "lychee --offline --no-progress --config lychee.toml ."
+
+# Not in `qa:**`: a full-repo external link check is too slow and
+# network-bound for pre-commit; `link-check:staged` requests only the links of
+# the files a commit stages.
+[tasks."check:links"]
+description = "Check links in the repo"
+run = "lychee -v --config lychee.toml ."
