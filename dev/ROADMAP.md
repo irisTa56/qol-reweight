@@ -13,8 +13,8 @@ QOL Reweight lets them say how many times that average they value each indicator
   - A multiplier is all a user can set, because the published values are already weighted and converted to yen per year.
   - With every multiplier at 1, that sum is the sum of the published indicators, which is the published total wherever that total is such a sum.
   - The tool reads the files, changes nothing in them, and writes no sum out, so the maintainer reads what it does as changing how the data is viewed, outside what the provider's terms call using the data altered. The licence itself [lets adapted material be made for non-commercial purposes and withholds sharing it](https://creativecommons.org/licenses/by-nc-nd/4.0/legalcode).
-- **Data**: one of the CSV files the platform publishes, a prefecture's or a metropolitan area's, which the user downloads from the platform and keeps on their machine [0001].
-  - The indicators are read from the file, since the files differ in which indicators they carry.
+- **Data**: the CSV files the platform publishes, one for each prefecture and each metropolitan area, which the user downloads from the platform and keeps on their machine [0001].
+  - The indicators are read from each file, since the files differ in which indicators they carry.
   - A file whose published total is not the sum of the indicators it carries is covered too.
   - Nothing that comes from the data is committed to this repository or published, as [`CLAUDE.md`](../CLAUDE.md#keeping-the-data-out-of-the-repository) spells out.
   - Wherever the tool shows the data, it states the data's source, which the provider's terms make a condition of use.
