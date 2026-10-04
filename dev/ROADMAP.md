@@ -24,7 +24,6 @@ QOL Reweight lets them say how many times the survey average they value each ind
 ## Non-goals
 
 - **Publishing a reweighted result, or hosting the tool for others**: the data is licensed CC BY-NC-ND 4.0 and its provider's terms forbid using it altered without permission.
-- **Weights for one sex or age group**: the published values use the average of adults aged 20 and over, and the platform publishes nothing finer.
 - **Indicators the published data leaves out**: rent, energy performance, and distance to a garbage collection point are part of the provider's method, and the platform's page says its data does not consider them. The two files read carry no indicator by those names (Tokyo's and Aichi's, checked 2026-10-04).
 
 ## Phases
@@ -33,8 +32,10 @@ QOL Reweight lets them say how many times the survey average they value each ind
 - **Reweighting**: the user sets a multiplier for each indicator, and the map follows.
 - **Several files at once**: the map covers more than one file, such as two neighbouring prefectures.
 - **Totals that are not the sum**: a file whose published total is not the sum of its indicators is handled in a way its user can see.
+- **Multipliers from the paper's weights**: choosing personal attributes, such as sex and age band, fills in the multipliers from the weight parameters that [the paper behind the data](https://doi.org/10.1016/j.cities.2023.104561) publishes by attribute.
+  - They are approximate, because a multiplier is a ratio to the average weight the published values use, and how that average was taken is not in the part of the paper read (pages 1 to 12 of 19, 2026-10-04).
 
 Published values on a local map comes first and Reweighting second, because the first settles the path from the file to the map against a picture the platform already shows, and the second then adds only what is this tool's own.
-The order of the other two is decided when Reweighting ends.
+The order of the other three is decided when Reweighting ends.
 
 [0001]: decisions/0001-csv-kept-on-disk-as-data-source.md
