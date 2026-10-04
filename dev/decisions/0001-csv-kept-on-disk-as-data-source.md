@@ -34,5 +34,6 @@ The tool sends the platform no request for the data.
 ## Consequences
 
 - **Dependencies added**: none.
-- **Risks**: the provider updates the data every five years ([the data's introduction](https://data-platform.mlit.go.jp/#/Page?id=dataintro01), checked 2026-10-04), and a changed file layout would show as a file the tool fails to read.
+- **Risks**:
+  - The provider updates the data every five years ([the data's introduction](https://data-platform.mlit.go.jp/#/Page?id=dataintro01), checked 2026-10-04), and a changed file layout would show as a file the tool fails to read.
   - The user has a manual step before the tool shows anything, so the tool has to say what file it expects and where.
