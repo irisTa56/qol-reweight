@@ -12,7 +12,9 @@ QOL Reweight lets them say how many times the survey average they value each ind
 - **Reweighting**: the user gives each indicator a multiplier, and a mesh's score is the sum of its published indicator values, each times its multiplier.
   - A multiplier is all a user can set, because the published values are already weighted and converted to yen per year, and the platform publishes neither the unweighted values nor the weights.
   - With every multiplier at 1, the score is the sum of the published indicators, which is the published total wherever that total is such a sum.
-- **Data**: the CSV file of one prefecture, which the user downloads from the platform and keeps on their machine [0001].
+  - Recomputing on the user's own machine changes how the data is viewed and leaves the data as published, so the maintainer reads it as outside what the provider's terms call using the data altered. The licence itself [lets adapted material be made and withholds only sharing it](https://creativecommons.org/licenses/by-nc-nd/4.0/legalcode).
+- **Data**: one of the CSV files the platform publishes, a prefecture's or a metropolitan area's, which the user downloads from the platform and keeps on their machine [0001].
+  - That a metropolitan area's file has the layout of a prefecture's is inferred from the files' sizes, and no such file has been read (2026-10-04).
   - The indicators are read from the file, since a file carries 16 or 26 of them depending on its region (the platform's catalogue, checked 2026-10-04).
   - A file whose published total is not the sum of the indicators it carries is covered too. Tokyo's is one, and Aichi's total is the sum (both files, checked 2026-10-04).
   - Nothing that comes from the data is committed to this repository or published, as [`CLAUDE.md`](../CLAUDE.md#keeping-the-data-out-of-the-repository) spells out.
@@ -23,13 +25,13 @@ QOL Reweight lets them say how many times the survey average they value each ind
 
 - **Publishing a reweighted result, or hosting the tool for others**: the data is licensed CC BY-NC-ND 4.0 and its provider's terms forbid using it altered without permission.
 - **Weights for one sex or age group**: the published values use the average of adults aged 20 and over, and the platform publishes nothing finer.
-- **Indicators the published data leaves out**: rent, energy performance, and distance to a garbage collection point are part of the provider's method and absent from the files.
+- **Indicators the published data leaves out**: rent, energy performance, and distance to a garbage collection point are part of the provider's method, and the platform's page says its data does not consider them. The two files read carry no indicator by those names (Tokyo's and Aichi's, checked 2026-10-04).
 
 ## Phases
 
-- **Published values on a local map**: on the user's machine, one prefecture's published values are shown on a map of 500 m meshes, the total or one indicator at a time.
+- **Published values on a local map**: on the user's machine, one file's published values are shown on a map of 500 m meshes, the total or one indicator at a time.
 - **Reweighting**: the user sets a multiplier for each indicator, and the map follows.
-- **Several prefectures at once**: the map covers more than one prefecture, which is also how a metropolitan area is shown.
+- **Several files at once**: the map covers more than one file, such as two neighbouring prefectures.
 - **Totals that are not the sum**: a file whose published total is not the sum of its indicators is handled in a way its user can see.
 
 Published values on a local map comes first and Reweighting second, because the first settles the path from the file to the map against a picture the platform already shows, and the second then adds only what is this tool's own.
