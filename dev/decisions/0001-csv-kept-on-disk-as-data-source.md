@@ -27,6 +27,7 @@ The tool sends the platform no request for the data.
 ## Rejected alternatives
 
 - **Reading the vector tiles from the platform's bucket**: the terms do not settle whether it is allowed, and the maintainer's rule sends that case to the CSV file.
+- **The tool fetching the file from the record's page itself**: the platform turns away clients that are not a browser, so the tool would have to pass for one.
 - **Downloading the file through the platform's API**: it would make an account and an API key a condition of running the tool, to save a download the user makes once per region in a browser.
 - **Fetching through mlit-dpf-mcp**: it is a server for a language model's host, needs the same API key, and may change or disappear.
 

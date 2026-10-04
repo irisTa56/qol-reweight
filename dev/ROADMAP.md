@@ -10,7 +10,7 @@ QOL Reweight lets them say how many times the survey average they value each ind
 ## Scope
 
 - **Reweighting**: the user gives each indicator a multiplier, and a mesh's score is the sum of its published indicator values, each times its multiplier.
-  - A multiplier is all a user can set, because the published values are already weighted and converted to yen per year, and neither the unweighted values nor the weights are published.
+  - A multiplier is all a user can set, because the published values are already weighted and converted to yen per year, and the platform publishes neither the unweighted values nor the weights.
   - With every multiplier at 1, the score is the sum of the published indicators, which is the published total wherever that total is such a sum.
 - **Data**: the CSV file of one prefecture, which the user downloads from the platform and keeps on their machine [0001].
   - The indicators are read from the file, since a file carries 16 or 26 of them depending on its region (the platform's catalogue, checked 2026-10-04).
@@ -22,7 +22,7 @@ QOL Reweight lets them say how many times the survey average they value each ind
 ## Non-goals
 
 - **Publishing a reweighted result, or hosting the tool for others**: the data is licensed CC BY-NC-ND 4.0 and its provider's terms forbid using it altered without permission.
-- **Weights for one sex or age group**: the published values use the average of adults aged 20 and over, and nothing finer is published.
+- **Weights for one sex or age group**: the published values use the average of adults aged 20 and over, and the platform publishes nothing finer.
 - **Indicators the published data leaves out**: rent, energy performance, and distance to a garbage collection point are part of the provider's method and absent from the files.
 
 ## Phases
