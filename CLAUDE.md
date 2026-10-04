@@ -1,7 +1,8 @@
 # CLAUDE.md
 
-QOL Reweight recomputes the Urban QOL data published on the [MLIT Data Platform](https://data-platform.mlit.go.jp/#/Page?id=dataintro01) with weights its user chooses, and shows the result on a map of 500 m meshes.
+QOL Reweight shows the Urban QOL data published on the [MLIT Data Platform](https://data-platform.mlit.go.jp/#/Page?id=dataintro01) on a map of 500 m meshes, each mesh coloured by the sum of its indicator values times multipliers its user sets.
 It is a local tool for personal use, and its code is public.
+What it covers, what it leaves out, and the order of its phases are in [`dev/ROADMAP.md`](dev/ROADMAP.md).
 
 ## Development documents
 
@@ -15,7 +16,7 @@ This repository is public, and [a commit pushed to GitHub stays reachable](https
 So nothing that comes from the data is committed on any branch or published, in a file, a commit message, a pull request, or an issue, for example:
 
 - the source data, as a CSV file or as vector tiles
-- recomputed values, and a map image drawn from the source data or from recomputed values
+- a sum the tool computes from the data, and a map image drawn from the source data or from such sums
 - a screenshot of the tool showing real data, such as one kept as evidence that a phase is done
 - a value taken from real data, such as a row used as a test fixture or a threshold used to colour the map
 
