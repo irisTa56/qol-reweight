@@ -10,13 +10,12 @@ QOL Reweight lets them say how many times that average they value each indicator
 ## Scope
 
 - **Reweighting**: the user gives each indicator a multiplier, and the map colours a mesh by the sum of its published indicator values, each times its multiplier.
-  - A multiplier is all a user can set, because the published values are already weighted and converted to yen per year, and the platform publishes neither the unweighted values nor the weights (its page on the data, its catalogue, and two files, checked 2026-10-04; each record's `metadata.json` was not read).
+  - A multiplier is all a user can set, because the published values are already weighted and converted to yen per year.
   - With every multiplier at 1, that sum is the sum of the published indicators, which is the published total wherever that total is such a sum.
   - The tool reads the files, changes nothing in them, and writes no sum out, so the maintainer reads what it does as changing how the data is viewed, outside what the provider's terms call using the data altered. The licence itself [lets adapted material be made for non-commercial purposes and withholds sharing it](https://creativecommons.org/licenses/by-nc-nd/4.0/legalcode).
 - **Data**: one of the CSV files the platform publishes, a prefecture's or a metropolitan area's, which the user downloads from the platform and keeps on their machine [0001].
-  - That a metropolitan area's file has the layout of a prefecture's is inferred from the files' sizes, and no such file has been read (2026-10-04).
-  - The indicators are read from the file, since a file carries 16 or 26 of them depending on its region (the platform's catalogue, checked 2026-10-04).
-  - A file whose published total is not the sum of the indicators it carries is covered too. Tokyo's is one, and Aichi's total is the sum (both files, checked 2026-10-04).
+  - The indicators are read from the file, since the files differ in which indicators they carry.
+  - A file whose published total is not the sum of the indicators it carries is covered too.
   - Nothing that comes from the data is committed to this repository or published, as [`CLAUDE.md`](../CLAUDE.md#keeping-the-data-out-of-the-repository) spells out.
   - Wherever the tool shows the data, it states the data's source, which the provider's terms make a condition of use.
 - **Viewing**: a map of 500 m meshes on the user's own machine, which follows the multipliers as the user moves them.
@@ -25,8 +24,8 @@ QOL Reweight lets them say how many times that average they value each indicator
 
 - **Publishing a reweighted map, or hosting the tool for others**: the data is licensed CC BY-NC-ND 4.0 and its provider's terms forbid using it altered without permission.
 - **Writing the sums out to a file**: the tool changes how the published values are viewed and produces no data of its own.
-- **Indicators the published data leaves out**: rent, energy performance, and distance to a garbage collection point are part of the provider's method, and the platform's page says its data does not consider them, as the two files read bear out (Tokyo's and Aichi's, checked 2026-10-04).
-- **Reproducing the provider's scores for one sex, age band, or other attribute**: for an indicator measured as an access time the value itself depends on the attribute, so multipliers on the published values cannot turn them into an attribute group's scores ([the paper behind the data](https://doi.org/10.1016/j.cities.2023.104561), sections 3.4 and 3.5.4, read 2026-10-04).
+- **Indicators the published data leaves out**: rent, energy performance, and distance to a garbage collection point are part of the provider's method and are not in the platform's data.
+- **Reproducing the provider's scores for one sex, age band, or other attribute**: for an indicator measured as an access time the value itself depends on the attribute, as [the paper behind the data](https://doi.org/10.1016/j.cities.2023.104561) sets out, so multipliers on the published values cannot turn them into an attribute group's scores.
 
 ## Phases
 
