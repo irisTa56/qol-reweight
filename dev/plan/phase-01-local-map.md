@@ -33,6 +33,7 @@ The picture agrees with the one the platform shows for the same file, which sett
 - Multipliers, several files at once, and a file whose `QOL` row is not what its indicator rows add up to: each is a later phase of the roadmap. Such a file's `QOL` row is shown here as published, like any other.
 - Running in a browser, a base map of vector tiles, and a base map that works without the network.
 - A colour range the user sets.
+- Running the tests that drive the window in CI, which would take a macOS runner.
 
 ## Assumptions & Risks
 
@@ -54,7 +55,7 @@ The picture agrees with the one the platform shows for the same file, which sett
   - Risk: squares land in the wrong place, noticed by a pattern that is mirrored or scrambled within each 1 km against the platform's map.
 - **A003**: The mesh codes are on the world geodetic system the base map uses, as the [2020 census mesh statistics](https://www.stat.go.jp/data/mesh/index.html) are. Unverified: those statistics are compiled in two such systems, JGD2000 and JGD2011, and nothing read says which the data uses, or that it uses either.
   - Risk: every mesh is displaced, as it would be were the codes on the older Japanese datum, which lies about 450 m from the world geodetic system near Tokyo ([国土地理院](https://www.gsi.go.jp/LAW/G2000-g2000-h3.htm), checked 2026-10-05), noticed by one steady offset against the coastline and against the platform's map.
-- **A004**: The platform draws each file's meshes on a map, where its user chooses the total or one indicator, which is the picture the phase compares against. Source: [the platform's search result for the catalogue](https://data-platform.mlit.go.jp/#/searchlink/df633780-e1bd-436d-b6f6-13885a70c254), on whose map the maintainer saw Aichi's meshes coloured, and the colours change on choosing the total or an indicator in the legend, checked 2026-10-05.
+- **A004**: The platform draws each file's meshes on a map, where its user chooses the total or one indicator, which is the picture the phase compares against. Source: [the platform's search result for the catalogue](https://data-platform.mlit.go.jp/#/searchlink/df633780-e1bd-436d-b6f6-13885a70c254), on whose map the maintainer saw the meshes coloured, and the colours change on choosing the total or an indicator in the legend, for Aichi (checked 2026-10-05) and for Tokyo and the Chukyo metropolitan area (checked 2026-10-06).
   - Risk: the platform's map changes or stops showing a file, noticed on opening it for the files the phase checks.
 - **A005**: An application may load GSI tiles as they are needed without applying, on stating the source as 「国土地理院」 or 「地理院タイル」 with a link to the tile list. Source: [地理院タイル一覧](https://maps.gsi.go.jp/development/ichiran.html), checked 2026-10-05. The page says nothing of how many requests are allowed.
   - The pale map's tiles at zoom level 8 and below ask for a credit to their shoreline data as well, in the notes of their own entries on that page.
@@ -62,8 +63,8 @@ The picture agrees with the one the platform shows for the same file, which sett
 - **A006**: A file's meshes can all be drawn again on every frame. Source: the measurement in [0002], on synthetic data.
   - Risk: a real file is slower, noticed by panning that stutters with a file open.
   - Risk: the map stops being drawn again, as one benchmark run did for a cause that was not found ([0002], under its risks), noticed by a map that stops following the pointer while its window is in front.
-- **A007**: A test can drive the tool's window, the map and the meshes included, without showing it. Source: a trial with [`egui_kittest`](https://docs.rs/egui_kittest/0.36.2) 0.36.2 on macOS, which found a label by its text, moved the pointer over a square, and rendered the window to an image (run 2026-10-06). Unverified on Linux, where CI runs and rendering needs a graphics adapter.
-  - Risk: such tests cannot run in CI, noticed by the test job failing before any assertion, on creating its renderer.
+- **A007**: A test can drive the tool's window, the map and the meshes included, without showing it. Source: a trial with [`egui_kittest`](https://docs.rs/egui_kittest/0.36.2) 0.36.2 on macOS, which found a label by its text, moved the pointer over a square, and rendered the window to an image (run 2026-10-06).
+  - Risk: something the phase must check cannot be reached that way, noticed by a check below that ends up done by hand.
 
 ## Decisions
 
@@ -77,6 +78,7 @@ The picture agrees with the one the platform shows for the same file, which sett
 - Pointing at a mesh shows its numbers rather than leaving colour and legend alone, because a mesh can then be checked by its value as well as by its colour.
 - The user sets how much of the base map shows through the meshes rather than the tool fixing it, because the maintainer finds a place hard to tell where the base map cannot be seen (said 2026-10-05).
 - What can be checked by a test that drives the window is checked that way rather than by hand, because the test goes on guarding the behaviour after the phase closes.
+  - Those tests run on macOS on the maintainer's machine rather than in CI, because CI runs on Linux, where the tool shows no map for want of the font (R011), and the maintainer starts with CI as it is (said 2026-10-06).
   - The comparison with the platform's map stays by hand: the platform refused a browser driven by a program (HTTP 403, tried 2026-10-05), and no picture of real data can be kept to compare against.
 - The tool is checked on macOS only rather than made to show Japanese text everywhere, because it is a personal tool on a macOS machine, and a font shipped with it would be a file to add and a licence to check.
   - Without the font it shows no map rather than a map whose source statements cannot be read, because the roadmap makes stating the data's source a condition of showing the data.
@@ -88,6 +90,7 @@ The picture agrees with the one the platform shows for the same file, which sett
 - **A CSV reader**: parses the file; the crate is chosen while building.
 - **`egui_kittest`**, for tests only: drives the window without showing it (A007).
 - **Rust checks in `mise.toml` and CI**: formatting, lints, and tests join the tasks that gate a commit and a pull request.
+  - CI stays on Linux and runs the tests that open no window; the tests that drive the window run on macOS, from the same task, on the maintainer's machine.
 
 ## Done when
 
@@ -100,17 +103,17 @@ The picture agrees with the one the platform shows for the same file, which sett
 - **Mesh codes turn into the squares the standard defines, files that differ in indicators and in the byte order mark load, and zero gets the neutral colour with the two ends at plus and minus a high percentile of the absolute values shown.** — verifies R001, R002, R003, A001, A002.
   - Check: automated tests on synthetic data, passing in CI.
 - **Choosing another indicator recolours the map and changes the legend, pointing at a mesh shows its code, its municipality, and its value, and the base map shows through the meshes more or less as the user sets it.** — verifies R002, R003, R004, R005, A007.
-  - Check: an automated test that drives the window with a synthetic file whose values are known from how it was made, passing in CI.
+  - Check: an automated test that drives the window with a synthetic file whose values are known from how it was made, passing on macOS.
 - **The data's source, the base map's source with its link, and the credit to the shoreline data are on screen whenever the map is.** — verifies R006.
-  - Check: an automated test that reads the window's text with a synthetic file open.
+  - Check: an automated test that reads the window's text with a synthetic file open, passing on macOS.
 - **Started with no path, with a path that does not exist, and with a file that is not Urban QOL data, the tool prints which file it expects and where it comes from, and exits without a map.** — verifies R007.
-  - Check: an automated test for the three starts.
+  - Check: an automated test for the three starts, passing in CI.
 - **Started where the font cannot be loaded, the tool says so and exits without a map.** — verifies R006, R011.
-  - Check: an automated test.
+  - Check: an automated test, passing in CI.
 - **The README says how to get the file and start the tool, that only macOS is checked, and what happens without the font.** — verifies R007, R011.
   - Check: the README read.
 - **With the network off, the meshes are drawn over a blank base map, and the tool makes no request to the platform.** — verifies R008.
-  - Check: an automated test that draws a synthetic file with a tile server that cannot be reached, and each place the code names the platform's host read to be text the tool shows, not an address it requests.
+  - Check: an automated test that draws a synthetic file with a tile server that cannot be reached, passing on macOS, and each place the code names the platform's host read to be text the tool shows, not an address it requests.
 - **The tool leaves no file behind that holds anything from the CSV, and the repository holds no data: test inputs are made by code, and no commit of the phase carries a picture or a value from a real file.** — verifies R009, R010.
   - Check: the code read for what it writes, and the check before each push that `CLAUDE.md` asks for.
 - A005 has no item of its own: its source is the terms page, and its warning sign would appear in the first item.
