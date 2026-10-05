@@ -57,7 +57,7 @@ The picture agrees with the one the platform shows for the same file, which sett
   - Risk: the platform's map changes or stops showing a file, noticed on opening it for the two prefectures.
 - **A005**: An application may load GSI tiles as they are needed without applying, on stating the source as 「国土地理院」 or 「地理院タイル」 with a link to the tile list. Source: [地理院タイル一覧](https://maps.gsi.go.jp/development/ichiran.html), checked 2026-10-05. The page says nothing of how many requests are allowed.
   - The pale map's tiles at zoom level 8 and below ask for a credit to their shoreline data as well, in the notes of their own entries on that page.
-  - Risk: tiles are refused, noticed by a base map that stays blank while the network is up.
+  - Risk: tiles are refused, noticed by a base map that stays blank, at a zoom level it has tiles for, while the network is up.
 - **A006**: A file's meshes can all be drawn again on every frame. Source: the measurement in [0002], on synthetic data.
   - Risk: a real file is slower, noticed by panning that stutters with a prefecture's file open.
   - Risk: the map stops being drawn again, as one benchmark run did for a cause that was not found ([0002], under its risks), noticed by a map that stops following the pointer while its window is in front.
@@ -93,7 +93,7 @@ The picture agrees with the one the platform shows for the same file, which sett
 - **Choosing another indicator recolours the map and changes the legend, and pointing at a mesh shows its code, its municipality, and its value.** — verifies R002, R003, R004.
   - Check: by hand with a synthetic file whose values are known from how it was made, and again with Aichi's file.
 - **The data's source and the base map's source, with its link, are on screen whenever the map is, and zoomed out to level 8 the credit to the shoreline data is there as well.** — verifies R006.
-  - Check: read off the window with a synthetic file open, at a zoom level above 8 and at one below.
+  - Check: read off the window with a synthetic file open, once while it shows tiles of level 9 and once while it shows tiles of level 8.
 - **Started with no path, with a path that does not exist, and with a file that is not Urban QOL data, the tool prints which file it expects and where it comes from, and exits without a map. Started where the font cannot be loaded, it says so and exits without a map. The README says how to get the file and start the tool, that only macOS is checked, and what happens without the font.** — verifies R006, R007, R011.
   - Check: an automated test for the four starts, and the README read.
 - **With the network off, the meshes are drawn over a blank base map, and the tool makes no request to the platform.** — verifies R008.

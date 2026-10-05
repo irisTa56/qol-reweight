@@ -10,6 +10,7 @@ What the tool is built on has to be chosen before the first map exists, and two 
 
 - Of everything the design covers, the maintainer weighs most how the map follows a multiplier while it is being moved (the request this project started from, 2026-10-04).
 - The maintainer will not write JavaScript or TypeScript by hand, and accepts JavaScript that a tool generates or a library ships (said while this record was prepared, 2026-10-05).
+- Between a Rust application and Python, the maintainer prefers Rust, and calls the choice of Rust a preference in the end (said while this record was prepared, 2026-10-05).
 
 The files set the size of the job.
 
@@ -52,6 +53,7 @@ egui draws its window and controls, walkers draws the map and fetches the base m
 - **TypeScript with deck.gl over MapLibre GL JS, in the browser**: it drew a change on the next frame, and it is JavaScript written by hand, which the maintainer ruled out.
 - **Python with lonboard inside marimo, served by a Python process**: it kept up with the slider, but each change crosses to a Python process and back, and the measurement could not show that the picture changes within a frame or two, while the Rust application changes it on the next frame.
   - What the Rust application has to draw for itself, which was the reason to prefer this alternative, came to about 130 lines in the demonstration.
+  - Between the two, the maintainer's preference is for Rust, as the context says.
   - marimo can also run a notebook's Python in the browser, with no Python process ([its guide to WebAssembly notebooks](https://docs.marimo.io/guides/wasm/), checked 2026-10-05). That was not tried, so nothing here says how lonboard follows a slider there.
 - **Streamlit, pydeck, or ipyleaflet in place of marimo or lonboard**: Streamlit sends a slider's value too late to follow a drag, pydeck cannot update what it has drawn, and ipyleaflet sends the whole geometry on every change.
   - Other Python hosts and map libraries were not measured, and one that reacts to a slider in a Python process shares the crossing the alternative above is turned down for.
