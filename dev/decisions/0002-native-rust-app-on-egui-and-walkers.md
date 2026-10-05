@@ -48,7 +48,7 @@ What exists in Rust was taken from crates.io's search, [lib.rs's geo category](h
 - No Rust bindings for deck.gl turned up on crates.io or GitHub (searched 2026-10-05).
 - Rerun's map view draws points and line strings only ([its reference](https://github.com/rerun-io/rerun/blob/0.38.1/docs/content/reference/types/views/map_view.md)); filled polygons are [an open request](https://github.com/rerun-io/rerun/issues/8066) from 2024-11-11.
   - Controls of one's own go in an eframe application wrapped around its viewer ([its example of extending the viewer](https://github.com/rerun-io/rerun/tree/0.38.1/examples/rust/extend_viewer_ui)).
-- galileo calls itself "an active WIP" (its README); its latest release, 0.2.1, is from 2025-07-11, and its egui widget depends on egui 0.31 (crates.io).
+- galileo's egui widget, at its latest release 0.2.1, depends on egui 0.31 (crates.io).
 - [maplibre-rs](https://github.com/maplibre/maplibre-rs) lists text rendering as missing (its README).
 
 ### What exists in Python
