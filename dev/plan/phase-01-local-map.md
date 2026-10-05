@@ -30,7 +30,7 @@ The picture agrees with the one the platform shows for the same file, which sett
 ### Out of scope
 
 - Multipliers, several files at once, and a total that is not the sum of its indicators: each is a later phase of the roadmap. A file whose total is not that sum is shown here as published.
-- A metropolitan area's file: none has been read, so this phase does not claim to open one.
+- A metropolitan area's file: none has been read, so this phase does not claim to open one, and the [roadmap](../ROADMAP.md#phases) says when its phase is decided.
 - Running in a browser, a base map of vector tiles, and a base map that works without the network.
 - A colour range the user sets.
 
