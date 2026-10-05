@@ -33,7 +33,6 @@ Redraw speed was measured on synthetic data: squares laid out as a grid, 26 made
 - **[deck.gl](https://deck.gl/) 9.4.0 in Chrome 154**, alone or over [MapLibre GL JS](https://maplibre.org/maplibre-gl-js/docs/) 6.12.0: the change was drawn on the next frame up to 45,000 squares.
 - **MapLibre GL JS 6.12.0 alone**, updating each square's feature state: the next frame for 12,000 squares, and a median of 48 ms for 45,000.
 - **walkers' own layer for GeoJSON polygons** (`walkers_extras` 0.60.0), in place of the tool's own drawing: drawing the same squares again took 47.7 ms a frame for 12,000 and 182.4 ms for 45,000, with no value changed (run 2026-10-06).
-  - Its style expressions have no arithmetic ([`expression.rs`](https://docs.rs/crate/walkers/0.60.0/source/src/expression.rs)), so a weighted sum is a property written before the layer is built, and building a layer of 12,000 squares took 61.4 ms.
 - **[galileo](https://github.com/galileo-map/galileo) 0.2.1 with its egui widget**, recolouring a feature layer through its symbol: 11.8 ms a frame for 12,000 squares, 44.3 ms for 45,000, and 127.9 ms for 120,000, so frames came 44.6 ms apart at 45,000 (run 2026-10-06).
   - Its hit test returned the square under a point, its raster tile layer drew GSI tiles with an attribution it shows itself, and Japanese text showed with the same font added.
 
@@ -47,7 +46,7 @@ What exists in Rust was taken from crates.io's search, [lib.rs's geo category](h
 - A demonstration on synthetic data drew GSI raster tiles with their Japanese labels, 12,000 squares over them, and 26 sliders labelled in Japanese beside the map, in about 130 lines (run 2026-10-05).
   - egui's bundled fonts hold no Japanese glyphs ([`epaint_default_fonts` 0.36.2](https://docs.rs/crate/epaint_default_fonts/0.36.2/source/fonts/) ships Hack, Ubuntu Light, Noto Emoji, and an icon font), so the demonstration read a font from macOS.
 - No Rust bindings for deck.gl turned up on crates.io or GitHub (searched 2026-10-05).
-- Rerun's map view draws points and line strings only, and is marked unstable in [its reference](https://github.com/rerun-io/rerun/blob/0.38.1/docs/content/reference/types/views/map_view.md); filled polygons are [an open request](https://github.com/rerun-io/rerun/issues/8066) from 2024-11-11.
+- Rerun's map view draws points and line strings only ([its reference](https://github.com/rerun-io/rerun/blob/0.38.1/docs/content/reference/types/views/map_view.md)); filled polygons are [an open request](https://github.com/rerun-io/rerun/issues/8066) from 2024-11-11.
   - Controls of one's own go in an eframe application wrapped around its viewer ([its example of extending the viewer](https://github.com/rerun-io/rerun/tree/0.38.1/examples/rust/extend_viewer_ui)).
 - galileo calls itself "an active WIP" (its README); its latest release, 0.2.1, is from 2025-07-11, and its egui widget depends on egui 0.31 (crates.io).
 - [maplibre-rs](https://github.com/maplibre/maplibre-rs) lists text rendering as missing (its README).
