@@ -29,13 +29,12 @@ QOL Reweight lets them say how many times that average they value each indicator
 
 ## Phases
 
-- **Phase 01: Published values on a local map**: on the user's machine, one prefecture's published values are shown on a map of 500 m meshes, the total or one indicator at a time — [plan](plan/phase-01-local-map.md), in progress
+- **Phase 01: Published values on a local map**: on the user's machine, one file's published values are shown on a map of 500 m meshes, the total or one indicator at a time — [plan](plan/phase-01-local-map.md), in progress
 - **Reweighting**: the user sets a multiplier for each indicator, and the map follows.
 - **Several files at once**: the map covers more than one file, such as two neighbouring prefectures.
 - **Totals that are not the sum**: a file whose published total is not the sum of its indicators is handled in a way its user can see.
 
 Published values on a local map comes first and Reweighting second, because the first settles the path from the file to the map against a picture the platform already shows, and the second then adds only what is this tool's own.
 The order of the other two is decided when Reweighting ends.
-Which phase first opens a metropolitan area's file is decided then as well, since none has been read yet.
 
 [0001]: decisions/0001-csv-kept-on-disk-as-data-source.md
