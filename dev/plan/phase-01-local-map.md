@@ -39,7 +39,7 @@ The picture agrees with the one the platform shows for the same file, which sett
 - **A001**: Each of the platform's files has the layout the three files read have. Source: the files of two prefectures and of one metropolitan area, checked 2026-10-06.
   - It is UTF-8, with or without a byte order mark, and has one header row.
   - It has one row for each mesh and indicator, and the total is the row whose `IndicatorCode` is `QOL`.
-  - A metropolitan area's file holds the meshes of several prefectures in that one layout, and the rows the Chukyo file has for Aichi are the rows of Aichi's own file.
+  - A metropolitan area's file holds the meshes of several prefectures in that one layout.
   - Its columns are:
     - `KeyCode`
     - `PrefectureCode`
