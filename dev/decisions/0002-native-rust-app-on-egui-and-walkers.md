@@ -6,16 +6,24 @@
 ## Context
 
 The tool draws every 500 m mesh of a file as a coloured square over a base map, and the [roadmap](../ROADMAP.md#scope) has that map follow the multipliers as the user moves them.
-What the tool is built on has to be chosen before the first map exists, and three things the maintainer said bear on the choice.
+What the tool is built on has to be chosen before the first map exists.
+
+### What the maintainer said
+
+Three things the maintainer said bear on the choice.
 
 - Of everything the design covers, the maintainer weighs most how the map follows a multiplier while it is being moved (the request this project started from, 2026-10-04).
 - The maintainer will not write JavaScript or TypeScript by hand, and accepts JavaScript that a tool generates or a library ships (said while this record was prepared, 2026-10-05).
 - Between a Rust application and Python, the maintainer prefers Rust, and calls the choice of Rust a preference in the end (said while this record was prepared, 2026-10-05).
 
+### The size of the job
+
 The files set the size of the job.
 
 - A prefecture's file holds on the order of ten thousand meshes, and the largest file is several times that, judging by the files' sizes ([the platform's catalogue](https://data-platform.mlit.go.jp/#/searchlink/df633780-e1bd-436d-b6f6-13885a70c254), checked 2026-10-04).
 - A file carries up to 26 indicators (the two files read, checked 2026-10-05).
+
+### Redraw speed, measured
 
 Redraw speed was measured on synthetic data: squares laid out as a grid, 26 made-up values each, coloured by their weighted sum, with one multiplier changed per update, on an Apple M3 (run 2026-10-05).
 
@@ -24,6 +32,12 @@ Redraw speed was measured on synthetic data: squares laid out as a grid, 26 made
   - From one event to a changed picture took a median of at most 57 ms for 45,000 squares; the measurement could not resolve less than about 40 ms, so how many frames that is stayed unknown.
 - **[deck.gl](https://deck.gl/) 9.4.0 in Chrome 154**, alone or over [MapLibre GL JS](https://maplibre.org/maplibre-gl-js/docs/) 6.12.0: the change was drawn on the next frame up to 45,000 squares.
 - **MapLibre GL JS 6.12.0 alone**, updating each square's feature state: the next frame for 12,000 squares, and a median of 48 ms for 45,000.
+- **walkers' own layer for GeoJSON polygons** (`walkers_extras` 0.60.0), in place of the tool's own drawing: drawing the same squares again took 47.7 ms a frame for 12,000 and 182.4 ms for 45,000, with no value changed (run 2026-10-06).
+  - Its style expressions have no arithmetic ([`expression.rs`](https://docs.rs/crate/walkers/0.60.0/source/src/expression.rs)), so a weighted sum is a property written before the layer is built, and building a layer of 12,000 squares took 61.4 ms.
+- **[galileo](https://github.com/galileo-map/galileo) 0.2.1 with its egui widget**, recolouring a feature layer through its symbol: 11.8 ms a frame for 12,000 squares, 44.3 ms for 45,000, and 127.9 ms for 120,000, so frames came 44.6 ms apart at 45,000 (run 2026-10-06).
+  - Its hit test returned the square under a point, its raster tile layer drew GSI tiles with an attribution it shows itself, and Japanese text showed with the same font added.
+
+### What exists in Rust
 
 What exists in Rust was taken from crates.io's search, [lib.rs's geo category](https://lib.rs/science/geo), [awesome-rust](https://github.com/rust-unofficial/awesome-rust), and [awesome-georust](https://github.com/pka/awesome-georust) (checked 2026-10-05).
 
@@ -35,7 +49,10 @@ What exists in Rust was taken from crates.io's search, [lib.rs's geo category](h
 - No Rust bindings for deck.gl turned up on crates.io or GitHub (searched 2026-10-05).
 - Rerun's map view draws points and line strings only, and is marked unstable in [its reference](https://github.com/rerun-io/rerun/blob/0.38.1/docs/content/reference/types/views/map_view.md); filled polygons are [an open request](https://github.com/rerun-io/rerun/issues/8066) from 2024-11-11.
   - Controls of one's own go in an eframe application wrapped around its viewer ([its example of extending the viewer](https://github.com/rerun-io/rerun/tree/0.38.1/examples/rust/extend_viewer_ui)).
-- [galileo](https://github.com/galileo-map/galileo) calls itself "an active WIP", and [maplibre-rs](https://github.com/maplibre/maplibre-rs) lists text rendering as missing (their READMEs).
+- galileo calls itself "an active WIP" (its README); its latest release, 0.2.1, is from 2025-07-11, and its egui widget depends on egui 0.31 (crates.io).
+- [maplibre-rs](https://github.com/maplibre/maplibre-rs) lists text rendering as missing (its README).
+
+### What exists in Python
 
 What exists in Python was taken from [pyviz.org's list of tools](https://pyviz.org/tools.html) and [anywidget's community page](https://anywidget.dev/en/community/), and read from each tool's documentation or source (checked 2026-10-05).
 
@@ -61,14 +78,16 @@ egui draws its window and controls, walkers draws the map and fetches the base m
 - **Computing in the browser from Bokeh, Panel, or Dash**: the hooks for it need JavaScript written by hand.
 - **Rust compiled to WebAssembly, driving deck.gl or MapLibre GL JS**: deck.gl has no bindings, so its interface would be declared by hand, and MapLibre GL JS alone took 48 ms to recolour 45,000 squares.
 - **Rerun's viewer**: its map view cannot fill a polygon, and controls of one's own mean wrapping the viewer in an egui application, which is this decision with a larger dependency around it.
-- **galileo or maplibre-rs**: neither claims to be ready, in the words the context quotes.
+- **galileo**: it does the whole job, with hit testing and the attribution built in, but took 44.3 ms to recolour 45,000 squares where the tool's own drawing on walkers took 4.3 ms, and its egui widget is on an older egui.
+- **walkers' own layer for GeoJSON polygons, in place of the tool's own drawing**: it took 47.7 ms a frame to draw 12,000 squares that had not changed.
+- **maplibre-rs**: it draws no text, by its own README.
 
 ## Consequences
 
 - **Dependencies added**: the Rust toolchain, `eframe` and `egui`, and `walkers`, with what they bring in, a GPU renderer and an HTTP client among it.
 - **Risks**:
   - walkers is before 1.0 and changes its interface between releases; 0.60 began to require egui's wgpu renderer for vector tiles ([its changelog](https://github.com/podusowski/walkers/blob/main/CHANGELOG.md), checked 2026-10-05). It would show as a build that fails after an upgrade.
-  - Finding the mesh under the pointer and the legend are the tool's own code, and so is drawing the meshes as measured here, through a walkers plugin. walkers has a layer of its own that fills GeoJSON polygons (its changelog for 0.60.0), which was not tried, so nothing here says whether it could recolour every mesh on every frame.
+  - Drawing the meshes, finding the mesh under the pointer, and the legend are the tool's own code. walkers' layer for GeoJSON polygons and galileo's feature layer would have drawn the meshes, and each was too slow, as the context measures.
   - Japanese text needs a font from the operating system, so the tool shows it only where it knows where that font is.
   - One benchmark run stopped receiving frames after about 150, and three later runs of 600 frames each did not; the first run did not record whether its window was visible, so the cause is unknown. It would show as a map that stops redrawing while its window is in front.
   - The tool is a window on the desktop and not a page, so running it in a browser would be a second build target, which walkers supports and nothing here tried.
