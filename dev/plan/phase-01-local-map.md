@@ -18,12 +18,13 @@ The picture agrees with the one the platform shows for the same file, which sett
 - **R004**: Pointing at a mesh shows its mesh code, the name of its municipality, and the value being shown.
 - **R005**: The meshes lie over a base map that names places in Japanese, and the map can be panned and zoomed.
 - **R006**: Whenever the map is shown, the screen states the data's source, as `都市QOLデータ2020（大日本ダイヤコンサルタント㈱作成）`, and the base map's source with its link.
+  - Where the tool cannot load a font that renders those statements, it says so and shows no map.
 - **R007**: Started without a path, or with a file it cannot read as Urban QOL data, the tool says which file it expects and where its user downloads it, and shows no map.
   - The README says the same, and how to start the tool.
 - **R008** (constraint): The tool sends the platform no request ([0001]). The base map's tiles are its only use of the network, and the meshes are drawn without it.
 - **R009** (constraint): The tool reads the file and writes nothing that comes from it.
 - **R010** (constraint): Nothing that comes from the data is committed, as [`CLAUDE.md`](../../CLAUDE.md#keeping-the-data-out-of-the-repository) spells out, so the tests run on synthetic data and the phase's evidence holds no picture and no value.
-- **R011** (constraint): The tool is checked on macOS only, and reads the font for Japanese text from there. On Windows and Linux it is not checked and may show no Japanese text, which the README says.
+- **R011** (constraint): The tool is checked on macOS only, and reads the font for Japanese text from there. On Windows and Linux it is not checked, and where it finds no such font it shows no map, as R006 says; the README says so.
 
 ### Out of scope
 
@@ -51,8 +52,8 @@ The picture agrees with the one the platform shows for the same file, which sett
   - Risk: squares land in the wrong place, noticed by a pattern that is mirrored or scrambled within each 1 km against the platform's map.
 - **A003**: The mesh codes are on the world geodetic system the base map uses, as the [2020 census mesh statistics](https://www.stat.go.jp/data/mesh/index.html) are. Unverified: nothing read says which datum the data uses.
   - Risk: every mesh is displaced, noticed by one steady offset against the coastline and against the platform's map.
-- **A004**: The platform draws each file's meshes on a map, where its user chooses the total or one indicator, which is the picture the phase compares against. Source: [the platform's search result for the catalogue](https://data-platform.mlit.go.jp/#/searchlink/df633780-e1bd-436d-b6f6-13885a70c254), whose map loads mesh tiles and lists each of the 22 files in a legend with a menu of what to show; Aichi's menu was opened and offers the total and the indicators, checked 2026-10-05. The picture itself was not looked at.
-  - Risk: the platform's picture cannot be set beside the tool's, noticed when the maintainer opens that map for the two prefectures.
+- **A004**: The platform draws each file's meshes on a map, where its user chooses the total or one indicator, which is the picture the phase compares against. Source: [the platform's search result for the catalogue](https://data-platform.mlit.go.jp/#/searchlink/df633780-e1bd-436d-b6f6-13885a70c254), on whose map the maintainer saw Aichi's meshes coloured, and the colours change on choosing the total or an indicator in the legend, checked 2026-10-05.
+  - Risk: the platform's map changes or stops showing a file, noticed on opening it for the two prefectures.
 - **A005**: An application may load GSI tiles as they are needed without applying, on stating the source as 「国土地理院」 or 「地理院タイル」 with a link to the tile list. Source: [地理院タイル一覧](https://maps.gsi.go.jp/development/ichiran.html), checked 2026-10-05. The page says nothing of how many requests are allowed.
   - Risk: tiles are refused, noticed by a base map that stays blank while the network is up.
 - **A006**: A file's meshes can all be drawn again on every frame. Source: the measurement in [0002], on synthetic data.
@@ -69,6 +70,7 @@ The picture agrees with the one the platform shows for the same file, which sett
 - The phase is checked against the files of Aichi and Tokyo rather than Aichi's alone, because the two differ in how many indicators they carry and in the byte order mark, and both are already on the maintainer's machine. A metropolitan area's file would take another download.
 - Pointing at a mesh shows its numbers rather than leaving colour and legend alone, because a mesh can then be checked by its value as well as by its colour.
 - The tool is checked on macOS only rather than made to show Japanese text everywhere, because it is a personal tool on a macOS machine, and a font shipped with it would be a file to add and a licence to check.
+  - Without the font it shows no map rather than a map whose source statements cannot be read, because the roadmap makes stating the data's source a condition of showing the data.
 
 ## Dependencies
 
@@ -89,8 +91,8 @@ The picture agrees with the one the platform shows for the same file, which sett
   - Check: by hand with a synthetic file whose values are known from how it was made, and again with Aichi's file.
 - **The data's source and the base map's source, with its link, are on screen whenever the map is.** — verifies R006.
   - Check: read off the window with a synthetic file open.
-- **Started with no path, with a path that does not exist, and with a file that is not Urban QOL data, the tool prints which file it expects and where it comes from, and exits without a map. The README says how to get the file and start the tool, and that only macOS is checked.** — verifies R007, R011.
-  - Check: an automated test for the three starts, and the README read.
+- **Started with no path, with a path that does not exist, and with a file that is not Urban QOL data, the tool prints which file it expects and where it comes from, and exits without a map. Started where the font cannot be loaded, it says so and exits without a map. The README says how to get the file and start the tool, that only macOS is checked, and what happens without the font.** — verifies R006, R007, R011.
+  - Check: an automated test for the four starts, and the README read.
 - **With the network off, the meshes are drawn over a blank base map, and the tool makes no request to the platform.** — verifies R008.
   - Check: the tool run offline with a synthetic file, and each place the code names the platform's host read to be text the tool shows, not an address it requests.
 - **The tool leaves no file behind that holds anything from the CSV, and the repository holds no data: test inputs are made by code, and no commit of the phase carries a picture or a value from a real file.** — verifies R009, R010.
