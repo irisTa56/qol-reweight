@@ -13,7 +13,7 @@ What the tool is built on has to be chosen before the first map exists, and two 
 
 The files set the size of the job.
 
-- A prefecture's file holds on the order of ten thousand meshes, and the largest file is several times that, judging by the files' sizes (the platform's catalogue, checked 2026-10-04).
+- A prefecture's file holds on the order of ten thousand meshes, and the largest file is several times that, judging by the files' sizes ([the platform's catalogue](https://data-platform.mlit.go.jp/#/searchlink/df633780-e1bd-436d-b6f6-13885a70c254), checked 2026-10-04).
 - A file carries up to 26 indicators (the two files read, checked 2026-10-05).
 
 Redraw speed was measured on synthetic data: squares laid out as a grid, 26 made-up values each, coloured by their weighted sum, with one multiplier changed per update, on an Apple M3 (run 2026-10-05).
@@ -24,22 +24,23 @@ Redraw speed was measured on synthetic data: squares laid out as a grid, 26 made
 - **[deck.gl](https://deck.gl/) 9.4.0 in Chrome 154**, alone or over [MapLibre GL JS](https://maplibre.org/maplibre-gl-js/docs/) 6.12.0: the change was drawn on the next frame up to 45,000 squares.
 - **MapLibre GL JS 6.12.0 alone**, updating each square's feature state: the next frame for 12,000 squares, and a median of 48 ms for 45,000.
 
-What exists in Rust was taken from crates.io, lib.rs, and the awesome lists for Rust and for geospatial Rust (checked 2026-10-05).
+What exists in Rust was taken from crates.io's search, [lib.rs's geo category](https://lib.rs/science/geo), [awesome-rust](https://github.com/rust-unofficial/awesome-rust), and [awesome-georust](https://github.com/pka/awesome-georust) (checked 2026-10-05).
 
-- walkers is a map widget for egui under the MIT licence, released as 0.60.0 on 2026-09-22 (crates.io).
+- walkers is a map widget for egui under the MIT licence, released as 0.60.0 on 2026-09-22 ([docs.rs](https://docs.rs/crate/walkers/0.60.0)).
   - It draws raster tiles from a tile server one describes in a few lines, and hands a plugin a projection to draw shapes of one's own on the map (its `TileSource` and `Plugin` traits).
-  - The map view of [Rerun](https://github.com/rerun-io/rerun) is built on it (`re_view_map` 0.38.1 depends on `walkers ^0.58.0`).
+  - The map view of [Rerun](https://github.com/rerun-io/rerun) is built on it ([`re_view_map` 0.38.1](https://docs.rs/crate/re_view_map/0.38.1) depends on `walkers ^0.58.0`).
 - A demonstration on synthetic data drew GSI raster tiles with their Japanese labels, 12,000 squares over them, and 26 sliders labelled in Japanese beside the map, in about 130 lines (run 2026-10-05).
-  - egui's bundled fonts hold no Japanese glyphs (`epaint_default_fonts` 0.36.2 ships Hack, Ubuntu Light, Noto Emoji, and an icon font), so the demonstration read a font from macOS.
-- No Rust bindings for deck.gl turned up on crates.io or GitHub, and the bindings for MapLibre GL JS have fewer than 200 downloads each (crates.io).
+  - egui's bundled fonts hold no Japanese glyphs ([`epaint_default_fonts` 0.36.2](https://docs.rs/crate/epaint_default_fonts/0.36.2/source/fonts/) ships Hack, Ubuntu Light, Noto Emoji, and an icon font), so the demonstration read a font from macOS.
+- No Rust bindings for deck.gl turned up on crates.io or GitHub, and the bindings for MapLibre GL JS, `maplibre-gl-js`, `leptos_maplibre`, and `dioxus-maplibre`, have fewer than 200 downloads each (crates.io's search).
 - Rerun's map view draws points and line strings only, and is marked unstable in [its reference](https://github.com/rerun-io/rerun/blob/0.38.1/docs/content/reference/types/views/map_view.md); filled polygons are [an open request](https://github.com/rerun-io/rerun/issues/8066) from 2024-11-11.
 - [galileo](https://github.com/galileo-map/galileo) calls itself "an active WIP", and [maplibre-rs](https://github.com/maplibre/maplibre-rs) lists text rendering as missing (their READMEs).
 
-What exists in Python was taken from pyviz.org's list of tools and anywidget's community page, and read from each tool's documentation or source (checked 2026-10-05).
+What exists in Python was taken from [pyviz.org's list of tools](https://pyviz.org/tools.html) and [anywidget's community page](https://anywidget.dev/en/community/), and read from each tool's documentation or source (checked 2026-10-05).
 
-- Streamlit sends a slider's value when it is released, and Shiny for Python 250 ms after it stops moving (the slider source of each).
-- pydeck 0.9 cannot update a map it has shown, and ipyleaflet sends the whole GeoJSON again when a style changes (the source of each).
-- Bokeh's `CustomJS`, Panel's `jslink`, and Dash's clientside callbacks, which would compute in the browser, are JavaScript written by hand (the documentation of each).
+- Streamlit sends a slider's value when it is released ([`Slider.tsx` at 1.65.0](https://github.com/streamlit/streamlit/blob/1.65.0/frontend/lib/src/components/widgets/Slider/Slider.tsx), where only `onChangeEnd` sets the value the server sees).
+- pydeck 0.9 cannot update a map it has shown ([`deck.py` at v9.4.0](https://github.com/visgl/deck.gl/blob/v9.4.0/bindings/pydeck/pydeck/bindings/deck.py), whose `update` raises `NotImplementedError`).
+- ipyleaflet sends the whole GeoJSON again when a style changes ([`leaflet.py` at 0.20.0](https://github.com/jupyter-widgets/ipyleaflet/blob/0.20.0/python/ipyleaflet/ipyleaflet/leaflet.py), where `_update_data` observes `style` and copies `data`).
+- What would compute in the browser is JavaScript written by hand: Bokeh's [`CustomJS`](https://docs.bokeh.org/en/latest/docs/user_guide/interaction/js_callbacks.html), Panel's [`jslink`](https://github.com/holoviz/panel/blob/v1.9.4/doc/how_to/links/jslinks.md), and Dash's [clientside callbacks](https://dash.plotly.com/clientside-callbacks).
 
 ## Decision
 

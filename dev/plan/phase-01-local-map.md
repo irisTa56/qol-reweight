@@ -91,8 +91,8 @@ The picture agrees with the one the platform shows for the same file, which sett
   - Check: read off the window with a synthetic file open.
 - **Started with no path, with a path that does not exist, and with a file that is not Urban QOL data, the tool prints which file it expects and where it comes from, and exits without a map. The README says how to get the file and start the tool, and that only macOS is checked.** — verifies R007, R011.
   - Check: an automated test for the three starts, and the README read.
-- **With the network off, the meshes are drawn over a blank base map, and nothing in the code addresses the platform.** — verifies R008.
-  - Check: the tool run offline with a synthetic file, and the code searched for the platform's host name.
+- **With the network off, the meshes are drawn over a blank base map, and the tool makes no request to the platform.** — verifies R008.
+  - Check: the tool run offline with a synthetic file, and each place the code names the platform's host read to be text the tool shows, not an address it requests.
 - **The tool leaves no file behind that holds anything from the CSV, and the repository holds no data: test inputs are made by code, and no commit of the phase carries a picture or a value from a real file.** — verifies R009, R010.
   - Check: the code read for what it writes, and the check before each push that `CLAUDE.md` asks for.
 - A005 has no item of its own: its source is the terms page, and its warning sign would appear in the first item.
