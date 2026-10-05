@@ -50,11 +50,12 @@ egui draws its window and controls, walkers draws the map and fetches the base m
 ## Rejected alternatives
 
 - **TypeScript with deck.gl over MapLibre GL JS, in the browser**: it drew a change on the next frame, and it is JavaScript written by hand, which the maintainer ruled out.
-- **Python with lonboard inside marimo**: it kept up with the slider, but each change crosses to a Python process and back, and the measurement could not show that the picture changes within a frame or two, while the Rust application changes it on the next frame.
+- **Python with lonboard inside marimo, served by a Python process**: it kept up with the slider, but each change crosses to a Python process and back, and the measurement could not show that the picture changes within a frame or two, while the Rust application changes it on the next frame.
   - What the Rust application has to draw for itself, which was the reason to prefer this alternative, came to about 130 lines in the demonstration.
-- **Another Python host or map library**: one that reacts to a slider in Python shares the crossing to a Python process that the alternative above is turned down for, and the ones the context names fall short before that.
-  - Streamlit sends a slider's value too late to follow a drag, pydeck cannot update what it has drawn, and ipyleaflet sends the whole geometry on every change.
-  - The hooks that would do the work in the browser instead need JavaScript written by hand.
+  - marimo can also run a notebook's Python in the browser, with no Python process ([its guide to WebAssembly notebooks](https://docs.marimo.io/guides/wasm/), checked 2026-10-05). That was not tried, so nothing here says how lonboard follows a slider there.
+- **Streamlit, pydeck, or ipyleaflet in place of marimo or lonboard**: Streamlit sends a slider's value too late to follow a drag, pydeck cannot update what it has drawn, and ipyleaflet sends the whole geometry on every change.
+  - Other Python hosts and map libraries were not measured, and one that reacts to a slider in a Python process shares the crossing the alternative above is turned down for.
+- **Computing in the browser from Bokeh, Panel, or Dash**: the hooks for it need JavaScript written by hand.
 - **Rust compiled to WebAssembly, driving deck.gl or MapLibre GL JS**: deck.gl has no bindings, so its interface would be declared by hand, and MapLibre GL JS alone took 48 ms to recolour 45,000 squares.
 - **Rerun's viewer**: its map view cannot fill a polygon, and controls of one's own mean wrapping the viewer in an egui application, which is this decision with a larger dependency around it.
 - **galileo or maplibre-rs**: neither claims to be ready, in the words the context quotes.
