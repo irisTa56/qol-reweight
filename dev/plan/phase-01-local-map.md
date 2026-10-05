@@ -17,8 +17,8 @@ The picture agrees with the one the platform shows for the same file, which sett
   - That value is worked out when what is shown is chosen, and is written nowhere in the code.
 - **R004**: Pointing at a mesh shows its mesh code, the name of its municipality, and the value being shown.
 - **R005**: The meshes lie over a base map that names places in Japanese, and the map can be panned and zoomed.
-  - It does not zoom out past level 9, below which the base map's tiles ask for a further credit (A005).
 - **R006**: Whenever the map is shown, the screen states the data's source, as `都市QOLデータ2020（大日本ダイヤコンサルタント㈱作成）`, and the base map's source with its link.
+  - While the map shows tiles that ask for a further credit, the screen states that credit as well (A005).
   - Where the tool cannot load a font that renders those statements, it says so and shows no map.
 - **R007**: Started without a path, or with a file it cannot read as Urban QOL data, the tool says which file it expects and where its user downloads it, and shows no map.
   - The README says the same, and how to start the tool.
@@ -67,7 +67,7 @@ The picture agrees with the one the platform shows for the same file, which sett
 - [0002. Build the tool as a native Rust application on egui and walkers](../decisions/0002-native-rust-app-on-egui-and-walkers.md)
 - The file's path is an argument on the command line rather than a file dialog or a fixed directory in the working tree, because it adds no dependency and leaves the file outside the working tree, where no commit can pick it up.
 - The base map is GSI's pale raster tiles (淡色地図) rather than OpenStreetMap's standard tiles, OpenFreeMap's vector tiles, or none, because it is the one whose picture and terms were both checked: a demonstration drew it with Japanese labels (run 2026-10-05), and A005 holds its terms.
-  - The map stops zooming out at level 9 rather than adding the credit the tiles below it ask for, because a prefecture fits in the window at level 9: a window 1,280 pixels wide spans about 3.5° of longitude there.
+  - The screen adds the credit the tiles at zoom level 8 and below ask for rather than stopping the map at level 9, because whether a file fits in the window at level 9 depends on the prefecture and on the window, and was checked for two files only.
   - OpenStreetMap's [tile usage policy](https://operations.osmfoundation.org/policies/tiles/) allows blocking heavy use without notice, and whether its labels or OpenFreeMap's come out in Japanese was not checked.
 - The colours are a continuous scale between two hues, centred on zero, with its ends at plus and minus a high percentile of the absolute values shown, rather than their largest, classes of equal count, or a range the user sets, because the published values are differences from a mean, so their sign carries meaning ([the data's introduction](https://data-platform.mlit.go.jp/#/Page?id=dataintro01), checked 2026-10-04), and a threshold taken from the data cannot be written in the code.
 - The phase is checked against the files of Aichi and Tokyo rather than Aichi's alone, because the two differ in how many indicators they carry and in the byte order mark, and both are already on the maintainer's machine. A metropolitan area's file would take another download.
@@ -92,8 +92,8 @@ The picture agrees with the one the platform shows for the same file, which sett
   - Check: automated tests on synthetic data, passing in CI.
 - **Choosing another indicator recolours the map and changes the legend, and pointing at a mesh shows its code, its municipality, and its value.** — verifies R002, R003, R004.
   - Check: by hand with a synthetic file whose values are known from how it was made, and again with Aichi's file.
-- **The data's source and the base map's source, with its link, are on screen whenever the map is, and the map does not zoom out past level 9.** — verifies R005, R006.
-  - Check: read off the window with a synthetic file open, and zooming out tried by hand.
+- **The data's source and the base map's source, with its link, are on screen whenever the map is, and zoomed out to level 8 the credit to the shoreline data is there as well.** — verifies R006.
+  - Check: read off the window with a synthetic file open, at a zoom level above 8 and at one below.
 - **Started with no path, with a path that does not exist, and with a file that is not Urban QOL data, the tool prints which file it expects and where it comes from, and exits without a map. Started where the font cannot be loaded, it says so and exits without a map. The README says how to get the file and start the tool, that only macOS is checked, and what happens without the font.** — verifies R006, R007, R011.
   - Check: an automated test for the four starts, and the README read.
 - **With the network off, the meshes are drawn over a blank base map, and the tool makes no request to the platform.** — verifies R008.
