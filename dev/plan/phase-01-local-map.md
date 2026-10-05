@@ -13,7 +13,8 @@ The picture agrees with the one the platform shows for the same file, which sett
 - **R001**: Started with the path of a prefecture's CSV file, the tool opens a window with a map on which every mesh of the file is a filled square, at the place its mesh code names, coloured by a published value.
 - **R002**: The user chooses what the colour shows: the published total, or any one indicator the file carries. The choices are read from the file.
 - **R003**: The colours run between two hues through a neutral colour at zero, and a legend on screen says which colour stands for which value.
-  - The values the two ends stand for are worked out from the values being shown, when they are chosen, and are written nowhere in the code.
+  - The two ends stand for plus and minus one value, a high percentile of the absolute values being shown and not their largest, so that a few extreme meshes do not leave the rest near the neutral colour.
+  - That value is worked out when what is shown is chosen, and is written nowhere in the code.
 - **R004**: Pointing at a mesh shows its mesh code, the name of its municipality, and the value being shown.
 - **R005**: The meshes lie over a base map that names places in Japanese, and the map can be panned and zoomed.
 - **R006**: Whenever the map is shown, the screen states the data's source, as `都市QOLデータ2020（大日本ダイヤコンサルタント㈱作成）`, and the base map's source with its link.
@@ -33,18 +34,30 @@ The picture agrees with the one the platform shows for the same file, which sett
 
 ## Assumptions & Risks
 
-- **A001**: A prefecture's file is UTF-8 with or without a byte order mark, with one header row and the columns `KeyCode`, `PrefectureCode`, `CityCode`, `Prefecture`, `City`, `IndicatorCode`, `Indicator`, `Value`, one row for each mesh and indicator, where the total is the row whose `IndicatorCode` is `QOL`. Source: the files of two prefectures, checked 2026-10-05.
+- **A001**: A prefecture's file has the layout the two files read have. Source: the files of two prefectures, checked 2026-10-05.
+  - It is UTF-8, with or without a byte order mark, and has one header row.
+  - It has one row for each mesh and indicator, and the total is the row whose `IndicatorCode` is `QOL`.
+  - Its columns are:
+    - `KeyCode`
+    - `PrefectureCode`
+    - `CityCode`
+    - `Prefecture`
+    - `City`
+    - `IndicatorCode`
+    - `Indicator`
+    - `Value`
   - Risk: another prefecture's file is laid out differently, noticed by the tool refusing a file downloaded from the platform.
 - **A002**: `KeyCode` is a half grid square code: nine digits whose ninth is 1 to 4 for the south-west, south-east, north-west, and north-east quarter of a 1 km mesh, each 15″ of latitude by 22.5″ of longitude. Source: [地域メッシュ統計の特質・沿革](https://www.stat.go.jp/data/mesh/pdf/gaiyo1.pdf), pp. 8–12 and 19, checked 2026-10-05; every code in the two files has nine digits and ends in 1 to 4.
   - Risk: squares land in the wrong place, noticed by a pattern that is mirrored or scrambled within each 1 km against the platform's map.
 - **A003**: The mesh codes are on the world geodetic system the base map uses, as the [2020 census mesh statistics](https://www.stat.go.jp/data/mesh/index.html) are. Unverified: nothing read says which datum the data uses.
   - Risk: every mesh is displaced, noticed by one steady offset against the coastline and against the platform's map.
-- **A004**: The platform shows each file on a map of its own, the total and each indicator, which the phase compares against. Source: the tile settings in the platform's catalogue, checked 2026-10-04.
-  - Risk: there is no picture to compare with, noticed on opening the platform's map for the two prefectures.
+- **A004**: The platform draws each file's meshes on a map, where its user chooses the total or one indicator, which is the picture the phase compares against. Source: [the platform's search result for the catalogue](https://data-platform.mlit.go.jp/#/searchlink/df633780-e1bd-436d-b6f6-13885a70c254), whose map loads mesh tiles and lists each of the 22 files in a legend with a menu of what to show; Aichi's menu was opened and offers the total and the indicators, checked 2026-10-05. The picture itself was not looked at.
+  - Risk: the platform's picture cannot be set beside the tool's, noticed when the maintainer opens that map for the two prefectures.
 - **A005**: An application may load GSI tiles as they are needed without applying, on stating the source as 「国土地理院」 or 「地理院タイル」 with a link to the tile list. Source: [地理院タイル一覧](https://maps.gsi.go.jp/development/ichiran.html), checked 2026-10-05. The page says nothing of how many requests are allowed.
   - Risk: tiles are refused, noticed by a base map that stays blank while the network is up.
 - **A006**: A file's meshes can all be drawn again on every frame. Source: the measurement in [0002], on synthetic data.
   - Risk: a real file is slower, noticed by panning that stutters with a prefecture's file open.
+  - Risk: the map stops being drawn again, as one benchmark run did for a cause that was not found ([0002], under its risks), noticed by a map that stops following the pointer while its window is in front.
 
 ## Decisions
 
@@ -52,7 +65,7 @@ The picture agrees with the one the platform shows for the same file, which sett
 - The file's path is an argument on the command line rather than a file dialog or a fixed directory in the working tree, because it adds no dependency and leaves the file outside the working tree, where no commit can pick it up.
 - The base map is GSI's pale raster tiles (淡色地図) rather than OpenStreetMap's standard tiles, OpenFreeMap's vector tiles, or none, because it is the one whose picture and terms were both checked: a demonstration drew it with Japanese labels (run 2026-10-05), and A005 holds its terms.
   - OpenStreetMap's [tile usage policy](https://operations.osmfoundation.org/policies/tiles/) allows blocking heavy use without notice, and whether its labels or OpenFreeMap's come out in Japanese was not checked.
-- The colours are a continuous scale between two hues, centred on zero, with its ends set from the values shown, rather than classes of equal count or a range the user sets, because the published values are differences from a mean, so their sign carries meaning ([the data's introduction](https://data-platform.mlit.go.jp/#/Page?id=dataintro01), checked 2026-10-04), and a threshold taken from the data cannot be written in the code.
+- The colours are a continuous scale between two hues, centred on zero, with its ends at plus and minus a high percentile of the absolute values shown, rather than their largest, classes of equal count, or a range the user sets, because the published values are differences from a mean, so their sign carries meaning ([the data's introduction](https://data-platform.mlit.go.jp/#/Page?id=dataintro01), checked 2026-10-04), and a threshold taken from the data cannot be written in the code.
 - The phase is checked against the files of Aichi and Tokyo rather than Aichi's alone, because the two differ in how many indicators they carry and in the byte order mark, and both are already on the maintainer's machine. A metropolitan area's file would take another download.
 - Pointing at a mesh shows its numbers rather than leaving colour and legend alone, because a mesh can then be checked by its value as well as by its colour.
 - The tool is checked on macOS only rather than made to show Japanese text everywhere, because it is a personal tool on a macOS machine, and a font shipped with it would be a file to add and a licence to check.
@@ -70,7 +83,7 @@ The picture agrees with the one the platform shows for the same file, which sett
   - Check: the maintainer looks at the tool and the platform's map side by side, for the total and for two indicators. The evidence is the statement that they agree, with no picture.
 - **With Tokyo's file, the same holds, and the list of choices is that file's indicators and not Aichi's.** — verifies R001, R002, A001.
   - Check: as above, by the maintainer.
-- **Mesh codes turn into the squares the standard defines, files that differ in indicators and in the byte order mark load, and zero gets the neutral colour with the two ends set from the values shown.** — verifies R001, R002, R003, A001, A002.
+- **Mesh codes turn into the squares the standard defines, files that differ in indicators and in the byte order mark load, and zero gets the neutral colour with the two ends at plus and minus a high percentile of the absolute values shown.** — verifies R001, R002, R003, A001, A002.
   - Check: automated tests on synthetic data, passing in CI.
 - **Choosing another indicator recolours the map and changes the legend, and pointing at a mesh shows its code, its municipality, and its value.** — verifies R002, R003, R004.
   - Check: by hand with a synthetic file whose values are known from how it was made, and again with Aichi's file.
@@ -86,8 +99,7 @@ The picture agrees with the one the platform shows for the same file, which sett
 
 ## Open questions
 
-- Why one benchmark run stopped receiving frames ([0002], under its risks); it has not happened again.
-- Whether another prefecture's file differs from the two that were read, which A001's warning sign would show.
+None.
 
 [0001]: ../decisions/0001-csv-kept-on-disk-as-data-source.md
 [0002]: ../decisions/0002-native-rust-app-on-egui-and-walkers.md
