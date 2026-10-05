@@ -6,7 +6,7 @@
 ## Context
 
 The tool draws every 500 m mesh of a file as a coloured square over a base map, and the [roadmap](../ROADMAP.md#scope) has that map follow the multipliers as the user moves them.
-What the tool is built on has to be chosen before the first map exists, and two things the maintainer said bound the choice.
+What the tool is built on has to be chosen before the first map exists, and three things the maintainer said bear on the choice.
 
 - Of everything the design covers, the maintainer weighs most how the map follows a multiplier while it is being moved (the request this project started from, 2026-10-04).
 - The maintainer will not write JavaScript or TypeScript by hand, and accepts JavaScript that a tool generates or a library ships (said while this record was prepared, 2026-10-05).
@@ -32,8 +32,9 @@ What exists in Rust was taken from crates.io's search, [lib.rs's geo category](h
   - The map view of [Rerun](https://github.com/rerun-io/rerun) is built on it ([`re_view_map` 0.38.1](https://docs.rs/crate/re_view_map/0.38.1) depends on `walkers ^0.58.0`).
 - A demonstration on synthetic data drew GSI raster tiles with their Japanese labels, 12,000 squares over them, and 26 sliders labelled in Japanese beside the map, in about 130 lines (run 2026-10-05).
   - egui's bundled fonts hold no Japanese glyphs ([`epaint_default_fonts` 0.36.2](https://docs.rs/crate/epaint_default_fonts/0.36.2/source/fonts/) ships Hack, Ubuntu Light, Noto Emoji, and an icon font), so the demonstration read a font from macOS.
-- No Rust bindings for deck.gl turned up on crates.io or GitHub, and the bindings for MapLibre GL JS, `maplibre-gl-js`, `leptos_maplibre`, and `dioxus-maplibre`, have fewer than 200 downloads each (crates.io's search).
+- No Rust bindings for deck.gl turned up on crates.io or GitHub (searched 2026-10-05).
 - Rerun's map view draws points and line strings only, and is marked unstable in [its reference](https://github.com/rerun-io/rerun/blob/0.38.1/docs/content/reference/types/views/map_view.md); filled polygons are [an open request](https://github.com/rerun-io/rerun/issues/8066) from 2024-11-11.
+  - Controls of one's own go in an eframe application wrapped around its viewer ([its example of extending the viewer](https://github.com/rerun-io/rerun/tree/0.38.1/examples/rust/extend_viewer_ui)).
 - [galileo](https://github.com/galileo-map/galileo) calls itself "an active WIP", and [maplibre-rs](https://github.com/maplibre/maplibre-rs) lists text rendering as missing (their READMEs).
 
 What exists in Python was taken from [pyviz.org's list of tools](https://pyviz.org/tools.html) and [anywidget's community page](https://anywidget.dev/en/community/), and read from each tool's documentation or source (checked 2026-10-05).
