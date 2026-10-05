@@ -62,7 +62,7 @@ egui draws its window and controls, walkers draws the map and fetches the base m
 - **Dependencies added**: the Rust toolchain, `eframe` and `egui`, and `walkers`, with what they bring in, a GPU renderer and an HTTP client among it.
 - **Risks**:
   - walkers is before 1.0 and changes its interface between releases; 0.60 began to require egui's wgpu renderer for vector tiles ([its changelog](https://github.com/podusowski/walkers/blob/main/CHANGELOG.md), checked 2026-10-05). It would show as a build that fails after an upgrade.
-  - Drawing the meshes, finding the mesh under the pointer, and the legend are the tool's own code, with no library behind them.
+  - Finding the mesh under the pointer and the legend are the tool's own code, and so is drawing the meshes as measured here, through a walkers plugin. walkers has a layer of its own that fills GeoJSON polygons (its changelog for 0.60.0), which was not tried, so nothing here says whether it could recolour every mesh on every frame.
   - Japanese text needs a font from the operating system, so the tool shows it only where it knows where that font is.
   - One benchmark run stopped receiving frames after about 150, and three later runs of 600 frames each did not; the first run did not record whether its window was visible, so the cause is unknown. It would show as a map that stops redrawing while its window is in front.
   - The tool is a window on the desktop and not a page, so running it in a browser would be a second build target, which walkers supports and nothing here tried.

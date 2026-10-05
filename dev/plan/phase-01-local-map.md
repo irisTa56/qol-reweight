@@ -74,7 +74,7 @@ The picture agrees with the one the platform shows for the same file, which sett
 
 ## Dependencies
 
-- **Rust toolchain**: builds and tests the tool; pinned in `mise.toml` beside the tools already there.
+- **Rust toolchain**: builds and tests the tool; declared in `mise.toml` beside the tools already there.
 - **`eframe`, `egui`, and `walkers`**: the window and controls, and the map widget with its tile fetching ([0002]).
 - **A CSV reader**: parses the file; the crate is chosen while building.
 - **Rust checks in `mise.toml` and CI**: formatting, lints, and tests join the tasks that gate a commit and a pull request.
