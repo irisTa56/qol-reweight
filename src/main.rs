@@ -8,6 +8,8 @@ use dataset::Dataset;
 mod dataset;
 #[cfg_attr(not(test), expect(dead_code, reason = "nothing draws a mesh yet"))]
 mod mesh;
+#[cfg_attr(not(test), expect(dead_code, reason = "nothing draws a mesh yet"))]
+mod scale;
 #[cfg(test)]
 mod test_support;
 

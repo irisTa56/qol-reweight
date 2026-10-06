@@ -90,6 +90,7 @@ The picture agrees with the one the platform shows for the same file, which sett
 - **`eframe`, `egui`, and `walkers`**: the window and controls, and the map widget with its tile fetching ([0002]).
 - **A CSV reader**: parses the file; the crate is chosen while building.
 - **`thiserror`**: derives the tool's error types.
+- **`colorous`**: the colours of the scale, from a published colour scheme.
 - **`egui_kittest`**, for tests only: drives the window without showing it (A007).
 - **`proptest`**, for tests only: makes test input in code, text in a Japanese script included, and checks a property over all of it.
 - **Rust checks in `mise.toml` and CI**: formatting, lints, and tests join the tasks that gate a commit and a pull request.
