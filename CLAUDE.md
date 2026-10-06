@@ -54,6 +54,7 @@ Before every push, check that no commit it would publish carries anything of thi
 
 - Source files hold no Japanese text and no other character an editor may draw two columns wide, since one such character puts the lines around it out of vertical alignment.
   - [`dev/GLOSSARY.md`](dev/GLOSSARY.md) pairs each English name the code uses with the Japanese term it stands for, so add the pair there when the code takes a new one.
-  - A test that needs such a character in its input writes it as an escape, such as `\u{ff15}`.
+  - Japanese text the tool shows on screen lives in a file under `assets/`, which the code takes in with `include_str!`, so that it can be read and checked as written.
+  - A test that needs such a character in its input builds it from ASCII in code, as `full_width` does in [`src/mesh.rs`](src/mesh.rs), rather than writing an escape, which cannot be read.
 - An item is `pub(crate)`, or private, wherever that is enough, and `pub` only where something outside the crate uses it.
 - Where a widely used crate with few dependencies of its own does a job, such as `thiserror` for error types, use it rather than writing the job out by hand.

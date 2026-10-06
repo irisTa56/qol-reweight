@@ -104,6 +104,15 @@ mod tests {
         HalfMesh::from_code(code).unwrap_or_else(|e| panic!("{code}: {e}"))
     }
 
+    /// The same digits in their full-width forms, three bytes each, which
+    /// the source keeps out of its own text.
+    fn full_width(ascii_digits: &str) -> String {
+        ascii_digits
+            .chars()
+            .map(|c| char::from_u32(0xFF10 + c.to_digit(10).unwrap()).unwrap())
+            .collect()
+    }
+
     fn assert_close(actual: f64, expected: f64) {
         assert!(
             (actual - expected).abs() < 1e-9,
@@ -111,9 +120,9 @@ mod tests {
         );
     }
 
-    /// The code the Statistics Bureau's tables use as their example: first-level
-    /// square 5438 starts at 36 degrees north and 138 degrees east, `23` adds 2 x 5' and
-    /// 3 x 7'30", and `43` adds 4 x 30" and 3 x 45".
+    /// The code the Statistics Bureau's tables use as their example:
+    /// first-level square 5438 starts at 36 degrees north and 138 degrees
+    /// east, `23` adds 2 x 5' and 3 x 7'30", and `43` adds 4 x 30" and 3 x 45".
     #[test]
     fn the_standards_example_lands_where_its_tables_put_it() {
         let m = mesh("543823431");
@@ -163,11 +172,10 @@ mod tests {
             "5438234311",
             "54382343a",
             " 543823431",
-            // The example in full-width digits: nine characters, 27 bytes.
-            "\u{ff15}\u{ff14}\u{ff13}\u{ff18}\u{ff12}\u{ff13}\u{ff14}\u{ff13}\u{ff11}",
-            // Three full-width digits: nine bytes, which only a check of the
-            // digits themselves refuses.
-            "\u{ff15}\u{ff14}\u{ff13}",
+            // Nine characters, 27 bytes.
+            &full_width("543823431"),
+            // Nine bytes, which only a check of the digits themselves refuses.
+            &full_width("543"),
         ] {
             assert_eq!(
                 HalfMesh::from_code(code),
