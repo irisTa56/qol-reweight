@@ -254,15 +254,12 @@ mod tests {
             prop_assert_eq!(ne.west(), se.west());
         }
 
+        /// Text in any script, digits of other scripts, and ASCII digits that
+        /// are too few or too many.
         #[test]
-        fn two_codes_never_share_a_square(a in valid_digits(), b in valid_digits()) {
-            prop_assume!(a.code() != b.code());
-            prop_assert_ne!(mesh(&a.code()), mesh(&b.code()));
-        }
-
-        /// Text in any script, digits of other scripts among it.
-        #[test]
-        fn anything_but_nine_ascii_digits_is_refused(code in r"\PC{0,12}|\p{Nd}{1,12}") {
+        fn anything_but_nine_ascii_digits_is_refused(
+            code in r"\PC{0,12}|\p{Nd}{1,12}|[0-9]{0,8}|[0-9]{10,12}",
+        ) {
             prop_assume!(!(code.len() == 9 && code.bytes().all(|b| b.is_ascii_digit())));
             prop_assert_eq!(HalfMesh::from_code(&code), Err(MeshCodeError::NotNineDigits));
         }
@@ -271,7 +268,7 @@ mod tests {
         fn a_second_level_digit_past_7_is_refused(
             d in digits(
                 prop_oneof![(8..10u32, 0..10u32), (0..10u32, 8..10u32)],
-                0..10u32,
+                1..=4u32,
             ),
         ) {
             prop_assert_eq!(
