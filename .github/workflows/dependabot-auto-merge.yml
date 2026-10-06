@@ -16,9 +16,13 @@ name: Dependabot auto-merge
 # what CI checks while leaving it green -- a scanner that walks fewer commits
 # passes a clean history either way -- so such a tool needs its own version guard
 # rather than relying on this one. The actions that run the gate here (the
-# gitleaks and TruffleHog actions, mise-action) carry no such guard, and they are
-# all this repository's Dependabot entry updates, so for them a green run is the
-# only signal there is.
+# gitleaks and TruffleHog actions, mise-action) carry no such guard, so for them
+# a green run is the only signal there is.
+#
+# Nor does it cover what a crate does while it is being built. A build script or
+# a procedural macro runs as code on the CI runner and on the machine of whoever
+# builds the tool next, and a green run says only that the build and the tests
+# passed with it, not what else it did.
 #
 # PRECONDITION: this is only safe once the main ruleset requires every blocking
 # CI check (markdown-lint / secret-scan-gitleaks / secret-scan-trufflehog /
