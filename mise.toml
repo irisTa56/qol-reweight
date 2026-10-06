@@ -59,7 +59,7 @@ run = "lychee --offline --no-progress --config lychee.toml ."
 # without a change there.
 [tasks."qa:rust"]
 description = "Run all Rust checks"
-depends = ["qa:rust:*"]
+depends = ["qa:rust:**"]
 
 [tasks."qa:rust:fmt"]
 description = "Check Rust formatting"
