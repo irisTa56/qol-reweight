@@ -1,5 +1,4 @@
 use std::env;
-use std::path::Path;
 use std::process::ExitCode;
 
 use dataset::Dataset;
@@ -16,10 +15,9 @@ mod test_support;
 const USAGE: &str = "\
 Usage: qol-reweight <FILE>
 
-FILE is one of the CSV files of Urban QOL data that the MLIT Data Platform
-publishes, one for each prefecture and each metropolitan area, such as
-QOL_23_Aichi.csv. Download it from the platform, starting from its page on
-the data:
+FILE is one of the CSV files of Urban QOL data that the MLIT Data Platform publishes,
+one for each prefecture and each metropolitan area, such as QOL_23_Aichi.csv.
+Download it from the platform, starting from its page on the data:
 https://data-platform.mlit.go.jp/#/Page?id=dataintro01";
 
 fn main() -> ExitCode {
@@ -29,8 +27,7 @@ fn main() -> ExitCode {
         eprintln!("{USAGE}");
         return ExitCode::FAILURE;
     };
-    let path = Path::new(&path);
-    match Dataset::open(path) {
+    match Dataset::open(&path) {
         Ok(dataset) => {
             println!(
                 "Read {} meshes and {} indicators.",
