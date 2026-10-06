@@ -4,36 +4,16 @@
 //! meaning: the colours run from one hue through a neutral colour at zero to
 //! another hue.
 
+use colorous::{Color, Gradient};
+
+/// The colours of the scale: red for values below zero, blue for values
+/// above, and a pale grey between them.
+const COLOURS: Gradient = colorous::RED_BLUE;
+
 /// The share of the values shown whose size the two ends of the scale cover.
 /// The few beyond it take the colour of an end, which keeps one extreme mesh
 /// from leaving all the others near the neutral colour.
 const COVERED: f64 = 0.98;
-
-/// A colour, as its red, green, and blue parts.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct Rgb(pub(crate) [u8; 3]);
-
-impl Rgb {
-    /// The colour of zero.
-    pub(crate) const NEUTRAL: Self = Self([247, 247, 247]);
-    /// The colour of the lower end, a value as far below zero as the scale
-    /// reaches.
-    pub(crate) const BELOW: Self = Self([178, 24, 43]);
-    /// The colour of the upper end.
-    pub(crate) const ABOVE: Self = Self([33, 102, 172]);
-
-    /// The colour `share` of the way from the neutral colour to `end`,
-    /// `share` being from 0 to 1.
-    fn toward(end: Self, share: f64) -> Self {
-        let part = |i: usize| {
-            let from = f64::from(Self::NEUTRAL.0[i]);
-            let to = f64::from(end.0[i]);
-            // Between two bytes, so it is one.
-            (from + (to - from) * share).round() as u8
-        };
-        Self([part(0), part(1), part(2)])
-    }
-}
 
 /// The scale for one set of values: which value its ends stand for.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -67,7 +47,13 @@ impl Scale {
     }
 
     /// The colour of `value`.
-    pub(crate) fn colour(self, value: f64) -> Rgb {
+    pub(crate) fn colour(self, value: f64) -> Color {
+        COLOURS.eval_continuous(self.place(value))
+    }
+
+    /// Where `value` is on the scale: 0 at the lower end, 0.5 at zero, and 1
+    /// at the upper end, in step with the value between them.
+    fn place(self, value: f64) -> f64 {
         let size = value.abs();
         // How far toward an end: all the way from the reach on. With no
         // reach, any value but zero is beyond it.
@@ -78,8 +64,7 @@ impl Scale {
         } else {
             0.0
         };
-        let end = if value < 0.0 { Rgb::BELOW } else { Rgb::ABOVE };
-        Rgb::toward(end, share)
+        0.5 + share.copysign(value) / 2.0
     }
 }
 
@@ -90,13 +75,25 @@ mod tests {
 
     use super::*;
 
-    /// Values of the size the published ones have, zero among them.
+    /// Any value a file can hold.
     fn value() -> impl Strategy<Value = f64> {
-        prop_oneof![Just(0.0), -1e6..1e6]
+        prop::num::f64::NORMAL | prop::num::f64::ZERO
     }
 
+    /// A scale with some reach, small enough that a test can go ten times
+    /// beyond it and stay within the numbers there are.
     fn scale() -> impl Strategy<Value = Scale> {
-        vec(value(), 0..50).prop_map(|values| Scale::fitting(&values))
+        (1e-300..1e300f64).prop_map(|reach| Scale::fitting(&[reach]))
+    }
+
+    /// The colour at a place along the colours, as its red, green, and blue.
+    fn at(place: f64) -> [u8; 3] {
+        COLOURS.eval_continuous(place).as_array()
+    }
+
+    /// The colour the scale gives a value, likewise.
+    fn colour(scale: Scale, value: f64) -> [u8; 3] {
+        scale.colour(value).as_array()
     }
 
     #[test]
@@ -106,9 +103,38 @@ mod tests {
         assert_eq!(Scale::fitting(&values).reach(), 1.0);
     }
 
+    /// Of a hundred sizes, the scale reaches the ninety-eighth.
+    #[test]
+    fn the_scale_covers_98_in_100_of_the_values() {
+        let values: Vec<f64> = (1..=100).map(|size| -f64::from(size)).collect();
+        assert_eq!(Scale::fitting(&values).reach(), 98.0);
+    }
+
     #[test]
     fn no_values_give_a_scale_with_no_reach() {
         assert_eq!(Scale::fitting(&[]).reach(), 0.0);
+    }
+
+    /// Red below zero and blue above it, deeper toward each end, with a
+    /// colour that is neither at zero.
+    #[test]
+    fn the_colours_run_from_red_through_a_neutral_colour_to_blue() {
+        let scale = Scale::fitting(&[4.0]);
+        let [lowest, low, zero, high, highest] =
+            [-4.0, -2.0, 0.0, 2.0, 4.0].map(|v| colour(scale, v));
+        let redness = |[r, _, b]: [u8; 3]| i32::from(r) - i32::from(b);
+        let lightness = |[r, g, b]: [u8; 3]| u32::from(r) + u32::from(g) + u32::from(b);
+        assert!(
+            redness(lowest) > 50 && redness(low) > 50,
+            "{lowest:?} {low:?}"
+        );
+        assert!(
+            redness(highest) < -50 && redness(high) < -50,
+            "{high:?} {highest:?}"
+        );
+        assert!(redness(zero).abs() < 10, "{zero:?}");
+        assert!(lightness(lowest) < lightness(low) && lightness(low) < lightness(zero));
+        assert!(lightness(highest) < lightness(high) && lightness(high) < lightness(zero));
     }
 
     proptest! {
@@ -118,67 +144,51 @@ mod tests {
         fn the_reach_is_the_smallest_size_that_covers_enough(values in vec(value(), 1..200)) {
             let reach = Scale::fitting(&values).reach();
             let enough = (values.len() as f64 * COVERED).ceil() as usize;
-            let within = |limit: f64| values.iter().filter(|v| v.abs() <= limit).count();
-            prop_assert!(values.iter().any(|v| v.abs() == reach));
-            prop_assert!(within(reach) >= enough);
+            let within = values.iter().filter(|v| v.abs() <= reach).count();
             let below = values.iter().filter(|v| v.abs() < reach).count();
+            prop_assert!(values.iter().any(|v| v.abs() == reach));
+            prop_assert!(within >= enough);
             prop_assert!(below < enough);
         }
 
         #[test]
-        fn zero_is_neutral(scale in scale()) {
-            prop_assert_eq!(scale.colour(0.0), Rgb::NEUTRAL);
-            prop_assert_eq!(scale.colour(-0.0), Rgb::NEUTRAL);
+        fn zero_is_neutral(values in vec(value(), 0..50)) {
+            let scale = Scale::fitting(&values);
+            prop_assert_eq!(colour(scale, 0.0), at(0.5));
+            prop_assert_eq!(colour(scale, -0.0), at(0.5));
         }
 
         /// From the reach on, a value has the colour of its end.
         #[test]
         fn the_ends_are_at_the_reach_and_beyond(scale in scale(), beyond in 1.0..10.0f64) {
-            prop_assume!(scale.reach() > 0.0);
             let value = scale.reach() * beyond;
-            prop_assert_eq!(scale.colour(scale.reach()), Rgb::ABOVE);
-            prop_assert_eq!(scale.colour(-scale.reach()), Rgb::BELOW);
-            prop_assert_eq!(scale.colour(value), Rgb::ABOVE);
-            prop_assert_eq!(scale.colour(-value), Rgb::BELOW);
+            prop_assert_eq!(colour(scale, scale.reach()), at(1.0));
+            prop_assert_eq!(colour(scale, -scale.reach()), at(0.0));
+            prop_assert_eq!(colour(scale, value), at(1.0));
+            prop_assert_eq!(colour(scale, -value), at(0.0));
         }
 
         /// Where the values covered are all zero, any other value is beyond.
         #[test]
-        fn without_a_reach_any_other_value_is_at_an_end(value in 1e-9..1e6f64) {
+        fn without_a_reach_any_other_value_is_at_an_end(value in value()) {
+            prop_assume!(value != 0.0);
             let scale = Scale::fitting(&[0.0]);
-            prop_assert_eq!(scale.colour(value), Rgb::ABOVE);
-            prop_assert_eq!(scale.colour(-value), Rgb::BELOW);
+            let end = if value < 0.0 { at(0.0) } else { at(1.0) };
+            prop_assert_eq!(colour(scale, value), end);
         }
 
-        /// A value and its negative are as far from neutral as each other,
-        /// each toward its own end.
+        /// A value part of the way to the reach is that part of the way from
+        /// the middle of the colours to an end, and its negative as far the
+        /// other way.
         #[test]
-        fn a_value_and_its_negative_mirror_each_other(scale in scale(), share in 0.0..=1.0f64) {
-            prop_assume!(scale.reach() > 0.0);
+        fn a_value_between_is_as_far_along_as_it_is_toward_the_reach(
+            scale in scale(),
+            share in 0.0..1.0f64,
+        ) {
             let value = scale.reach() * share;
             let share = value / scale.reach();
-            prop_assert_eq!(scale.colour(value), Rgb::toward(Rgb::ABOVE, share));
-            prop_assert_eq!(scale.colour(-value), Rgb::toward(Rgb::BELOW, share));
-        }
-
-        /// Both ends are darker than the neutral colour in every part, so a
-        /// larger value never has a lighter part than a smaller one of its
-        /// sign.
-        #[test]
-        fn a_larger_value_is_never_nearer_neutral(
-            scale in scale(),
-            a in 0.0..2.0f64,
-            b in 0.0..2.0f64,
-            negative in any::<bool>(),
-        ) {
-            prop_assume!(scale.reach() > 0.0);
-            let sign = if negative { -1.0 } else { 1.0 };
-            let (smaller, larger) = if a <= b { (a, b) } else { (b, a) };
-            let near = scale.colour(sign * smaller * scale.reach());
-            let far = scale.colour(sign * larger * scale.reach());
-            for part in 0..3 {
-                prop_assert!(far.0[part] <= near.0[part], "{:?} then {:?}", near, far);
-            }
+            prop_assert_eq!(colour(scale, value), at(0.5 + share / 2.0));
+            prop_assert_eq!(colour(scale, -value), at(0.5 - share / 2.0));
         }
     }
 }
