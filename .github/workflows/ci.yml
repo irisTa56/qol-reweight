@@ -97,8 +97,7 @@ jobs:
           cache: false # as in `markdown-lint`
       - run: mise run qa:links:offline
 
-  # Every `qa:rust:` task in one job, through the aggregate `qa:rust`, so the
-  # dependencies are compiled once for clippy and for the tests.
+  # `qa:rust` is the aggregate of every `qa:rust:` task.
   rust:
     runs-on: ubuntu-latest
     steps:
