@@ -97,10 +97,11 @@ pub(crate) enum MeshCodeError {
 }
 
 #[cfg(test)]
-pub(crate) mod tests {
+mod tests {
     use proptest::prelude::*;
 
     use super::*;
+    use crate::test_support::{Digits, digits, valid_digits};
 
     fn mesh(code: &str) -> HalfMesh {
         HalfMesh::from_code(code).unwrap_or_else(|e| panic!("{code}: {e}"))
@@ -108,67 +109,6 @@ pub(crate) mod tests {
 
     fn close(actual: f64, expected: f64) -> bool {
         (actual - expected).abs() < 1e-9
-    }
-
-    /// The digits of a code, named as the module's documentation names them.
-    #[derive(Clone, Copy, Debug)]
-    struct Digits {
-        pp: u32,
-        uu: u32,
-        q: u32,
-        v: u32,
-        r: u32,
-        w: u32,
-        m: u32,
-    }
-
-    impl Digits {
-        fn code(self) -> String {
-            let Self {
-                pp,
-                uu,
-                q,
-                v,
-                r,
-                w,
-                m,
-            } = self;
-            format!("{pp:02}{uu:02}{q}{v}{r}{w}{m}")
-        }
-    }
-
-    /// Any nine digits, with the second-level digits and the quarter drawn
-    /// from the ranges given.
-    fn digits(
-        second_level: impl Strategy<Value = (u32, u32)>,
-        quarter: impl Strategy<Value = u32>,
-    ) -> impl Strategy<Value = Digits> {
-        (
-            0..100u32,
-            0..100u32,
-            second_level,
-            0..10u32,
-            0..10u32,
-            quarter,
-        )
-            .prop_map(|(pp, uu, (q, v), r, w, m)| Digits {
-                pp,
-                uu,
-                q,
-                v,
-                r,
-                w,
-                m,
-            })
-    }
-
-    fn valid_digits() -> impl Strategy<Value = Digits> {
-        digits((0..8u32, 0..8u32), 1..=4u32)
-    }
-
-    /// The code of any half grid square.
-    pub(crate) fn valid_code() -> impl Strategy<Value = String> {
-        valid_digits().prop_map(Digits::code)
     }
 
     /// The same digits in their full-width forms, three bytes each, which

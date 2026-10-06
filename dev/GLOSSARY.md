@@ -23,6 +23,7 @@ The terms are the Statistics Bureau of Japan's, from [`地域メッシュ統計�
 | --- | --- |
 | Urban QOL data | `都市QOLデータ` |
 | indicator | `指標` |
+| total | `QOL` |
 | prefecture | `都道府県` |
 | metropolitan area | `都市圏` |
 | municipality | `市区町村` |

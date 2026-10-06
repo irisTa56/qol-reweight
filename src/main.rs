@@ -9,6 +9,8 @@ use dataset::Dataset;
 mod dataset;
 #[cfg_attr(not(test), expect(dead_code, reason = "nothing draws a mesh yet"))]
 mod mesh;
+#[cfg(test)]
+mod test_support;
 
 /// What the tool is started with, and where that comes from.
 const USAGE: &str = "\

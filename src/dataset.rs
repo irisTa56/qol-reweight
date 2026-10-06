@@ -67,7 +67,7 @@ impl Dataset {
             let field = |column: usize| record.get(column).unwrap_or_default();
             // A name the tool shows, or lists a choice under, is never blank.
             let named = |column: usize, name: &'static str| match field(column) {
-                "" => Err(DatasetError::Blank { line, column: name }),
+                text if text.trim().is_empty() => Err(DatasetError::Blank { line, column: name }),
                 text => Ok(text),
             };
 
@@ -234,7 +234,7 @@ mod tests {
     use proptest::prelude::*;
 
     use super::*;
-    use crate::mesh::tests::valid_code;
+    use crate::test_support::valid_code;
 
     const HEADER: [&str; 8] = [
         "KeyCode",
@@ -402,25 +402,6 @@ mod tests {
     }
 
     #[test]
-    fn a_row_with_a_blank_name_is_refused() {
-        for name in ["City", "IndicatorCode", "Indicator"] {
-            let mut rows = small();
-            match name {
-                "City" => rows[2].city.clear(),
-                "IndicatorCode" => rows[2].indicator_code.clear(),
-                _ => rows[2].indicator.clear(),
-            }
-            assert!(
-                matches!(
-                    read(&rows),
-                    Err(DatasetError::Blank { line: 4, column }) if column == name
-                ),
-                "{name}"
-            );
-        }
-    }
-
-    #[test]
     fn rows_that_disagree_on_a_name_are_refused() {
         let mut rows = small();
         rows[4].city = "North".to_owned();
@@ -548,6 +529,21 @@ mod tests {
     }
 
     proptest! {
+        /// Empty, or spaces of any script.
+        #[test]
+        fn a_row_with_a_blank_name_is_refused(blank in r"\s{0,3}", column in 0..3usize) {
+            let mut rows = small();
+            let name = match column {
+                0 => { rows[2].city = blank; "City" }
+                1 => { rows[2].indicator_code = blank; "IndicatorCode" }
+                _ => { rows[2].indicator = blank; "Indicator" }
+            };
+            prop_assert!(
+                matches!(read(&rows), Err(DatasetError::Blank { column, .. }) if column == name),
+                "{}", name
+            );
+        }
+
         /// Whatever order the rows come in, and with or without a byte order
         /// mark.
         #[test]
