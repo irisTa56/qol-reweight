@@ -16,3 +16,8 @@ thiserror = "2.0.21"
 # under a time limit (`timeout`), or make bit sets (`bit-set`); no test here
 # needs them, and each brings crates of its own.
 proptest = { version = "1.11.0", default-features = false, features = ["std"] }
+
+# Off by default. `qa:rust:clippy` denies warnings, so a `pub` item that nothing
+# outside the crate can reach fails the check; in a binary that is every one.
+[lints.rust]
+unreachable_pub = "warn"
