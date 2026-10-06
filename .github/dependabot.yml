@@ -1,6 +1,7 @@
-# Dependabot version updates. One entry for now: the GitHub Actions pinned
-# across the workflows (.github/workflows/*.yml). Add an entry when a manifest
-# Dependabot reads has a dependency to update.
+# Dependabot version updates. Two entries: the GitHub Actions pinned across the
+# workflows (.github/workflows/*.yml), and the crates in Cargo.toml and
+# Cargo.lock. Add an entry when another manifest Dependabot reads has a
+# dependency to update.
 #
 # The mise-managed tools are out of Dependabot's scope, and can be: lychee,
 # rumdl, and rust track `latest`, so `mise upgrade` covers them. So is the
@@ -23,5 +24,16 @@ updates:
         patterns: ["*"]
     commit-message:
       prefix: "ci"
+    pull-request-branch-name:
+      prefix: "dependabot-automerge"
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      crates:
+        patterns: ["*"]
+    commit-message:
+      prefix: "build"
     pull-request-branch-name:
       prefix: "dependabot-automerge"
