@@ -34,6 +34,7 @@ fn started_with_a_path_that_does_not_exist() {
     assert_asks_for_the_file(&output);
     let said = String::from_utf8_lossy(&output.stderr);
     assert!(said.contains("no-such-file.csv cannot be read"), "{said}");
+    assert!(said.contains("it could not be opened or read"), "{said}");
 }
 
 #[test]

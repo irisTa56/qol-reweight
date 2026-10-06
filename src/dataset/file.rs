@@ -26,12 +26,19 @@ impl Dataset {
 
     /// Reads a file's contents. A byte order mark at their start is skipped,
     /// which the CSV reader does of itself.
-    pub(crate) fn read(contents: impl Read) -> Result<Self, DatasetError> {
-        let mut reader = csv::Reader::from_reader(contents);
+    pub(crate) fn read(mut contents: impl Read) -> Result<Self, DatasetError> {
+        // All of it at once, so that a line can be counted when a row is
+        // refused.
+        let mut bytes = Vec::new();
+        contents.read_to_end(&mut bytes)?;
+        let mut reader = csv::Reader::from_reader(bytes.as_slice());
         let columns = Columns::find(reader.headers()?)?;
+        let mut lines = Lines::new(&bytes);
         let mut builder = Builder::default();
         for record in reader.records() {
-            builder.add(&columns.row(&record?)?)?;
+            let record = record.map_err(|error| lines.refusal(error))?;
+            let line = lines.of(record.position());
+            builder.add(&columns.row(&record, line)?)?;
         }
         builder.finish()
     }
@@ -70,6 +77,73 @@ impl Columns {
     }
 }
 
+/// Which line of a file a record starts on.
+///
+/// The CSV reader's own count is a line short after a line that ends in a
+/// carriage return and a line feed, and after a blank line
+/// ([BurntSushi/rust-csv#395](https://github.com/BurntSushi/rust-csv/issues/395),
+/// [#208](https://github.com/BurntSushi/rust-csv/issues/208)), and the
+/// platform's files end their lines that way.
+struct Lines<'c> {
+    contents: &'c [u8],
+    /// How far into `contents` the lines have been counted.
+    counted: usize,
+    /// The line that the byte at `counted` is on.
+    line: u64,
+}
+
+impl<'c> Lines<'c> {
+    fn new(contents: &'c [u8]) -> Self {
+        Self {
+            contents,
+            counted: 0,
+            line: 1,
+        }
+    }
+
+    /// The line of the record the reader puts at `position`. Records are
+    /// asked about in the order they come in.
+    fn of(&mut self, position: Option<&csv::Position>) -> u64 {
+        let start = position.map_or(self.counted, |position| {
+            usize::try_from(position.byte()).unwrap_or(usize::MAX)
+        });
+        // The reader's position may still be before line ends it has yet to
+        // pass, so those are counted as well.
+        while let Some(&byte) = self.contents.get(self.counted) {
+            let at_line_end = byte == b'\r' || byte == b'\n';
+            if self.counted >= start && !at_line_end {
+                break;
+            }
+            let before_line_feed = self.contents.get(self.counted + 1) == Some(&b'\n');
+            // A carriage return before a line feed ends the line with it.
+            if byte == b'\n' || (byte == b'\r' && !before_line_feed) {
+                self.line += 1;
+            }
+            self.counted += 1;
+        }
+        self.line
+    }
+
+    /// Why the reader could not make a record, with the line it was on.
+    fn refusal(&mut self, error: csv::Error) -> DatasetError {
+        match *error.kind() {
+            csv::ErrorKind::Utf8 { ref pos, .. } => DatasetError::NotUtf8 {
+                line: self.of(pos.as_ref()),
+            },
+            csv::ErrorKind::UnequalLengths {
+                ref pos,
+                expected_len,
+                len,
+            } => DatasetError::FieldCount {
+                line: self.of(pos.as_ref()),
+                found: len,
+                expected: expected_len,
+            },
+            _ => DatasetError::Csv(error),
+        }
+    }
+}
+
 /// What one row of a file says.
 struct Row<'r> {
     /// The line of the file the row starts on, for a refusal to name.
@@ -83,8 +157,7 @@ struct Row<'r> {
 
 impl Columns {
     /// Takes a row out of a record of the file.
-    fn row<'r>(&self, record: &'r StringRecord) -> Result<Row<'r>, DatasetError> {
-        let line = record.position().map_or(0, csv::Position::line);
+    fn row<'r>(&self, record: &'r StringRecord, line: u64) -> Result<Row<'r>, DatasetError> {
         let field = |column: usize| record.get(column).unwrap_or_default();
         // A name the tool shows, or lists a choice under, is never blank.
         let named = |column: usize, name: &'static str| match field(column) {
@@ -238,7 +311,15 @@ pub(crate) enum DatasetError {
     #[error("it could not be opened or read: {0}")]
     Io(#[from] std::io::Error),
     #[error("it is not laid out as CSV: {0}")]
-    Csv(csv::Error),
+    Csv(#[from] csv::Error),
+    #[error("line {line}: it is not UTF-8 text")]
+    NotUtf8 { line: u64 },
+    #[error("line {line}: it has {found} fields where the header has {expected}")]
+    FieldCount {
+        line: u64,
+        found: u64,
+        expected: u64,
+    },
     #[error("it has no `{name}` column")]
     NoColumn { name: &'static str },
     #[error("it has more than one `{name}` column")]
@@ -257,20 +338,6 @@ pub(crate) enum DatasetError {
     NoTotal,
     #[error("a mesh has no row whose `IndicatorCode` is `{indicator}`")]
     Incomplete { indicator: String },
-}
-
-/// The CSV reader hands a failure to read the file on as one of its own
-/// errors, which is told apart here from a file that is not CSV.
-impl From<csv::Error> for DatasetError {
-    fn from(error: csv::Error) -> Self {
-        if !error.is_io_error() {
-            return Self::Csv(error);
-        }
-        match error.into_kind() {
-            csv::ErrorKind::Io(error) => Self::Io(error),
-            _ => unreachable!("an I/O error is of the I/O kind"),
-        }
-    }
 }
 
 #[cfg(test)]
@@ -440,12 +507,59 @@ mod tests {
             Dataset::read(Unreadable),
             Err(DatasetError::Io(_))
         ));
-        // A row shorter than the header is the reader's own complaint.
+    }
+
+    #[test]
+    fn a_row_the_reader_cannot_make_is_refused_at_its_line() {
         let contents = "KeyCode,City,IndicatorCode,Indicator,Value\n543823431,East\n";
         assert!(matches!(
             Dataset::read(contents.as_bytes()),
-            Err(DatasetError::Csv(_))
+            Err(DatasetError::FieldCount {
+                line: 2,
+                found: 2,
+                expected: 5
+            })
         ));
+
+        let mut contents = file(&small());
+        // The first byte of the fourth line, made one that UTF-8 never holds.
+        let fourth_line = contents
+            .iter()
+            .enumerate()
+            .filter(|&(_, &byte)| byte == b'\n')
+            .map(|(at, _)| at + 1)
+            .nth(2)
+            .unwrap();
+        contents[fourth_line] = 0xFF;
+        assert!(matches!(
+            Dataset::read(contents.as_slice()),
+            Err(DatasetError::NotUtf8 { line: 4 })
+        ));
+    }
+
+    /// The platform's files end their lines in a carriage return and a line
+    /// feed; the others are for a file that has been through an editor.
+    #[test]
+    fn a_refusal_names_the_line_however_lines_end() {
+        let header = "KeyCode,City,IndicatorCode,Indicator,Value";
+        let good = "543823431,East,QOL,Total,1.5";
+        let bad = "543823432,West,QOL,Total,high";
+        for line_end in ["\n", "\r\n", "\r"] {
+            // The bad row on line 3, then on line 6 after three blank lines.
+            for (lines, line) in [
+                (vec![header, good, bad], 3),
+                (vec![header, "", good, "", "", bad], 6),
+            ] {
+                let contents = lines.join(line_end) + line_end;
+                assert!(
+                    matches!(
+                        Dataset::read(contents.as_bytes()),
+                        Err(DatasetError::Value { line: at }) if at == line
+                    ),
+                    "{contents:?}"
+                );
+            }
+        }
     }
 
     #[test]
