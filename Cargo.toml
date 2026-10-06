@@ -10,4 +10,8 @@ publish = false
 thiserror = "2.0.21"
 
 [dev-dependencies]
-proptest = "1.11.0"
+# `std` alone: it holds the strategies the tests use, text from a pattern among
+# them. The other default features run a case in a child process (`fork`) or
+# under a time limit (`timeout`), or make bit sets (`bit-set`); no test here
+# needs them, and each brings crates of its own.
+proptest = { version = "1.11.0", default-features = false, features = ["std"] }
