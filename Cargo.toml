@@ -17,3 +17,9 @@ thiserror = "2.0.21"
 # under a time limit (`timeout`), or make bit sets (`bit-set`); no test here
 # needs them, and each brings crates of its own.
 proptest = { version = "1.11.0", default-features = false, features = ["std"] }
+
+# Off by default. `qa:rust:clippy` denies warnings, so what the lint reports
+# fails the check: a `pub` item in a private module, though not a `pub` field of
+# a `pub(crate)` struct, nor an item of the crate root.
+[lints.rust]
+unreachable_pub = "warn"
