@@ -21,6 +21,7 @@ The terms are the Statistics Bureau of Japan's, from [`地域メッシュ統計�
 
 | In the code | Japanese term |
 | --- | --- |
+| MLIT Data Platform | `国土交通データプラットフォーム` |
 | Urban QOL data | `都市QOLデータ` |
 | indicator | `指標` |
 | total | `QOL` |
