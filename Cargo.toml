@@ -7,6 +7,7 @@ license = "MIT"
 publish = false
 
 [dependencies]
+csv = "1.4.0"
 thiserror = "2.0.21"
 
 [dev-dependencies]
