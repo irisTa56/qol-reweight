@@ -98,10 +98,72 @@ pub(crate) enum MeshCodeError {
 
 #[cfg(test)]
 mod tests {
+    use proptest::prelude::*;
+
     use super::*;
 
     fn mesh(code: &str) -> HalfMesh {
         HalfMesh::from_code(code).unwrap_or_else(|e| panic!("{code}: {e}"))
+    }
+
+    fn close(actual: f64, expected: f64) -> bool {
+        (actual - expected).abs() < 1e-9
+    }
+
+    /// The digits of a code, named as the module's documentation names them.
+    #[derive(Clone, Copy, Debug)]
+    struct Digits {
+        pp: u32,
+        uu: u32,
+        q: u32,
+        v: u32,
+        r: u32,
+        w: u32,
+        m: u32,
+    }
+
+    impl Digits {
+        fn code(self) -> String {
+            let Self {
+                pp,
+                uu,
+                q,
+                v,
+                r,
+                w,
+                m,
+            } = self;
+            format!("{pp:02}{uu:02}{q}{v}{r}{w}{m}")
+        }
+    }
+
+    /// Any nine digits, with the second-level digits and the quarter drawn
+    /// from the ranges given.
+    fn digits(
+        second_level: impl Strategy<Value = (u32, u32)>,
+        quarter: impl Strategy<Value = u32>,
+    ) -> impl Strategy<Value = Digits> {
+        (
+            0..100u32,
+            0..100u32,
+            second_level,
+            0..10u32,
+            0..10u32,
+            quarter,
+        )
+            .prop_map(|(pp, uu, (q, v), r, w, m)| Digits {
+                pp,
+                uu,
+                q,
+                v,
+                r,
+                w,
+                m,
+            })
+    }
+
+    fn valid_digits() -> impl Strategy<Value = Digits> {
+        digits((0..8u32, 0..8u32), 1..=4u32)
     }
 
     /// The same digits in their full-width forms, three bytes each, which
@@ -113,41 +175,14 @@ mod tests {
             .collect()
     }
 
-    fn assert_close(actual: f64, expected: f64) {
-        assert!(
-            (actual - expected).abs() < 1e-9,
-            "{actual} is not {expected}"
-        );
-    }
-
     /// The code the Statistics Bureau's tables use as their example:
     /// first-level square 5438 starts at 36 degrees north and 138 degrees
     /// east, `23` adds 2 x 5' and 3 x 7'30", and `43` adds 4 x 30" and 3 x 45".
     #[test]
     fn the_standards_example_lands_where_its_tables_put_it() {
         let m = mesh("543823431");
-        assert_close(m.south(), 36.0 + 10.0 / 60.0 + 120.0 / 3600.0);
-        assert_close(m.west(), 138.0 + 22.5 / 60.0 + 135.0 / 3600.0);
-    }
-
-    #[test]
-    fn a_square_is_15_seconds_by_22_5_seconds() {
-        let m = mesh("543823431");
-        assert_close(m.north() - m.south(), 15.0 / 3600.0);
-        assert_close(m.east() - m.west(), 22.5 / 3600.0);
-    }
-
-    #[test]
-    fn the_ninth_digit_goes_south_west_south_east_north_west_north_east() {
-        let [sw, se, nw, ne] = ["1", "2", "3", "4"].map(|m| mesh(&format!("54382343{m}")));
-        // South row: 1 then 2, west to east.
-        assert_eq!(sw.south(), se.south());
-        assert_eq!(sw.east(), se.west());
-        // North row: 3 then 4, above them.
-        assert_eq!(nw.south(), sw.north());
-        assert_eq!(nw.west(), sw.west());
-        assert_eq!(ne.south(), se.north());
-        assert_eq!(ne.west(), se.west());
+        assert!(close(m.south(), 36.0 + 10.0 / 60.0 + 120.0 / 3600.0));
+        assert!(close(m.west(), 138.0 + 22.5 / 60.0 + 135.0 / 3600.0));
     }
 
     #[test]
@@ -165,45 +200,94 @@ mod tests {
     }
 
     #[test]
-    fn anything_but_nine_ascii_digits_is_refused() {
+    fn full_width_digits_are_refused() {
         for code in [
-            "",
-            "54382343",
-            "5438234311",
-            "54382343a",
-            " 543823431",
             // Nine characters, 27 bytes.
-            &full_width("543823431"),
+            full_width("543823431"),
             // Nine bytes, which only a check of the digits themselves refuses.
-            &full_width("543"),
+            full_width("543"),
         ] {
             assert_eq!(
-                HalfMesh::from_code(code),
+                HalfMesh::from_code(&code),
                 Err(MeshCodeError::NotNineDigits),
                 "{code:?}"
             );
         }
     }
 
-    #[test]
-    fn a_second_level_digit_past_7_is_refused() {
-        for code in ["543883431", "543828431"] {
-            assert_eq!(
-                HalfMesh::from_code(code),
-                Err(MeshCodeError::NoSuchSecondLevelSquare),
-                "{code}"
+    proptest! {
+        /// Each digit moves the south-west corner by what the standard gives
+        /// it, worked out here in degrees rather than in rows and columns.
+        #[test]
+        fn a_code_lands_where_its_digits_put_it(d in valid_digits()) {
+            let m = mesh(&d.code());
+            let south = f64::from(d.pp) / 1.5
+                + f64::from(d.q) * 5.0 / 60.0
+                + f64::from(d.r) * 30.0 / 3600.0
+                + f64::from((d.m - 1) / 2) * 15.0 / 3600.0;
+            let west = 100.0
+                + f64::from(d.uu)
+                + f64::from(d.v) * 7.5 / 60.0
+                + f64::from(d.w) * 45.0 / 3600.0
+                + f64::from((d.m - 1) % 2) * 22.5 / 3600.0;
+            prop_assert!(close(m.south(), south), "south {} is not {south}", m.south());
+            prop_assert!(close(m.west(), west), "west {} is not {west}", m.west());
+        }
+
+        #[test]
+        fn a_square_is_15_seconds_by_22_5_seconds(d in valid_digits()) {
+            let m = mesh(&d.code());
+            prop_assert!(close(m.north() - m.south(), 15.0 / 3600.0));
+            prop_assert!(close(m.east() - m.west(), 22.5 / 3600.0));
+        }
+
+        /// The four quarters of a third-level square tile it: 1 and 2 along
+        /// the south, 3 and 4 above them.
+        #[test]
+        fn the_quarters_of_a_square_meet(d in valid_digits()) {
+            let [sw, se, nw, ne] = [1, 2, 3, 4].map(|m| mesh(&Digits { m, ..d }.code()));
+            prop_assert_eq!(sw.south(), se.south());
+            prop_assert_eq!(sw.east(), se.west());
+            prop_assert_eq!(nw.south(), sw.north());
+            prop_assert_eq!(nw.west(), sw.west());
+            prop_assert_eq!(ne.south(), se.north());
+            prop_assert_eq!(ne.west(), se.west());
+        }
+
+        #[test]
+        fn two_codes_never_share_a_square(a in valid_digits(), b in valid_digits()) {
+            prop_assume!(a.code() != b.code());
+            prop_assert_ne!(mesh(&a.code()), mesh(&b.code()));
+        }
+
+        /// Text in any script, digits of other scripts among it.
+        #[test]
+        fn anything_but_nine_ascii_digits_is_refused(code in r"\PC{0,12}|\p{Nd}{1,12}") {
+            prop_assume!(!(code.len() == 9 && code.bytes().all(|b| b.is_ascii_digit())));
+            prop_assert_eq!(HalfMesh::from_code(&code), Err(MeshCodeError::NotNineDigits));
+        }
+
+        #[test]
+        fn a_second_level_digit_past_7_is_refused(
+            d in digits(
+                prop_oneof![(8..10u32, 0..10u32), (0..10u32, 8..10u32)],
+                0..10u32,
+            ),
+        ) {
+            prop_assert_eq!(
+                HalfMesh::from_code(&d.code()),
+                Err(MeshCodeError::NoSuchSecondLevelSquare)
             );
         }
-    }
 
-    #[test]
-    fn a_ninth_digit_outside_1_to_4_is_refused() {
-        // 5 is the nine-digit code of a 2 km square.
-        for code in ["543823430", "543823435", "543823439"] {
-            assert_eq!(
-                HalfMesh::from_code(code),
-                Err(MeshCodeError::NoSuchQuarter),
-                "{code}"
+        /// 5 among them, the ninth digit of a 2 km square's code.
+        #[test]
+        fn a_ninth_digit_outside_1_to_4_is_refused(
+            d in digits((0..8u32, 0..8u32), prop_oneof![Just(0u32), 5..10u32]),
+        ) {
+            prop_assert_eq!(
+                HalfMesh::from_code(&d.code()),
+                Err(MeshCodeError::NoSuchQuarter)
             );
         }
     }
