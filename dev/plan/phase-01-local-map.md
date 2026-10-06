@@ -88,9 +88,9 @@ The picture agrees with the one the platform shows for the same file, which sett
 - **Rust toolchain**: builds and tests the tool; declared in `mise.toml` beside the tools already there.
 - **`eframe`, `egui`, and `walkers`**: the window and controls, and the map widget with its tile fetching ([0002]).
 - **A CSV reader**: parses the file; the crate is chosen while building.
-- **`thiserror`**: derives the tool's error types, rather than their being written out by hand; the maintainer asked for a widely used crate with few dependencies of its own wherever one does such a job (said 2026-10-06).
+- **`thiserror`**: derives the tool's error types.
 - **`egui_kittest`**, for tests only: drives the window without showing it (A007).
-- **`proptest`**, for tests only: makes test input in code, text in a Japanese script included, and checks a property over all of it rather than over chosen examples; the maintainer chose it over a few lines written for the purpose (said 2026-10-06).
+- **`proptest`**, for tests only: makes test input in code, text in a Japanese script included, and checks a property over all of it.
 - **Rust checks in `mise.toml` and CI**: formatting, lints, and tests join the tasks that gate a commit and a pull request.
   - CI stays on Linux and runs the tests that open no window; the tests that drive the window run on macOS, from the same task, on the maintainer's machine.
 
