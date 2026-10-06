@@ -54,91 +54,11 @@ impl Dataset {
     pub(crate) fn read(contents: impl Read) -> Result<Self, DatasetError> {
         let mut reader = csv::Reader::from_reader(contents);
         let columns = Columns::find(reader.headers()?)?;
-
-        let mut meshes: Vec<Mesh> = Vec::new();
-        let mut mesh_index: HashMap<String, usize> = HashMap::new();
-        // A value is `None` until its row has been read.
-        let mut series: Vec<(String, String, Vec<Option<f64>>)> = Vec::new();
-        let mut series_index: HashMap<String, usize> = HashMap::new();
-
+        let mut builder = Builder::default();
         for record in reader.records() {
-            let record = record?;
-            let line = record.position().map_or(0, csv::Position::line);
-            let field = |column: usize| record.get(column).unwrap_or_default();
-            // A name the tool shows, or lists a choice under, is never blank.
-            let named = |column: usize, name: &'static str| match field(column) {
-                text if text.trim().is_empty() => Err(DatasetError::Blank { line, column: name }),
-                text => Ok(text),
-            };
-
-            let code = field(columns.key_code);
-            let city = named(columns.city, "City")?;
-            let mesh = match mesh_index.get(code) {
-                Some(&mesh) if meshes[mesh].city == city => mesh,
-                Some(_) => {
-                    return Err(DatasetError::Disagrees {
-                        line,
-                        column: "City",
-                    });
-                }
-                None => {
-                    let square = HalfMesh::from_code(code)
-                        .map_err(|source| DatasetError::MeshCode { line, source })?;
-                    meshes.push(Mesh {
-                        code: code.to_owned(),
-                        square,
-                        city: city.to_owned(),
-                    });
-                    mesh_index.insert(code.to_owned(), meshes.len() - 1);
-                    meshes.len() - 1
-                }
-            };
-
-            let indicator_code = named(columns.indicator_code, "IndicatorCode")?;
-            let name = named(columns.indicator, "Indicator")?;
-            let series_at = match series_index.get(indicator_code) {
-                Some(&at) if series[at].1 == name => at,
-                Some(_) => {
-                    return Err(DatasetError::Disagrees {
-                        line,
-                        column: "Indicator",
-                    });
-                }
-                None => {
-                    series.push((indicator_code.to_owned(), name.to_owned(), Vec::new()));
-                    series_index.insert(indicator_code.to_owned(), series.len() - 1);
-                    series.len() - 1
-                }
-            };
-
-            let value = field(columns.value)
-                .parse::<f64>()
-                .ok()
-                .filter(|value| value.is_finite())
-                .ok_or(DatasetError::Value { line })?;
-            let values = &mut series[series_at].2;
-            if values.len() <= mesh {
-                values.resize(mesh + 1, None);
-            }
-            if values[mesh].replace(value).is_some() {
-                return Err(DatasetError::Repeated { line });
-            }
+            builder.add(&columns.row(&record?)?)?;
         }
-
-        let total = *series_index.get(TOTAL_CODE).ok_or(DatasetError::NoTotal)?;
-        let total = series.remove(total);
-        series.insert(0, total);
-        let series = series
-            .into_iter()
-            .map(|(code, name, mut values)| {
-                values.resize(meshes.len(), None);
-                match values.into_iter().collect::<Option<Vec<f64>>>() {
-                    Some(values) => Ok(Series { code, name, values }),
-                    None => Err(DatasetError::Incomplete { indicator: code }),
-                }
-            })
-            .collect::<Result<_, _>>()?;
-        Ok(Self { meshes, series })
+        builder.finish()
     }
 
     /// The file's meshes, in the order it first names them.
@@ -181,6 +101,154 @@ impl Columns {
             indicator_code: column("IndicatorCode")?,
             indicator: column("Indicator")?,
             value: column("Value")?,
+        })
+    }
+}
+
+/// What one row of a file says.
+struct Row<'r> {
+    /// The line of the file the row starts on, for a refusal to name.
+    line: u64,
+    key_code: &'r str,
+    city: &'r str,
+    indicator_code: &'r str,
+    indicator: &'r str,
+    value: f64,
+}
+
+impl Columns {
+    /// Takes a row out of a record of the file.
+    fn row<'r>(&self, record: &'r StringRecord) -> Result<Row<'r>, DatasetError> {
+        let line = record.position().map_or(0, csv::Position::line);
+        let field = |column: usize| record.get(column).unwrap_or_default();
+        // A name the tool shows, or lists a choice under, is never blank.
+        let named = |column: usize, name: &'static str| match field(column) {
+            text if text.trim().is_empty() => Err(DatasetError::Blank { line, column: name }),
+            text => Ok(text),
+        };
+        Ok(Row {
+            line,
+            key_code: field(self.key_code),
+            city: named(self.city, "City")?,
+            indicator_code: named(self.indicator_code, "IndicatorCode")?,
+            indicator: named(self.indicator, "Indicator")?,
+            value: field(self.value)
+                .parse::<f64>()
+                .ok()
+                .filter(|value| value.is_finite())
+                .ok_or(DatasetError::Value { line })?,
+        })
+    }
+}
+
+/// A file while its rows are being read.
+#[derive(Default)]
+struct Builder {
+    meshes: Vec<Mesh>,
+    /// Where each mesh code is in `meshes`.
+    mesh_at: HashMap<String, usize>,
+    series: Vec<UnfinishedSeries>,
+    /// Where each `IndicatorCode` is in `series`.
+    series_at: HashMap<String, usize>,
+}
+
+/// A series some of whose rows may not have been read yet.
+struct UnfinishedSeries {
+    code: String,
+    name: String,
+    /// One place for each mesh read so far, `None` until its row is read.
+    values: Vec<Option<f64>>,
+}
+
+impl Builder {
+    /// Takes in a row, which may be the first of its mesh or of its indicator.
+    fn add(&mut self, row: &Row<'_>) -> Result<(), DatasetError> {
+        let mesh = self.mesh(row)?;
+        let series = self.series(row)?;
+        let values = &mut self.series[series].values;
+        if values.len() <= mesh {
+            values.resize(mesh + 1, None);
+        }
+        if values[mesh].replace(row.value).is_some() {
+            return Err(DatasetError::Repeated { line: row.line });
+        }
+        Ok(())
+    }
+
+    /// Where the row's mesh is in `meshes`, once it is known to be there.
+    fn mesh(&mut self, row: &Row<'_>) -> Result<usize, DatasetError> {
+        let line = row.line;
+        match self.mesh_at.get(row.key_code) {
+            Some(&at) if self.meshes[at].city == row.city => Ok(at),
+            Some(_) => Err(DatasetError::Disagrees {
+                line,
+                column: "City",
+            }),
+            None => {
+                let square = HalfMesh::from_code(row.key_code)
+                    .map_err(|source| DatasetError::MeshCode { line, source })?;
+                self.meshes.push(Mesh {
+                    code: row.key_code.to_owned(),
+                    square,
+                    city: row.city.to_owned(),
+                });
+                let at = self.meshes.len() - 1;
+                self.mesh_at.insert(row.key_code.to_owned(), at);
+                Ok(at)
+            }
+        }
+    }
+
+    /// Where the row's indicator is in `series`, once it is known to be there.
+    fn series(&mut self, row: &Row<'_>) -> Result<usize, DatasetError> {
+        match self.series_at.get(row.indicator_code) {
+            Some(&at) if self.series[at].name == row.indicator => Ok(at),
+            Some(_) => Err(DatasetError::Disagrees {
+                line: row.line,
+                column: "Indicator",
+            }),
+            None => {
+                self.series.push(UnfinishedSeries {
+                    code: row.indicator_code.to_owned(),
+                    name: row.indicator.to_owned(),
+                    values: Vec::new(),
+                });
+                let at = self.series.len() - 1;
+                self.series_at.insert(row.indicator_code.to_owned(), at);
+                Ok(at)
+            }
+        }
+    }
+
+    /// The file, with the total first, if every mesh has every series.
+    fn finish(mut self) -> Result<Dataset, DatasetError> {
+        let total = *self
+            .series_at
+            .get(TOTAL_CODE)
+            .ok_or(DatasetError::NoTotal)?;
+        let total = self.series.remove(total);
+        self.series.insert(0, total);
+        let mesh_count = self.meshes.len();
+        let series = self
+            .series
+            .into_iter()
+            .map(
+                |UnfinishedSeries {
+                     code,
+                     name,
+                     mut values,
+                 }| {
+                    values.resize(mesh_count, None);
+                    match values.into_iter().collect::<Option<Vec<f64>>>() {
+                        Some(values) => Ok(Series { code, name, values }),
+                        None => Err(DatasetError::Incomplete { indicator: code }),
+                    }
+                },
+            )
+            .collect::<Result<_, _>>()?;
+        Ok(Dataset {
+            meshes: self.meshes,
+            series,
         })
     }
 }
