@@ -541,23 +541,39 @@ mod tests {
     /// feed; the others are for a file that has been through an editor.
     #[test]
     fn a_refusal_names_the_line_however_lines_end() {
-        let header = "KeyCode,City,IndicatorCode,Indicator,Value";
-        let good = "543823431,East,QOL,Total,1.5";
-        let bad = "543823432,West,QOL,Total,high";
+        let header: &[u8] = b"KeyCode,City,IndicatorCode,Indicator,Value";
+        let good: &[u8] = b"543823431,East,QOL,Total,1.5";
+        // One row the tool refuses, and two the reader cannot make: too few
+        // fields, and a byte that UTF-8 never holds.
+        let bad_rows: [&[u8]; 3] = [
+            b"543823432,West,QOL,Total,high",
+            b"543823432,West",
+            b"543823432,W\xFFst,QOL,Total,2.5",
+        ];
         for line_end in ["\n", "\r\n", "\r"] {
-            // The bad row on line 3, then on line 6 after three blank lines.
-            for (lines, line) in [
-                (vec![header, good, bad], 3),
-                (vec![header, "", good, "", "", bad], 6),
-            ] {
-                let contents = lines.join(line_end) + line_end;
-                assert!(
-                    matches!(
-                        Dataset::read(contents.as_bytes()),
-                        Err(DatasetError::Value { line: at }) if at == line
-                    ),
-                    "{contents:?}"
-                );
+            for bad in bad_rows {
+                // The bad row on line 3, then on line 6 after blank lines.
+                for (lines, line) in [
+                    (vec![header, good, bad], 3),
+                    (vec![header, b"", good, b"", b"", bad], 6),
+                ] {
+                    let mut contents = lines.join(line_end.as_bytes());
+                    contents.extend_from_slice(line_end.as_bytes());
+                    let refused_at = match Dataset::read(contents.as_slice()) {
+                        Err(
+                            DatasetError::Value { line }
+                            | DatasetError::FieldCount { line, .. }
+                            | DatasetError::NotUtf8 { line },
+                        ) => Some(line),
+                        _ => None,
+                    };
+                    assert_eq!(
+                        refused_at,
+                        Some(line),
+                        "{:?}",
+                        String::from_utf8_lossy(&contents)
+                    );
+                }
             }
         }
     }
