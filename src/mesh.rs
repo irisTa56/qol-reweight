@@ -97,7 +97,7 @@ pub(crate) enum MeshCodeError {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use proptest::prelude::*;
 
     use super::*;
@@ -164,6 +164,11 @@ mod tests {
 
     fn valid_digits() -> impl Strategy<Value = Digits> {
         digits((0..8u32, 0..8u32), 1..=4u32)
+    }
+
+    /// The code of any half grid square.
+    pub(crate) fn valid_code() -> impl Strategy<Value = String> {
+        valid_digits().prop_map(Digits::code)
     }
 
     /// The same digits in their full-width forms, three bytes each, which

@@ -1,0 +1,469 @@
+//! One of the platform's CSV files of Urban QOL data, read into memory.
+//!
+//! A file has one row for each mesh and indicator. The row whose
+//! `IndicatorCode` is [`TOTAL_CODE`] holds the mesh's published total, and
+//! every other row one indicator's value for it.
+
+use std::collections::HashMap;
+use std::fs::File;
+use std::io::Read;
+use std::path::Path;
+
+use csv::StringRecord;
+use thiserror::Error;
+
+use crate::mesh::{HalfMesh, MeshCodeError};
+
+/// The `IndicatorCode` of the rows that hold the published total.
+const TOTAL_CODE: &str = "QOL";
+
+/// A file's meshes, and what it publishes for each of them.
+#[derive(Debug, PartialEq)]
+pub(crate) struct Dataset {
+    meshes: Vec<Mesh>,
+    series: Vec<Series>,
+}
+
+/// A mesh of the file.
+#[derive(Debug, PartialEq)]
+pub(crate) struct Mesh {
+    pub(crate) code: String,
+    pub(crate) square: HalfMesh,
+    /// The name of the municipality the file puts the mesh in.
+    pub(crate) city: String,
+}
+
+/// What the file publishes under one `IndicatorCode`: the total, or an
+/// indicator.
+#[derive(Debug, PartialEq)]
+pub(crate) struct Series {
+    pub(crate) code: String,
+    pub(crate) name: String,
+    /// One value for each mesh, in the order of [`Dataset::meshes`].
+    pub(crate) values: Vec<f64>,
+}
+
+impl Dataset {
+    /// Reads the file at `path`.
+    pub(crate) fn open(path: &Path) -> Result<Self, DatasetError> {
+        Self::read(File::open(path)?)
+    }
+
+    /// Reads a file's contents. A byte order mark at their start is skipped,
+    /// which the CSV reader does of itself.
+    pub(crate) fn read(contents: impl Read) -> Result<Self, DatasetError> {
+        let mut reader = csv::Reader::from_reader(contents);
+        let columns = Columns::find(reader.headers()?)?;
+
+        let mut meshes: Vec<Mesh> = Vec::new();
+        let mut mesh_index: HashMap<String, usize> = HashMap::new();
+        // A value is `None` until its row has been read.
+        let mut series: Vec<(String, String, Vec<Option<f64>>)> = Vec::new();
+        let mut series_index: HashMap<String, usize> = HashMap::new();
+
+        for record in reader.records() {
+            let record = record?;
+            let line = record.position().map_or(0, csv::Position::line);
+            let field = |column: usize| record.get(column).unwrap_or_default();
+
+            let code = field(columns.key_code);
+            let mesh = match mesh_index.get(code) {
+                Some(&mesh) => mesh,
+                None => {
+                    let square = HalfMesh::from_code(code)
+                        .map_err(|source| DatasetError::MeshCode { line, source })?;
+                    meshes.push(Mesh {
+                        code: code.to_owned(),
+                        square,
+                        city: field(columns.city).to_owned(),
+                    });
+                    mesh_index.insert(code.to_owned(), meshes.len() - 1);
+                    meshes.len() - 1
+                }
+            };
+
+            let indicator_code = field(columns.indicator_code);
+            let series_at = *series_index
+                .entry(indicator_code.to_owned())
+                .or_insert_with(|| {
+                    let name = field(columns.indicator).to_owned();
+                    series.push((indicator_code.to_owned(), name, Vec::new()));
+                    series.len() - 1
+                });
+
+            let value = field(columns.value)
+                .trim()
+                .parse::<f64>()
+                .ok()
+                .filter(|value| value.is_finite())
+                .ok_or(DatasetError::Value { line })?;
+            let values = &mut series[series_at].2;
+            if values.len() <= mesh {
+                values.resize(mesh + 1, None);
+            }
+            if values[mesh].replace(value).is_some() {
+                return Err(DatasetError::Repeated { line });
+            }
+        }
+
+        let total = *series_index.get(TOTAL_CODE).ok_or(DatasetError::NoTotal)?;
+        let total = series.remove(total);
+        series.insert(0, total);
+        let series = series
+            .into_iter()
+            .map(|(code, name, mut values)| {
+                values.resize(meshes.len(), None);
+                match values.into_iter().collect::<Option<Vec<f64>>>() {
+                    Some(values) => Ok(Series { code, name, values }),
+                    None => Err(DatasetError::Incomplete { indicator: code }),
+                }
+            })
+            .collect::<Result<_, _>>()?;
+        Ok(Self { meshes, series })
+    }
+
+    /// The file's meshes, in the order it first names them.
+    pub(crate) fn meshes(&self) -> &[Mesh] {
+        &self.meshes
+    }
+
+    /// The published total, then each indicator of the file.
+    pub(crate) fn series(&self) -> &[Series] {
+        &self.series
+    }
+}
+
+/// Where the columns the tool reads are in a file.
+struct Columns {
+    key_code: usize,
+    city: usize,
+    indicator_code: usize,
+    indicator: usize,
+    value: usize,
+}
+
+impl Columns {
+    fn find(headers: &StringRecord) -> Result<Self, DatasetError> {
+        let column = |name: &'static str| {
+            headers
+                .iter()
+                .position(|header| header == name)
+                .ok_or(DatasetError::NoColumn { name })
+        };
+        Ok(Self {
+            key_code: column("KeyCode")?,
+            city: column("City")?,
+            indicator_code: column("IndicatorCode")?,
+            indicator: column("Indicator")?,
+            value: column("Value")?,
+        })
+    }
+}
+
+/// Why a file could not be read as Urban QOL data.
+#[derive(Debug, Error)]
+pub(crate) enum DatasetError {
+    #[error("it could not be opened or read: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("it is not laid out as CSV: {0}")]
+    Csv(#[from] csv::Error),
+    #[error("it has no `{name}` column")]
+    NoColumn { name: &'static str },
+    #[error("line {line}: its `KeyCode` is not a 500 m mesh: {source}")]
+    MeshCode { line: u64, source: MeshCodeError },
+    #[error("line {line}: its `Value` is not a number")]
+    Value { line: u64 },
+    #[error("line {line}: its mesh already has a value for its indicator")]
+    Repeated { line: u64 },
+    #[error("it has no row whose `IndicatorCode` is `QOL`")]
+    NoTotal,
+    #[error("a mesh has no row whose `IndicatorCode` is `{indicator}`")]
+    Incomplete { indicator: String },
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeMap;
+
+    use proptest::collection::{btree_map, vec};
+    use proptest::prelude::*;
+
+    use super::*;
+    use crate::mesh::tests::valid_code;
+
+    const HEADER: [&str; 8] = [
+        "KeyCode",
+        "PrefectureCode",
+        "CityCode",
+        "Prefecture",
+        "City",
+        "IndicatorCode",
+        "Indicator",
+        "Value",
+    ];
+
+    /// What a test puts in a row; the other columns are filled with text the
+    /// tool does not read.
+    #[derive(Clone, Debug)]
+    struct Row {
+        key_code: String,
+        city: String,
+        indicator_code: String,
+        indicator: String,
+        value: String,
+    }
+
+    fn row(key_code: &str, city: &str, indicator_code: &str, indicator: &str, value: &str) -> Row {
+        Row {
+            key_code: key_code.to_owned(),
+            city: city.to_owned(),
+            indicator_code: indicator_code.to_owned(),
+            indicator: indicator.to_owned(),
+            value: value.to_owned(),
+        }
+    }
+
+    /// A file in the platform's layout, made of `rows`.
+    fn file(rows: &[Row]) -> Vec<u8> {
+        let mut writer = csv::Writer::from_writer(Vec::new());
+        writer.write_record(HEADER).unwrap();
+        for r in rows {
+            writer
+                .write_record([
+                    r.key_code.as_str(),
+                    "00",
+                    "00000",
+                    "a prefecture",
+                    r.city.as_str(),
+                    r.indicator_code.as_str(),
+                    r.indicator.as_str(),
+                    r.value.as_str(),
+                ])
+                .unwrap();
+        }
+        writer.into_inner().unwrap()
+    }
+
+    fn with_byte_order_mark(mut contents: Vec<u8>) -> Vec<u8> {
+        contents.splice(0..0, [0xEF, 0xBB, 0xBF]);
+        contents
+    }
+
+    /// Two meshes and two indicators, the totals coming last.
+    fn small() -> Vec<Row> {
+        vec![
+            row("543823431", "East", "A01", "Stations", "1.5"),
+            row("543823432", "West", "A01", "Stations", "-2"),
+            row("543823431", "East", "B02", "Floods", "0"),
+            row("543823432", "West", "B02", "Floods", "0.25"),
+            row("543823431", "East", "QOL", "Total", "1.5"),
+            row("543823432", "West", "QOL", "Total", "-1.75"),
+        ]
+    }
+
+    fn read(rows: &[Row]) -> Result<Dataset, DatasetError> {
+        Dataset::read(file(rows).as_slice())
+    }
+
+    #[test]
+    fn a_file_becomes_its_meshes_and_the_total_then_its_indicators() {
+        let dataset = read(&small()).unwrap();
+
+        let meshes: Vec<_> = dataset
+            .meshes()
+            .iter()
+            .map(|m| (m.code.as_str(), m.city.as_str(), m.square))
+            .collect();
+        let square = |code| HalfMesh::from_code(code).unwrap();
+        assert_eq!(
+            meshes,
+            [
+                ("543823431", "East", square("543823431")),
+                ("543823432", "West", square("543823432")),
+            ]
+        );
+
+        let series: Vec<_> = dataset
+            .series()
+            .iter()
+            .map(|s| (s.code.as_str(), s.name.as_str(), s.values.as_slice()))
+            .collect();
+        assert_eq!(
+            series,
+            [
+                ("QOL", "Total", [1.5, -1.75].as_slice()),
+                ("A01", "Stations", [1.5, -2.0].as_slice()),
+                ("B02", "Floods", [0.0, 0.25].as_slice()),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_byte_order_mark_changes_nothing() {
+        let plain = file(&small());
+        let marked = with_byte_order_mark(plain.clone());
+        assert_eq!(
+            Dataset::read(marked.as_slice()).unwrap(),
+            Dataset::read(plain.as_slice()).unwrap()
+        );
+    }
+
+    #[test]
+    fn columns_are_found_by_name_wherever_they_are() {
+        let contents = "Value,Extra,Indicator,IndicatorCode,City,KeyCode\n\
+                        1.5,x,Total,QOL,East,543823431\n";
+        let dataset = Dataset::read(contents.as_bytes()).unwrap();
+        assert_eq!(dataset.meshes()[0].code, "543823431");
+        assert_eq!(dataset.series()[0].values, [1.5]);
+    }
+
+    #[test]
+    fn a_file_without_a_column_the_tool_reads_is_refused() {
+        let contents = "KeyCode,City,IndicatorCode,Indicator\n543823431,East,QOL,Total\n";
+        assert!(matches!(
+            Dataset::read(contents.as_bytes()),
+            Err(DatasetError::NoColumn { name: "Value" })
+        ));
+    }
+
+    #[test]
+    fn a_row_whose_mesh_code_is_not_a_half_grid_square_is_refused() {
+        let mut rows = small();
+        // The nine-digit code of a 2 km square.
+        rows[1].key_code = "543823435".to_owned();
+        assert!(matches!(
+            read(&rows),
+            Err(DatasetError::MeshCode {
+                line: 3,
+                source: MeshCodeError::NoSuchQuarter
+            })
+        ));
+    }
+
+    #[test]
+    fn a_row_whose_value_is_not_a_finite_number_is_refused() {
+        for value in ["", "high", "NaN", "inf"] {
+            let mut rows = small();
+            rows[2].value = value.to_owned();
+            assert!(
+                matches!(read(&rows), Err(DatasetError::Value { line: 4 })),
+                "{value:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_second_row_for_a_mesh_and_indicator_is_refused() {
+        let mut rows = small();
+        rows.push(row("543823431", "East", "A01", "Stations", "9"));
+        assert!(matches!(
+            read(&rows),
+            Err(DatasetError::Repeated { line: 8 })
+        ));
+    }
+
+    #[test]
+    fn a_file_without_totals_is_refused() {
+        let rows: Vec<Row> = small()
+            .into_iter()
+            .filter(|r| r.indicator_code != "QOL")
+            .collect();
+        assert!(matches!(read(&rows), Err(DatasetError::NoTotal)));
+    }
+
+    #[test]
+    fn a_mesh_that_lacks_an_indicator_is_refused() {
+        for missing in 0..small().len() {
+            let mut rows = small();
+            let removed = rows.remove(missing);
+            assert!(
+                matches!(
+                    read(&rows),
+                    Err(DatasetError::Incomplete { ref indicator })
+                        if *indicator == removed.indicator_code
+                ),
+                "without row {missing}"
+            );
+        }
+    }
+
+    /// A file's content before it is laid out as rows: each mesh's code and
+    /// municipality, each indicator's code and name, and a value for every
+    /// pair of them, the total being the indicator at 0.
+    #[derive(Clone, Debug)]
+    struct Content {
+        meshes: Vec<(String, String)>,
+        indicators: Vec<(String, String)>,
+        values: Vec<Vec<f64>>,
+    }
+
+    impl Content {
+        fn rows(&self) -> Vec<Row> {
+            let mut rows = Vec::new();
+            for (i, (code, name)) in self.indicators.iter().enumerate() {
+                for (m, (key_code, city)) in self.meshes.iter().enumerate() {
+                    let value = self.values[i][m].to_string();
+                    rows.push(row(key_code, city, code, name, &value));
+                }
+            }
+            rows
+        }
+    }
+
+    /// Up to twelve meshes and five indicators beside the total, named in
+    /// Japanese scripts as the platform's files name theirs.
+    fn content() -> impl Strategy<Value = Content> {
+        let meshes = btree_map(valid_code(), r"\p{Katakana}{1,4}", 1..12);
+        let indicators = btree_map("[A-Z][0-9]{2}", r"[\p{Hiragana}\p{Han}]{1,6}", 0..5);
+        (meshes, indicators, r"\p{Han}{1,3}")
+            .prop_flat_map(|(meshes, indicators, total)| {
+                let mut named = vec![(TOTAL_CODE.to_owned(), total)];
+                named.extend(indicators);
+                let finite = prop::num::f64::NORMAL | prop::num::f64::ZERO;
+                let values = vec(vec(finite, meshes.len()), named.len());
+                (Just(meshes), Just(named), values)
+            })
+            .prop_map(|(meshes, indicators, values)| Content {
+                meshes: meshes.into_iter().collect(),
+                indicators,
+                values,
+            })
+    }
+
+    proptest! {
+        /// Whatever order the rows come in, and with or without a byte order
+        /// mark.
+        #[test]
+        fn a_file_reads_back_as_what_was_written(
+            (content, rows) in content().prop_flat_map(|content| {
+                let rows = Just(content.rows()).prop_shuffle();
+                (Just(content), rows)
+            }),
+            marked in any::<bool>(),
+        ) {
+            let contents = file(&rows);
+            let contents = if marked { with_byte_order_mark(contents) } else { contents };
+            let dataset = Dataset::read(contents.as_slice()).unwrap();
+
+            let read_meshes: BTreeMap<_, _> = dataset
+                .meshes()
+                .iter()
+                .map(|m| (m.code.clone(), m.city.clone()))
+                .collect();
+            let written_meshes: BTreeMap<_, _> = content.meshes.iter().cloned().collect();
+            prop_assert_eq!(dataset.meshes().len(), content.meshes.len());
+            prop_assert_eq!(&read_meshes, &written_meshes);
+
+            prop_assert_eq!(&dataset.series()[0].code, TOTAL_CODE);
+            prop_assert_eq!(dataset.series().len(), content.indicators.len());
+            for (i, (code, name)) in content.indicators.iter().enumerate() {
+                let series = dataset.series().iter().find(|s| s.code == *code).unwrap();
+                prop_assert_eq!(&series.name, name);
+                for (m, (key_code, _)) in content.meshes.iter().enumerate() {
+                    let at = dataset.meshes().iter().position(|x| x.code == *key_code).unwrap();
+                    prop_assert_eq!(series.values[at].to_bits(), content.values[i][m].to_bits());
+                }
+            }
+        }
+    }
+}
