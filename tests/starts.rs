@@ -1,5 +1,6 @@
 //! Starts of the tool that must end without a map: it says which file it
-//! expects and where that file comes from, and exits.
+//! expects and where that file comes from, and exits. One start with a file it
+//! can read stands beside them, so that refusing everything does not pass.
 
 use std::fs;
 use std::path::PathBuf;
@@ -43,4 +44,29 @@ fn started_with_a_file_that_is_not_urban_qol_data() {
     assert_asks_for_the_file(&output);
     let said = String::from_utf8_lossy(&output.stderr);
     assert!(said.contains("it has no `KeyCode` column"), "{said}");
+}
+
+#[test]
+fn started_with_two_paths() {
+    assert_asks_for_the_file(&start(&["one.csv", "two.csv"]));
+}
+
+#[test]
+fn started_with_a_folder() {
+    let output = start(&[env!("CARGO_TARGET_TMPDIR")]);
+    assert_asks_for_the_file(&output);
+    let said = String::from_utf8_lossy(&output.stderr);
+    assert!(said.contains("it could not be opened or read"), "{said}");
+}
+
+#[test]
+fn started_with_a_file_it_can_read() {
+    let path = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("made-up.csv");
+    let contents = "KeyCode,PrefectureCode,CityCode,Prefecture,City,IndicatorCode,Indicator,Value\n\
+                    543823431,00,00000,a prefecture,East,QOL,Total,1.5\n\
+                    543823431,00,00000,a prefecture,East,A01,Stations,1.5\n";
+    fs::write(&path, contents).unwrap();
+    let output = start(&[path.to_str().unwrap()]);
+    assert!(output.status.success(), "it refused a file it can read");
+    assert!(output.stderr.is_empty(), "it complained");
 }

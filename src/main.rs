@@ -20,7 +20,9 @@ QOL_23_Aichi.csv. Download it from the platform's catalogue:
 https://data-platform.mlit.go.jp/#/searchlink/df633780-e1bd-436d-b6f6-13885a70c254";
 
 fn main() -> ExitCode {
-    let Some(path) = env::args_os().nth(1) else {
+    let mut arguments = env::args_os().skip(1);
+    // One file: a second argument would go unread without a word.
+    let (Some(path), None) = (arguments.next(), arguments.next()) else {
         eprintln!("{USAGE}");
         return ExitCode::FAILURE;
     };

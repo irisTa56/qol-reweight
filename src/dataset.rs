@@ -67,15 +67,22 @@ impl Dataset {
             let field = |column: usize| record.get(column).unwrap_or_default();
 
             let code = field(columns.key_code);
+            let city = field(columns.city);
             let mesh = match mesh_index.get(code) {
-                Some(&mesh) => mesh,
+                Some(&mesh) if meshes[mesh].city == city => mesh,
+                Some(_) => {
+                    return Err(DatasetError::Disagrees {
+                        line,
+                        column: "City",
+                    });
+                }
                 None => {
                     let square = HalfMesh::from_code(code)
                         .map_err(|source| DatasetError::MeshCode { line, source })?;
                     meshes.push(Mesh {
                         code: code.to_owned(),
                         square,
-                        city: field(columns.city).to_owned(),
+                        city: city.to_owned(),
                     });
                     mesh_index.insert(code.to_owned(), meshes.len() - 1);
                     meshes.len() - 1
@@ -83,16 +90,23 @@ impl Dataset {
             };
 
             let indicator_code = field(columns.indicator_code);
-            let series_at = *series_index
-                .entry(indicator_code.to_owned())
-                .or_insert_with(|| {
-                    let name = field(columns.indicator).to_owned();
-                    series.push((indicator_code.to_owned(), name, Vec::new()));
+            let name = field(columns.indicator);
+            let series_at = match series_index.get(indicator_code) {
+                Some(&at) if series[at].1 == name => at,
+                Some(_) => {
+                    return Err(DatasetError::Disagrees {
+                        line,
+                        column: "Indicator",
+                    });
+                }
+                None => {
+                    series.push((indicator_code.to_owned(), name.to_owned(), Vec::new()));
+                    series_index.insert(indicator_code.to_owned(), series.len() - 1);
                     series.len() - 1
-                });
+                }
+            };
 
             let value = field(columns.value)
-                .trim()
                 .parse::<f64>()
                 .ok()
                 .filter(|value| value.is_finite())
@@ -145,10 +159,16 @@ struct Columns {
 impl Columns {
     fn find(headers: &StringRecord) -> Result<Self, DatasetError> {
         let column = |name: &'static str| {
-            headers
+            let mut named = headers
                 .iter()
-                .position(|header| header == name)
-                .ok_or(DatasetError::NoColumn { name })
+                .enumerate()
+                .filter(|(_, header)| *header == name)
+                .map(|(column, _)| column);
+            match (named.next(), named.next()) {
+                (Some(column), None) => Ok(column),
+                (None, _) => Err(DatasetError::NoColumn { name }),
+                (Some(_), Some(_)) => Err(DatasetError::ColumnTwice { name }),
+            }
         };
         Ok(Self {
             key_code: column("KeyCode")?,
@@ -166,9 +186,13 @@ pub(crate) enum DatasetError {
     #[error("it could not be opened or read: {0}")]
     Io(#[from] std::io::Error),
     #[error("it is not laid out as CSV: {0}")]
-    Csv(#[from] csv::Error),
+    Csv(csv::Error),
     #[error("it has no `{name}` column")]
     NoColumn { name: &'static str },
+    #[error("it has more than one `{name}` column")]
+    ColumnTwice { name: &'static str },
+    #[error("line {line}: its `{column}` is not what an earlier row of its mesh or indicator has")]
+    Disagrees { line: u64, column: &'static str },
     #[error("line {line}: its `KeyCode` is not a 500 m mesh: {source}")]
     MeshCode { line: u64, source: MeshCodeError },
     #[error("line {line}: its `Value` is not a number")]
@@ -179,6 +203,20 @@ pub(crate) enum DatasetError {
     NoTotal,
     #[error("a mesh has no row whose `IndicatorCode` is `{indicator}`")]
     Incomplete { indicator: String },
+}
+
+/// The CSV reader hands a failure to read the file on as one of its own
+/// errors, which is told apart here from a file that is not CSV.
+impl From<csv::Error> for DatasetError {
+    fn from(error: csv::Error) -> Self {
+        if !error.is_io_error() {
+            return Self::Csv(error);
+        }
+        match error.into_kind() {
+            csv::ErrorKind::Io(error) => Self::Io(error),
+            _ => unreachable!("an I/O error is of the I/O kind"),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -327,6 +365,59 @@ mod tests {
     }
 
     #[test]
+    fn a_file_with_a_column_twice_is_refused() {
+        let contents = "KeyCode,City,IndicatorCode,Indicator,Value,Value\n\
+                        543823431,East,QOL,Total,1.5,2.5\n";
+        assert!(matches!(
+            Dataset::read(contents.as_bytes()),
+            Err(DatasetError::ColumnTwice { name: "Value" })
+        ));
+    }
+
+    #[test]
+    fn a_failure_to_read_is_not_taken_for_a_file_that_is_not_csv() {
+        struct Unreadable;
+        impl Read for Unreadable {
+            fn read(&mut self, _: &mut [u8]) -> std::io::Result<usize> {
+                Err(std::io::Error::other("the disk is gone"))
+            }
+        }
+        assert!(matches!(
+            Dataset::read(Unreadable),
+            Err(DatasetError::Io(_))
+        ));
+        // A row shorter than the header is the reader's own complaint.
+        let contents = "KeyCode,City,IndicatorCode,Indicator,Value\n543823431,East\n";
+        assert!(matches!(
+            Dataset::read(contents.as_bytes()),
+            Err(DatasetError::Csv(_))
+        ));
+    }
+
+    #[test]
+    fn rows_that_disagree_on_a_name_are_refused() {
+        let mut rows = small();
+        rows[4].city = "North".to_owned();
+        assert!(matches!(
+            read(&rows),
+            Err(DatasetError::Disagrees {
+                line: 6,
+                column: "City"
+            })
+        ));
+
+        let mut rows = small();
+        rows[3].indicator = "Storms".to_owned();
+        assert!(matches!(
+            read(&rows),
+            Err(DatasetError::Disagrees {
+                line: 5,
+                column: "Indicator"
+            })
+        ));
+    }
+
+    #[test]
     fn a_row_whose_mesh_code_is_not_a_half_grid_square_is_refused() {
         let mut rows = small();
         // The nine-digit code of a 2 km square.
@@ -342,7 +433,7 @@ mod tests {
 
     #[test]
     fn a_row_whose_value_is_not_a_finite_number_is_refused() {
-        for value in ["", "high", "NaN", "inf"] {
+        for value in ["", "high", "NaN", "inf", " 1", "1 "] {
             let mut rows = small();
             rows[2].value = value.to_owned();
             assert!(
@@ -413,8 +504,8 @@ mod tests {
     /// Up to twelve meshes and five indicators beside the total, named in
     /// Japanese scripts as the platform's files name theirs.
     fn content() -> impl Strategy<Value = Content> {
-        let meshes = btree_map(valid_code(), r"\p{Katakana}{1,4}", 1..12);
-        let indicators = btree_map("[A-Z][0-9]{2}", r"[\p{Hiragana}\p{Han}]{1,6}", 0..5);
+        let meshes = btree_map(valid_code(), r"\p{Katakana}{1,4}", 1..=12);
+        let indicators = btree_map("[A-Z][0-9]{2}", r"[\p{Hiragana}\p{Han}]{1,6}", 0..=5);
         (meshes, indicators, r"\p{Han}{1,3}")
             .prop_flat_map(|(meshes, indicators, total)| {
                 let mut named = vec![(TOTAL_CODE.to_owned(), total)];
