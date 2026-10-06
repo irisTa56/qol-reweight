@@ -49,3 +49,11 @@ Before every push, check that no commit it would publish carries anything of thi
 
 - Everything committed is written in English: code, comments, documents, and commit messages.
 - Prose follows [`document-writing.md`](https://github.com/irisTa56/dotfiles/blob/main/.claude/rules/document-writing.md).
+
+## Code conventions
+
+- Source files hold no Japanese text and no other character an editor may draw two columns wide, since one such character puts the lines around it out of vertical alignment.
+  - [`dev/GLOSSARY.md`](dev/GLOSSARY.md) pairs each English name the code uses with the Japanese term it stands for, so add the pair there when the code takes a new one.
+  - A test that needs such a character in its input writes it as an escape, such as `\u{ff15}`.
+- An item is `pub(crate)`, or private, wherever that is enough, and `pub` only where something outside the crate uses it.
+- Where a widely used crate with few dependencies of its own does a job, such as `thiserror` for error types, use it rather than writing the job out by hand.

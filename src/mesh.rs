@@ -1,25 +1,27 @@
 //! Half grid squares, the 500 m meshes the Urban QOL data is published on.
 //!
-//! The code of a half grid square (2分の1地域メッシュ) is nine digits,
-//! `ppuuqvrwm`, defined by the Statistics Bureau of Japan in
-//! [地域メッシュ統計の特質・沿革](https://www.stat.go.jp/data/mesh/pdf/gaiyo1.pdf),
+//! The code of a half grid square is nine digits, `ppuuqvrwm`, defined by the
+//! Statistics Bureau of Japan in
+//! [its outline of grid square statistics](https://www.stat.go.jp/data/mesh/pdf/gaiyo1.pdf),
 //! pp. 6-12:
 //!
-//! - `pp` and `uu` name a first-level square, 40′ of latitude by 1° of
+//! - `pp` and `uu` name a first-level square, 40' of latitude by 1 degree of
 //!   longitude: `pp` is its southern latitude times 1.5, and `uu` its western
 //!   longitude less 100.
 //! - `q` and `v`, each 0 to 7, count second-level squares north and east
-//!   within it, 5′ by 7′30″.
+//!   within it, 5' by 7'30".
 //! - `r` and `w`, each 0 to 9, count third-level squares north and east within
-//!   that, 30″ by 45″.
-//! - `m` names a quarter of the third-level square, 15″ by 22.5″: 1 is the
+//!   that, 30" by 45".
+//! - `m` names a quarter of the third-level square, 15" by 22.5": 1 is the
 //!   south-west one, 2 the south-east, 3 the north-west, and 4 the north-east.
+//!
+//! `dev/GLOSSARY.md` gives the Japanese term for each of these names.
 
-use std::fmt;
+use thiserror::Error;
 
-/// How many half grid squares one degree of latitude spans, each being 15″.
+/// How many half grid squares one degree of latitude spans, each being 15".
 const ROWS_PER_DEGREE: u32 = 240;
-/// How many half grid squares one degree of longitude spans, each being 22.5″.
+/// How many half grid squares one degree of longitude spans, each being 22.5".
 const COLUMNS_PER_DEGREE: u32 = 160;
 
 /// A half grid square, held as its place among all such squares.
@@ -27,16 +29,16 @@ const COLUMNS_PER_DEGREE: u32 = 160;
 /// Both counts are whole numbers, so two squares that share an edge compute
 /// that edge from the same number and get the same coordinate.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct HalfMesh {
+pub(crate) struct HalfMesh {
     /// Squares between the equator and this one's southern edge.
     row: u32,
-    /// Squares between 100° east and this one's western edge.
+    /// Squares between 100 degrees east and this one's western edge.
     column: u32,
 }
 
 impl HalfMesh {
     /// Reads a nine-digit half grid square code.
-    pub fn from_code(code: &str) -> Result<Self, MeshCodeError> {
+    pub(crate) fn from_code(code: &str) -> Result<Self, MeshCodeError> {
         if !code.bytes().all(|b| b.is_ascii_digit()) {
             return Err(MeshCodeError::NotNineDigits);
         }
@@ -59,49 +61,40 @@ impl HalfMesh {
     }
 
     /// Latitude of the southern edge, in degrees.
-    pub fn south(self) -> f64 {
+    pub(crate) fn south(self) -> f64 {
         f64::from(self.row) / f64::from(ROWS_PER_DEGREE)
     }
 
     /// Latitude of the northern edge, in degrees.
-    pub fn north(self) -> f64 {
+    pub(crate) fn north(self) -> f64 {
         f64::from(self.row + 1) / f64::from(ROWS_PER_DEGREE)
     }
 
     /// Longitude of the western edge, in degrees east.
-    pub fn west(self) -> f64 {
+    pub(crate) fn west(self) -> f64 {
         100.0 + f64::from(self.column) / f64::from(COLUMNS_PER_DEGREE)
     }
 
     /// Longitude of the eastern edge, in degrees east.
-    pub fn east(self) -> f64 {
+    pub(crate) fn east(self) -> f64 {
         100.0 + f64::from(self.column + 1) / f64::from(COLUMNS_PER_DEGREE)
     }
 }
 
 /// Why a string is not the code of a half grid square.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum MeshCodeError {
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Error)]
+pub(crate) enum MeshCodeError {
+    #[error("a half grid square code is nine digits")]
     NotNineDigits,
     /// The fifth or sixth digit is 8 or 9, and a first-level square has eight
     /// second-level squares a side.
+    #[error("its fifth and sixth digits go from 0 to 7")]
     NoSuchSecondLevelSquare,
     /// The ninth digit is not 1 to 4. A nine-digit code ending in 5 is a
-    /// 2 km square (2倍地域メッシュ), which this tool does not draw.
+    /// 2 km square, which this tool does not draw.
+    #[error("its ninth digit goes from 1 to 4")]
     NoSuchQuarter,
 }
-
-impl fmt::Display for MeshCodeError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            Self::NotNineDigits => "a half grid square code is nine digits",
-            Self::NoSuchSecondLevelSquare => "its fifth and sixth digits go from 0 to 7",
-            Self::NoSuchQuarter => "its ninth digit goes from 1 to 4",
-        })
-    }
-}
-
-impl std::error::Error for MeshCodeError {}
 
 #[cfg(test)]
 mod tests {
@@ -119,8 +112,8 @@ mod tests {
     }
 
     /// The code the Statistics Bureau's tables use as their example: first-level
-    /// square 5438 starts at 36°N 138°E, `23` adds 2 × 5′ and 3 × 7′30″, and
-    /// `43` adds 4 × 30″ and 3 × 45″.
+    /// square 5438 starts at 36 degrees north and 138 degrees east, `23` adds 2 x 5' and
+    /// 3 x 7'30", and `43` adds 4 x 30" and 3 x 45".
     #[test]
     fn the_standards_example_lands_where_its_tables_put_it() {
         let m = mesh("543823431");
@@ -170,9 +163,11 @@ mod tests {
             "5438234311",
             "54382343a",
             " 543823431",
-            "５４３８２３４３１",
-            // Nine bytes, which only a check of the digits themselves refuses.
-            "５４３",
+            // The example in full-width digits: nine characters, 27 bytes.
+            "\u{ff15}\u{ff14}\u{ff13}\u{ff18}\u{ff12}\u{ff13}\u{ff14}\u{ff13}\u{ff11}",
+            // Three full-width digits: nine bytes, which only a check of the
+            // digits themselves refuses.
+            "\u{ff15}\u{ff14}\u{ff13}",
         ] {
             assert_eq!(
                 HalfMesh::from_code(code),
