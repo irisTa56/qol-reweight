@@ -1,0 +1,9 @@
+[package]
+name = "qol-reweight"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+# A local tool, built from this repository and never released as a crate.
+publish = false
+
+[dependencies]

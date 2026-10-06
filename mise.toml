@@ -1,6 +1,10 @@
 [tools]
 lychee = "latest"
 rumdl = "latest"
+# rustup installs the toolchain and keeps it outside mise's own directory.
+# `components` names what the `qa:rust:` tasks call, so they are there whatever
+# rustup profile a machine defaults to.
+rust = { version = "latest", components = ["clippy", "rustfmt"] }
 
 [hooks]
 # Keep the git-hook generation first: a failing step aborts the rest while
@@ -50,6 +54,32 @@ run = "rumdl check --fix"
 [tasks."qa:links:offline"]
 description = "Check links offline (no network)"
 run = "lychee --offline --no-progress --config lychee.toml ."
+
+# What the CI job `rust-check` runs, so a `qa:rust:` task added below reaches CI
+# without a change there.
+[tasks."qa:rust"]
+description = "Run all Rust checks"
+depends = ["qa:rust:**"]
+
+[tasks."qa:rust:fmt"]
+description = "Check Rust formatting"
+run = "cargo fmt --check"
+
+[tasks."fmt:rust"]
+description = "Format Rust files"
+run = "cargo fmt"
+
+# `--all-targets` lints the tests as well as the binary, and `-D warnings` fails
+# the task on a lint that would otherwise only print. `--locked` here and in
+# `qa:rust:test` fails on a `Cargo.lock` that no longer matches `Cargo.toml`,
+# rather than rewriting it under a commit that does not stage it.
+[tasks."qa:rust:clippy"]
+description = "Lint Rust files"
+run = "cargo clippy --locked --all-targets -- -D warnings"
+
+[tasks."qa:rust:test"]
+description = "Run Rust tests"
+run = "cargo test --locked"
 
 # Not in `qa:**`: a full-repo external link check is too slow and
 # network-bound for pre-commit; `link-check:staged` requests only the links of
