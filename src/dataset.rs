@@ -607,7 +607,7 @@ mod tests {
                 _ => { rows[2].indicator = blank; "Indicator" }
             };
             prop_assert!(
-                matches!(read(&rows), Err(DatasetError::Blank { column, .. }) if column == name),
+                matches!(read(&rows), Err(DatasetError::Blank { line: 4, column }) if column == name),
                 "{}", name
             );
         }
