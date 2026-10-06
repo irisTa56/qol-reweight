@@ -45,7 +45,7 @@ pub(crate) struct Series {
 
 impl Dataset {
     /// Reads the file at `path`.
-    pub(crate) fn open(path: &Path) -> Result<Self, DatasetError> {
+    pub(crate) fn open(path: impl AsRef<Path>) -> Result<Self, DatasetError> {
         Self::read(File::open(path)?)
     }
 

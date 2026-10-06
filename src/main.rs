@@ -18,8 +18,9 @@ Usage: qol-reweight <FILE>
 
 FILE is one of the CSV files of Urban QOL data that the MLIT Data Platform
 publishes, one for each prefecture and each metropolitan area, such as
-QOL_23_Aichi.csv. Download it from the platform's catalogue:
-https://data-platform.mlit.go.jp/#/searchlink/df633780-e1bd-436d-b6f6-13885a70c254";
+QOL_23_Aichi.csv. Download it from the platform, starting from its page on
+the data:
+https://data-platform.mlit.go.jp/#/Page?id=dataintro01";
 
 fn main() -> ExitCode {
     let mut arguments = env::args_os().skip(1);
