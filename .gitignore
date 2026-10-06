@@ -9,5 +9,6 @@ mise.lock
 # Tool caches. lychee's is written by the shared `link-check:staged` task.
 .rumdl_cache/
 .lycheecache
+
 # cargo's build output.
 /target

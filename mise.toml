@@ -55,7 +55,7 @@ run = "rumdl check --fix"
 description = "Check links offline (no network)"
 run = "lychee --offline --no-progress --config lychee.toml ."
 
-# What the CI job `rust` runs, so a `qa:rust:` task added below reaches CI
+# What the CI job `rust-check` runs, so a `qa:rust:` task added below reaches CI
 # without a change there.
 [tasks."qa:rust"]
 description = "Run all Rust checks"
