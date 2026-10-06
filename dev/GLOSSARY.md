@@ -16,3 +16,13 @@ The terms are the Statistics Bureau of Japan's, from [`地域メッシュ統計�
 | third-level square | `基準地域メッシュ(第3次地域区画)` |
 | half grid square | `2分の1地域メッシュ` |
 | 2 km square | `2倍地域メッシュ` |
+
+## The data
+
+| In the code | Japanese term |
+| --- | --- |
+| Urban QOL data | `都市QOLデータ` |
+| indicator | `指標` |
+| prefecture | `都道府県` |
+| metropolitan area | `都市圏` |
+| municipality | `市区町村` |

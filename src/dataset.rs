@@ -65,9 +65,14 @@ impl Dataset {
             let record = record?;
             let line = record.position().map_or(0, csv::Position::line);
             let field = |column: usize| record.get(column).unwrap_or_default();
+            // A name the tool shows, or lists a choice under, is never blank.
+            let named = |column: usize, name: &'static str| match field(column) {
+                "" => Err(DatasetError::Blank { line, column: name }),
+                text => Ok(text),
+            };
 
             let code = field(columns.key_code);
-            let city = field(columns.city);
+            let city = named(columns.city, "City")?;
             let mesh = match mesh_index.get(code) {
                 Some(&mesh) if meshes[mesh].city == city => mesh,
                 Some(_) => {
@@ -89,8 +94,8 @@ impl Dataset {
                 }
             };
 
-            let indicator_code = field(columns.indicator_code);
-            let name = field(columns.indicator);
+            let indicator_code = named(columns.indicator_code, "IndicatorCode")?;
+            let name = named(columns.indicator, "Indicator")?;
             let series_at = match series_index.get(indicator_code) {
                 Some(&at) if series[at].1 == name => at,
                 Some(_) => {
@@ -193,6 +198,8 @@ pub(crate) enum DatasetError {
     ColumnTwice { name: &'static str },
     #[error("line {line}: its `{column}` is not what an earlier row of its mesh or indicator has")]
     Disagrees { line: u64, column: &'static str },
+    #[error("line {line}: its `{column}` is blank")]
+    Blank { line: u64, column: &'static str },
     #[error("line {line}: its `KeyCode` is not a 500 m mesh: {source}")]
     MeshCode { line: u64, source: MeshCodeError },
     #[error("line {line}: its `Value` is not a number")]
@@ -392,6 +399,25 @@ mod tests {
             Dataset::read(contents.as_bytes()),
             Err(DatasetError::Csv(_))
         ));
+    }
+
+    #[test]
+    fn a_row_with_a_blank_name_is_refused() {
+        for name in ["City", "IndicatorCode", "Indicator"] {
+            let mut rows = small();
+            match name {
+                "City" => rows[2].city.clear(),
+                "IndicatorCode" => rows[2].indicator_code.clear(),
+                _ => rows[2].indicator.clear(),
+            }
+            assert!(
+                matches!(
+                    read(&rows),
+                    Err(DatasetError::Blank { line: 4, column }) if column == name
+                ),
+                "{name}"
+            );
+        }
     }
 
     #[test]
