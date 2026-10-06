@@ -46,9 +46,25 @@ fn started_with_a_file_that_is_not_urban_qol_data() {
     assert!(said.contains("it has no `KeyCode` column"), "{said}");
 }
 
+/// A file the tool can read, made up for the test that names it.
+fn made_up_file(name: &str) -> PathBuf {
+    let path = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(name);
+    let contents = "KeyCode,PrefectureCode,CityCode,Prefecture,City,IndicatorCode,Indicator,Value\n\
+                    543823431,00,00000,a prefecture,East,QOL,Total,1.5\n\
+                    543823431,00,00000,a prefecture,East,A01,Stations,1.5\n";
+    fs::write(&path, contents).unwrap();
+    path
+}
+
+/// Both can be read, so only the count of them is refused.
 #[test]
 fn started_with_two_paths() {
-    assert_asks_for_the_file(&start(&["one.csv", "two.csv"]));
+    let first = made_up_file("first-of-two.csv");
+    let second = made_up_file("second-of-two.csv");
+    let output = start(&[first.to_str().unwrap(), second.to_str().unwrap()]);
+    assert_asks_for_the_file(&output);
+    let said = String::from_utf8_lossy(&output.stderr);
+    assert!(!said.contains("cannot be read"), "{said}");
 }
 
 #[test]
@@ -61,11 +77,7 @@ fn started_with_a_folder() {
 
 #[test]
 fn started_with_a_file_it_can_read() {
-    let path = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("made-up.csv");
-    let contents = "KeyCode,PrefectureCode,CityCode,Prefecture,City,IndicatorCode,Indicator,Value\n\
-                    543823431,00,00000,a prefecture,East,QOL,Total,1.5\n\
-                    543823431,00,00000,a prefecture,East,A01,Stations,1.5\n";
-    fs::write(&path, contents).unwrap();
+    let path = made_up_file("made-up.csv");
     let output = start(&[path.to_str().unwrap()]);
     assert!(output.status.success(), "it refused a file it can read");
     assert!(output.stderr.is_empty(), "it complained");
