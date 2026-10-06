@@ -62,7 +62,7 @@ The picture agrees with the one the platform shows for the same file, which sett
   - Risk: tiles are refused, noticed by a base map that stays blank, at a zoom level it has tiles for, while the network is up.
 - **A006**: A file's meshes can all be drawn again on every frame. Source: the measurement in [0002], on synthetic data.
   - Risk: a real file is slower, noticed by panning that stutters with a file open.
-  - Risk: the map stops being drawn again, as one benchmark run did for a cause that was not found ([0002], under its risks), noticed by a map that stops following the pointer while its window is in front.
+  - Risk: the map stops being drawn again, as two benchmark runs did for a cause that was not found ([0002], under its risks), noticed by a map that stops following the pointer while its window is in front.
 - **A007**: A test can drive the tool's window, the map and the meshes included, without showing it. Source: a trial with [`egui_kittest`](https://docs.rs/egui_kittest/0.36.2) 0.36.2 on macOS, which found a label by its text, moved the pointer over a square, and rendered the window to an image (run 2026-10-06).
   - Risk: something the phase must check cannot be reached that way, noticed by a check below that ends up done by hand.
 
