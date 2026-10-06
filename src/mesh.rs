@@ -171,6 +171,8 @@ mod tests {
             "54382343a",
             " 543823431",
             "５４３８２３４３１",
+            // Nine bytes, which only a check of the digits themselves refuses.
+            "５４３",
         ] {
             assert_eq!(
                 HalfMesh::from_code(code),
