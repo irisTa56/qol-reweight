@@ -365,31 +365,36 @@ mod tests {
     }
 
     /// A file with more indicators than the open pull-down shows at once,
-    /// the last of which falls where the total rises: the pull-down scrolls
-    /// to it. Closed, the pull-down takes the room it takes for a short file.
+    /// the last of which falls where the total rises and has a name far
+    /// longer than the panel is wide: the pull-down scrolls to it. Closed,
+    /// the pull-down takes the room it takes for a short file, before that
+    /// name is chosen and after, and so does the map.
     #[test]
     fn the_last_of_many_indicators_can_be_scrolled_to_and_chosen() {
         let same: &[f64] = &[0.25, 0.25, 0.25];
         let many: Vec<(String, String)> = (0..40)
             .map(|at| (format!("X{at:02}"), format!("Indicator {at}")))
             .collect();
+        let long = "A name that goes on ".repeat(6);
         let mut file: Vec<(&str, &str, &[f64])> = many
             .iter()
             .map(|(code, name)| (code.as_str(), name.as_str(), same))
             .collect();
-        file.push(("Y00", "Last", &[3.0, 0.0, -3.0]));
+        file.push(("Y00", &long, &[3.0, 0.0, -3.0]));
         file.push(("QOL", "Total", &[-2.0, 0.5, 1.0]));
 
-        let closed = window().get_by_role(Role::ComboBox).rect();
+        let short = window();
+        let room = |window: &Harness<'_, Option<Window>>| {
+            let (map, _) = meshes_drawn(window);
+            (window.get_by_role(Role::ComboBox).rect(), map)
+        };
         let mut window = window_on(dataset_of(&MESHES, &file));
-        assert_eq!(
-            window.get_by_role(Role::ComboBox).rect().size(),
-            closed.size()
-        );
+        assert_eq!(room(&window), room(&short));
         assert_eq!(ends(&window), ["red", "blue"]);
 
-        choose(&mut window, "Last");
+        choose(&mut window, &long);
         assert_eq!(ends(&window), ["blue", "red"]);
+        assert_eq!(room(&window), room(&short));
     }
 
     /// The bar is over its marks, with the mark of the lower end under the

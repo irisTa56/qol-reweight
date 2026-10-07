@@ -70,22 +70,26 @@ impl Widget for Legend {
     }
 }
 
-/// `value`, which is not negative, written to two figures: enough to tell
+/// `value`, which is not negative, rounded to two figures: enough to tell
 /// one scale from another, whatever size the values of a file have.
 fn two_figures(value: f64) -> String {
     if value == 0.0 {
         return "0".to_owned();
     }
-    // Where the first figure lies once the value is rounded to two: the
-    // exponent of `d.de<exponent>`. One figure before the point leaves one
-    // after it, and each place further right takes one more.
+    // In scientific notation with one decimal the value is `d.de<exponent>`,
+    // its two figures and where the first of them lies.
     let rounded = format!("{value:.1e}");
     let exponent: i32 = rounded
         .split_once('e')
         .and_then(|(_, exponent)| exponent.parse().ok())
         .expect("a number in scientific notation has an exponent");
+    let rounded: f64 = rounded
+        .parse()
+        .expect("a number in scientific notation is a number");
+    // One figure before the point leaves one after it, and each place the
+    // first figure lies further right takes one more; further left, none.
     let decimals = usize::try_from(1 - exponent).unwrap_or(0);
-    format!("{value:.decimals$}")
+    format!("{rounded:.decimals$}")
 }
 
 #[cfg(test)]
@@ -114,7 +118,8 @@ mod tests {
         assert_eq!(marks(0.0456)[2], "+0.046");
         assert_eq!(marks(2.0)[2], "+2.0");
         assert_eq!(marks(37.5)[2], "+38");
-        assert_eq!(marks(1234.0)[2], "+1234");
+        assert_eq!(marks(1234.0)[2], "+1200");
+        assert_eq!(marks(987654.0)[2], "+990000");
         assert_eq!(marks(3e-10)[2], "+0.00000000030");
     }
 
