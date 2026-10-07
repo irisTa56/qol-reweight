@@ -1,12 +1,13 @@
 //! The tool's window: the map, and under it the statements of its sources.
 
-use eframe::egui::{CentralPanel, Frame, Panel, Ui, ViewportBuilder};
+use eframe::egui::{CentralPanel, Context, Frame, Panel, Ui, ViewportBuilder};
 use eframe::{App, NativeOptions};
 use walkers::{HttpTiles, Map, MapMemory, Position, Tiles, lat_lon};
 
 use crate::basemap::{self, PaleMap};
 use crate::dataset::{self, Dataset};
 use crate::font::JapaneseFont;
+use crate::mesh::Point;
 
 const TITLE: &str = "QOL Reweight";
 
@@ -29,7 +30,6 @@ impl Window {
     /// Opens the window on `dataset`, and returns when it is closed.
     pub(crate) fn open(dataset: &Dataset, font: JapaneseFont) -> eframe::Result {
         let centre = dataset.centre();
-        let centre = lat_lon(centre.latitude, centre.longitude);
         let options = NativeOptions {
             viewport: ViewportBuilder::default().with_inner_size(SIZE),
             ..NativeOptions::default()
@@ -39,20 +39,22 @@ impl Window {
             options,
             Box::new(move |creation| {
                 let context = &creation.egui_ctx;
-                context.set_fonts(font.after_the_defaults());
                 let tiles = HttpTiles::new(PaleMap, context.clone());
-                Ok(Box::new(Self::new(centre, Some(tiles))))
+                Ok(Box::new(Self::new(context, font, centre, Some(tiles))))
             }),
         )
     }
 
-    fn new(centre: Position, tiles: Option<HttpTiles>) -> Self {
+    /// The window as it opens in `context`: `font` draws its Japanese text, and
+    /// its map is centred on `centre`.
+    fn new(context: &Context, font: JapaneseFont, centre: Point, tiles: Option<HttpTiles>) -> Self {
+        context.set_fonts(font.after_the_defaults());
         let mut memory = MapMemory::default();
         memory
             .set_zoom(FIRST_ZOOM)
             .expect("the first zoom level is one the map has");
         Self {
-            centre,
+            centre: lat_lon(centre.latitude, centre.longitude),
             tiles,
             memory,
         }
@@ -93,14 +95,38 @@ mod tests {
 
     use super::*;
 
-    /// The window with no tiles to fetch, in the font the tool shows it in.
-    fn window() -> Harness<'static, Window> {
-        let window = Window::new(lat_lon(35.0, 137.0), None);
-        let mut harness = Harness::new_ui_state(|ui, window: &mut Window| window.show(ui), window);
+    const CENTRE: Point = Point {
+        latitude: 35.0,
+        longitude: 137.0,
+    };
+
+    /// The window as the tool makes it, but for its tiles: it has none, so
+    /// nothing is fetched. A harness has no context to make the window in
+    /// until it is itself made, so it starts without one.
+    fn window() -> Harness<'static, Option<Window>> {
+        let show = |ui: &mut Ui, window: &mut Option<Window>| {
+            if let Some(window) = window {
+                window.show(ui);
+            }
+        };
+        let mut harness = Harness::new_ui_state(show, None);
         let font = JapaneseFont::installed().expect("macOS has the font");
-        harness.ctx.set_fonts(font.after_the_defaults());
+        let window = Window::new(&harness.ctx, font, CENTRE, None);
+        *harness.state_mut() = Some(window);
+        // The harness took its size from a frame with no window in it.
+        harness.fit_contents();
         harness.run();
         harness
+    }
+
+    #[test]
+    fn the_map_opens_on_the_centre_it_is_given() {
+        let window = window();
+        let centre = window.state().as_ref().unwrap().centre;
+        assert_eq!(
+            (centre.y(), centre.x()),
+            (CENTRE.latitude, CENTRE.longitude)
+        );
     }
 
     #[test]
