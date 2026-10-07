@@ -1,7 +1,7 @@
 //! The tool's window: the map, beside it what its colours show, and under
 //! them the statements of its sources.
 
-use eframe::egui::{CentralPanel, Context, Frame, Margin, Panel, ScrollArea, Ui, ViewportBuilder};
+use eframe::egui::{CentralPanel, ComboBox, Context, Frame, Margin, Panel, Ui, ViewportBuilder};
 use eframe::epaint::text::FontPriority;
 use eframe::{App, NativeOptions};
 use walkers::{HttpTiles, Map, MapMemory, Position, Tiles};
@@ -23,12 +23,15 @@ const SIZE: [f32; 2] = [1280.0, 800.0];
 const DATA_LABEL: &str = include_str!("../assets/data-source-label.txt").trim_ascii_end();
 const BASE_MAP_LABEL: &str = include_str!("../assets/base-map-source-label.txt").trim_ascii_end();
 
-/// What the screen puts over the list of what the colours can show.
+/// What the screen puts over the pull-down of what the colours can show.
 const SHOWN_LABEL: &str = include_str!("../assets/shown-label.txt").trim_ascii_end();
 
-/// How wide the panel with the legend and that list is, in points: room for
-/// an indicator's name on one line.
+/// How wide the panel with the legend and that pull-down is, in points.
 const CHOICES_WIDTH: f32 = 240.0;
+
+/// How high the pull-down opens at most, in points: some twenty choices,
+/// past which it scrolls.
+const CHOICES_HEIGHT: f32 = 500.0;
 
 /// The space above the legend and under it, in points.
 const CHOICES_SPACE: f32 = 8.0;
@@ -114,7 +117,7 @@ impl Window {
         });
     }
 
-    /// The legend of what is shown, and under it the list to choose from:
+    /// The legend of what is shown, and under it a pull-down to choose from:
     /// the total, then each indicator of the file. A choice colours the
     /// meshes anew.
     fn choose_what_is_shown(&mut self, ui: &mut Ui) {
@@ -122,15 +125,23 @@ impl Window {
         ui.add(Legend::of(self.layer.paint()));
         ui.add_space(CHOICES_SPACE);
         ui.strong(SHOWN_LABEL);
+        let series = self.dataset.series();
         let mut chosen = self.shown;
-        ScrollArea::vertical().show(ui, |ui| {
-            for (at, series) in self.dataset.series().iter().enumerate() {
-                ui.radio_value(&mut chosen, at, series.name());
-            }
-        });
+        // Closed, it takes one line whatever the file holds, and a name too
+        // long for that line is cut short.
+        ComboBox::from_id_salt("shown")
+            .selected_text(series[chosen].name())
+            .width(ui.available_width())
+            .height(CHOICES_HEIGHT)
+            .truncate()
+            .show_ui(ui, |ui| {
+                for (at, series) in series.iter().enumerate() {
+                    ui.selectable_value(&mut chosen, at, series.name());
+                }
+            });
         if chosen != self.shown {
             self.shown = chosen;
-            self.layer = MeshLayer::showing(self.dataset.meshes(), &self.dataset.series()[chosen]);
+            self.layer = MeshLayer::showing(self.dataset.meshes(), &series[chosen]);
         }
     }
 
@@ -184,6 +195,11 @@ mod tests {
     /// nothing is fetched. A harness has no context to make the window in
     /// until it is itself made, so it starts without one.
     fn window() -> Harness<'static, Option<Window>> {
+        window_on(dataset_of(&MESHES, &FILE))
+    }
+
+    /// The same, opened on `dataset`.
+    fn window_on(dataset: Dataset) -> Harness<'static, Option<Window>> {
         let show = |ui: &mut Ui, window: &mut Option<Window>| {
             if let Some(window) = window {
                 window.show(ui);
@@ -191,7 +207,7 @@ mod tests {
         };
         let mut harness = Harness::new_ui_state(show, None);
         let font = JapaneseFont::installed().expect("macOS has the font");
-        let window = Window::new(&harness.ctx, font, dataset_of(&MESHES, &FILE), None);
+        let window = Window::new(&harness.ctx, font, dataset, None);
         *harness.state_mut() = Some(window);
         // The harness took its size from a frame with no window in it.
         harness.fit_contents();
@@ -271,22 +287,55 @@ mod tests {
         assert_eq!(ends(&window()), ["blue", "red"]);
     }
 
-    /// The total, then the indicators in the order the file has them, and
-    /// not the order of the file's rows, where the total comes last.
+    /// Opens the pull-down, so that its choices are on screen.
+    fn open_the_choices(window: &mut Harness<'_, Option<Window>>) {
+        window.get_by_role(Role::ComboBox).click();
+        window.run();
+    }
+
+    /// Opens the pull-down and picks the choice named `name` from it.
+    fn choose(window: &mut Harness<'_, Option<Window>>, name: &str) {
+        open_the_choices(window);
+        let choice = window
+            .query_all_by_label(name)
+            .find(|named| named.accesskit_node().role() != Role::ComboBox)
+            .expect("the pull-down has the choice");
+        choice.scroll_to_me();
+        window.run();
+        window
+            .query_all_by_label(name)
+            .find(|named| named.accesskit_node().role() != Role::ComboBox)
+            .expect("the pull-down has the choice")
+            .click();
+        window.run();
+    }
+
+    /// Closed, the pull-down names what is shown, the total at first. Open,
+    /// it has the total and then the indicators in the order the file has
+    /// them, which is not the order of the file's rows, where the total comes
+    /// last.
     #[test]
     fn the_choices_are_the_total_then_the_indicators_of_the_file() {
-        let window = window();
-        let choices: Vec<_> = window
-            .query_all_by_role(Role::RadioButton)
+        let mut window = window();
+        window.get_by_label(SHOWN_LABEL);
+        let shown = window.get_by_role(Role::ComboBox).accesskit_node().value();
+        assert_eq!(shown.as_deref(), Some("Total"));
+
+        open_the_choices(&mut window);
+        let mut choices: Vec<_> = ["Total", "Stations", "Floods"]
+            .into_iter()
+            .flat_map(|name| window.query_all_by_label(name))
+            .filter(|named| named.accesskit_node().role() != Role::ComboBox)
             .map(|choice| {
-                choice
-                    .accesskit_node()
-                    .label()
-                    .expect("a choice has a name")
+                (
+                    choice.rect().top(),
+                    choice.accesskit_node().label().unwrap(),
+                )
             })
             .collect();
-        assert_eq!(choices, ["Total", "Stations", "Floods"]);
-        window.get_by_label(SHOWN_LABEL);
+        choices.sort_by(|above, below| above.0.total_cmp(&below.0));
+        let names: Vec<_> = choices.into_iter().map(|(_, name)| name).collect();
+        assert_eq!(names, ["Total", "Stations", "Floods"]);
     }
 
     #[test]
@@ -296,19 +345,30 @@ mod tests {
         window.get_by_label("+2.0");
         window.get_by_label("-2.0");
 
-        window.get_by_label("Floods").click();
-        window.run();
+        choose(&mut window, "Floods");
 
         assert_eq!(ends(&window), ["red", "blue"]);
         window.get_by_label("+3.0");
         window.get_by_label("-3.0");
         assert!(window.query_by_label("+2.0").is_none());
+        let shown = window.get_by_role(Role::ComboBox).accesskit_node().value();
+        assert_eq!(shown.as_deref(), Some("Floods"));
     }
 
-    /// A file with more indicators than a low window has room for, the last
-    /// of which falls where the total rises: the list scrolls to it.
     #[test]
-    fn an_indicator_below_the_window_can_be_scrolled_to_and_chosen() {
+    fn choosing_the_total_again_brings_its_colours_back() {
+        let mut window = window();
+        choose(&mut window, "Floods");
+        choose(&mut window, "Total");
+        assert_eq!(ends(&window), ["blue", "red"]);
+        window.get_by_label("+2.0");
+    }
+
+    /// A file with more indicators than the open pull-down shows at once,
+    /// the last of which falls where the total rises: the pull-down scrolls
+    /// to it. Closed, the pull-down takes the room it takes for a short file.
+    #[test]
+    fn the_last_of_many_indicators_can_be_scrolled_to_and_chosen() {
         let same: &[f64] = &[0.25, 0.25, 0.25];
         let many: Vec<(String, String)> = (0..40)
             .map(|at| (format!("X{at:02}"), format!("Indicator {at}")))
@@ -320,27 +380,15 @@ mod tests {
         file.push(("Y00", "Last", &[3.0, 0.0, -3.0]));
         file.push(("QOL", "Total", &[-2.0, 0.5, 1.0]));
 
-        let show = |ui: &mut Ui, window: &mut Option<Window>| {
-            if let Some(window) = window {
-                window.show(ui);
-            }
-        };
-        let mut window = Harness::builder()
-            .with_size([900.0, 400.0])
-            .build_ui_state(show, None);
-        let font = JapaneseFont::installed().expect("macOS has the font");
-        let dataset = dataset_of(&MESHES, &file);
-        *window.state_mut() = Some(Window::new(&window.ctx, font, dataset, None));
-        window.run();
-        let screen = window.ctx.content_rect();
+        let closed = window().get_by_role(Role::ComboBox).rect();
+        let mut window = window_on(dataset_of(&MESHES, &file));
+        assert_eq!(
+            window.get_by_role(Role::ComboBox).rect().size(),
+            closed.size()
+        );
         assert_eq!(ends(&window), ["red", "blue"]);
-        assert!(!screen.contains_rect(window.get_by_label("Last").rect()));
 
-        window.get_by_label("Last").scroll_to_me();
-        window.run();
-        assert!(screen.contains_rect(window.get_by_label("Last").rect()));
-        window.get_by_label("Last").click();
-        window.run();
+        choose(&mut window, "Last");
         assert_eq!(ends(&window), ["blue", "red"]);
     }
 
@@ -386,17 +434,6 @@ mod tests {
             "{highest:?} {right:?}"
         );
         assert!(bar.iter().all(|corner| corner.pos.y <= lowest.top()));
-    }
-
-    #[test]
-    fn choosing_the_total_again_brings_its_colours_back() {
-        let mut window = window();
-        window.get_by_label("Floods").click();
-        window.run();
-        window.get_by_label("Total").click();
-        window.run();
-        assert_eq!(ends(&window), ["blue", "red"]);
-        window.get_by_label("+2.0");
     }
 
     #[test]
