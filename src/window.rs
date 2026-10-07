@@ -305,6 +305,45 @@ mod tests {
         assert!(window.query_by_label("+2.0").is_none());
     }
 
+    /// A file with more indicators than a low window has room for, the last
+    /// of which falls where the total rises: the list scrolls to it.
+    #[test]
+    fn an_indicator_below_the_window_can_be_scrolled_to_and_chosen() {
+        let same: &[f64] = &[0.25, 0.25, 0.25];
+        let many: Vec<(String, String)> = (0..40)
+            .map(|at| (format!("X{at:02}"), format!("Indicator {at}")))
+            .collect();
+        let mut file: Vec<(&str, &str, &[f64])> = many
+            .iter()
+            .map(|(code, name)| (code.as_str(), name.as_str(), same))
+            .collect();
+        file.push(("Y00", "Last", &[3.0, 0.0, -3.0]));
+        file.push(("QOL", "Total", &[-2.0, 0.5, 1.0]));
+
+        let show = |ui: &mut Ui, window: &mut Option<Window>| {
+            if let Some(window) = window {
+                window.show(ui);
+            }
+        };
+        let mut window = Harness::builder()
+            .with_size([900.0, 400.0])
+            .build_ui_state(show, None);
+        let font = JapaneseFont::installed().expect("macOS has the font");
+        let dataset = dataset_of(&MESHES, &file);
+        *window.state_mut() = Some(Window::new(&window.ctx, font, dataset, None));
+        window.run();
+        let screen = window.ctx.content_rect();
+        assert_eq!(ends(&window), ["red", "blue"]);
+        assert!(!screen.contains_rect(window.get_by_label("Last").rect()));
+
+        window.get_by_label("Last").scroll_to_me();
+        window.run();
+        assert!(screen.contains_rect(window.get_by_label("Last").rect()));
+        window.get_by_label("Last").click();
+        window.run();
+        assert_eq!(ends(&window), ["blue", "red"]);
+    }
+
     /// The bar is over its marks, with the mark of the lower end under the
     /// end where the bar is red and that of the upper end where it is blue.
     #[test]
