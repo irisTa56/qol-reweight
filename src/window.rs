@@ -87,8 +87,7 @@ impl Window {
             let tiles = self.tiles.as_mut().map(|tiles| tiles as &mut dyn Tiles);
             let layer = &self.layer;
             Map::new(tiles, &mut self.memory, self.centre).show(ui, |ui, _, projector, _| {
-                let map = ui.max_rect();
-                ui.painter().with_clip_rect(map).add(layer.shape(projector));
+                ui.painter().add(layer.shape(projector));
             });
         });
     }
@@ -150,7 +149,8 @@ mod tests {
     }
 
     /// The meshes are among what the window draws: a rectangle for each, all
-    /// of them in the middle of the map, since the map opens on their extent.
+    /// of them in the middle of the map and taking up much of it, since the
+    /// map opens on their extent.
     #[test]
     fn the_meshes_are_drawn_in_the_middle_of_the_map() {
         let mut window = window();
@@ -170,7 +170,12 @@ mod tests {
             panic!("the window draws {} sets of triangles", squares.len());
         };
         let screen = window.ctx.content_rect();
-        assert!(squares.is_positive(), "{squares:?}");
+        // The map opens at the zoom that fits them, not at one where they
+        // are a speck.
+        assert!(
+            squares.height() > screen.height() / 2.0,
+            "{squares:?} in {screen:?}"
+        );
         assert!(screen.contains_rect(*squares), "{squares:?} in {screen:?}");
         assert!(
             (squares.center().x - screen.center().x).abs() < 1.0,

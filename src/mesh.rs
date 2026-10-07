@@ -24,25 +24,6 @@ const ROWS_PER_DEGREE: u32 = 240;
 /// How many half grid squares one degree of longitude spans, each being 22.5".
 const COLUMNS_PER_DEGREE: u32 = 160;
 
-/// A place on the ground.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) struct Point {
-    latitude: f64,
-    longitude: f64,
-}
-
-impl Point {
-    /// Degrees north of the equator.
-    pub(crate) fn latitude(self) -> f64 {
-        self.latitude
-    }
-
-    /// Degrees east of Greenwich.
-    pub(crate) fn longitude(self) -> f64 {
-        self.longitude
-    }
-}
-
 /// The area some half grid squares cover between them, held as the rows and
 /// columns furthest out.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -92,19 +73,6 @@ impl Extent {
     /// easternmost column.
     pub(crate) fn east(self) -> f64 {
         100.0 + f64::from(self.east + 1) / f64::from(COLUMNS_PER_DEGREE)
-    }
-
-    /// The middle of the area: midway between its southern and northern
-    /// edges, and between its western and eastern ones.
-    pub(crate) fn centre(self) -> Point {
-        // The northern edge is one row past the northernmost row, and the
-        // eastern edge one column past the easternmost column.
-        let rows = f64::from(self.south + self.north + 1) / 2.0;
-        let columns = f64::from(self.west + self.east + 1) / 2.0;
-        Point {
-            latitude: rows / f64::from(ROWS_PER_DEGREE),
-            longitude: 100.0 + columns / f64::from(COLUMNS_PER_DEGREE),
-        }
     }
 }
 
@@ -196,35 +164,17 @@ mod tests {
         assert_eq!(Extent::of([]), None);
     }
 
-    #[test]
-    fn the_centre_of_one_square_is_its_middle() {
-        let square = mesh("543823431");
-        let centre = Extent::of([square]).unwrap().centre();
-        assert!(close(
-            centre.latitude(),
-            (square.south() + square.north()) / 2.0
-        ));
-        assert!(close(
-            centre.longitude(),
-            (square.west() + square.east()) / 2.0
-        ));
-    }
-
     /// The first square is the one further south and east, so each edge of
     /// the area comes from the square that reaches furthest that way.
     #[test]
-    fn the_centre_is_midway_between_the_outermost_edges() {
+    fn an_area_reaches_to_the_outermost_edge_each_way() {
         let south_east = mesh("533900001");
         let north_west = mesh("543823434");
-        let centre = Extent::of([south_east, north_west]).unwrap().centre();
-        assert!(close(
-            centre.latitude(),
-            (south_east.south() + north_west.north()) / 2.0
-        ));
-        assert!(close(
-            centre.longitude(),
-            (north_west.west() + south_east.east()) / 2.0
-        ));
+        let area = Extent::of([south_east, north_west]).unwrap();
+        assert_eq!(area.south(), south_east.south());
+        assert_eq!(area.north(), north_west.north());
+        assert_eq!(area.west(), north_west.west());
+        assert_eq!(area.east(), south_east.east());
     }
 
     fn close(actual: f64, expected: f64) -> bool {

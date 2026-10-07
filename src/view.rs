@@ -32,9 +32,12 @@ impl View {
         let high = (northing(extent.north()) - northing(extent.south())) / (2.0 * PI);
         let across = f64::from(size.x) * FILL / (wide * WORLD_AT_ZOOM_0);
         let down = f64::from(size.y) * FILL / (high * WORLD_AT_ZOOM_0);
-        let centre = extent.centre();
+        // Midway between the edges as the map draws them, which for the
+        // northern and southern ones is not midway between their latitudes.
+        let latitude = latitude_at((northing(extent.north()) + northing(extent.south())) / 2.0);
+        let longitude = (extent.west() + extent.east()) / 2.0;
         Self {
-            centre: lat_lon(centre.latitude(), centre.longitude()),
+            centre: lat_lon(latitude, longitude),
             zoom: across.min(down).log2().clamp(0.0, f64::from(DEEPEST_ZOOM)),
         }
     }
@@ -52,6 +55,12 @@ impl View {
 /// Mercator map whose equator is 2 pi long.
 fn northing(latitude: f64) -> f64 {
     (PI / 4.0 + latitude.to_radians() / 2.0).tan().ln()
+}
+
+/// The latitude, in degrees, that lies `northing` north of the equator on
+/// that map.
+fn latitude_at(northing: f64) -> f64 {
+    (2.0 * northing.exp().atan() - PI / 2.0).to_degrees()
 }
 
 #[cfg(test)]
@@ -85,7 +94,10 @@ mod tests {
     fn assert_fits(extent: Extent) -> Rect {
         let area = on_screen(extent, View::fitting(extent, SIZE));
         let allowed = SIZE * FILL as f32;
-        assert!((area.center().x - SIZE.x / 2.0).abs() < 0.5, "{area:?}");
+        assert!(
+            (area.center() - (SIZE / 2.0).to_pos2()).length() < 0.5,
+            "{area:?}"
+        );
         assert!(area.width() <= allowed.x + 0.5, "{area:?}");
         assert!(area.height() <= allowed.y + 0.5, "{area:?}");
         let full_width = (area.width() - allowed.x).abs() < 0.5;

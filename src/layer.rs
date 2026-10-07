@@ -56,7 +56,6 @@ mod tests {
     use walkers::MapMemory;
 
     use super::*;
-    use crate::mesh::Extent;
     use crate::test_support::dataset_of_totals;
 
     /// The map's place in the window.
@@ -65,10 +64,11 @@ mod tests {
     /// A map at `zoom`, centred on the middle of the square `code` names.
     fn centred_on(code: &str, zoom: f64) -> Projector {
         let square = HalfMesh::from_code(code).unwrap();
-        let centre = Extent::of([square]).unwrap().centre();
+        let latitude = (square.south() + square.north()) / 2.0;
+        let longitude = (square.west() + square.east()) / 2.0;
         let mut memory = MapMemory::default();
         memory.set_zoom(zoom).unwrap();
-        Projector::new(MAP, &memory, lat_lon(centre.latitude(), centre.longitude()))
+        Projector::new(MAP, &memory, lat_lon(latitude, longitude))
     }
 
     /// Each square the layer draws: its rectangle on screen and its colour.
