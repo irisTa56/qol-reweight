@@ -70,8 +70,8 @@ impl Widget for Legend {
     }
 }
 
-/// `value`, which is not negative, rounded to two figures: enough to tell
-/// one scale from another, whatever size the values of a file have.
+/// `value`, which is not negative, written to its first two figures and
+/// zeros from there: a scale's reach has no more figures than that.
 fn two_figures(value: f64) -> String {
     if value == 0.0 {
         return "0".to_owned();
@@ -110,26 +110,28 @@ mod tests {
 
     #[test]
     fn the_ends_are_marked_with_plus_and_minus_the_reach_and_the_middle_with_zero() {
-        assert_eq!(marks(1.234), ["-1.2", "0", "+1.2"]);
+        assert_eq!(marks(1.2), ["-1.2", "0", "+1.2"]);
     }
 
     #[test]
     fn a_reach_of_any_size_is_written_to_two_figures() {
-        assert_eq!(marks(0.0456)[2], "+0.046");
+        assert_eq!(marks(0.046)[2], "+0.046");
         assert_eq!(marks(2.0)[2], "+2.0");
-        assert_eq!(marks(37.5)[2], "+38");
-        assert_eq!(marks(1234.0)[2], "+1200");
-        assert_eq!(marks(987654.0)[2], "+990000");
+        assert_eq!(marks(38.0)[2], "+38");
+        assert_eq!(marks(1200.0)[2], "+1200");
+        assert_eq!(marks(990000.0)[2], "+990000");
         assert_eq!(marks(3e-10)[2], "+0.00000000030");
     }
 
-    /// Rounded to two figures, each of these has its first figure a place
-    /// further left than before.
+    /// The scale rounds its reach up to two figures, so the mark is the very
+    /// value the colours were worked out from.
     #[test]
-    fn a_reach_that_rounds_up_to_another_figure_is_still_written_to_two() {
-        assert_eq!(marks(9.96)[2], "+10");
-        assert_eq!(marks(0.996)[2], "+1.0");
-        assert_eq!(marks(0.0996)[2], "+0.10");
+    fn the_marks_are_the_reach_the_scale_has() {
+        for size in [1.234, 9.96, 0.0996, 987_654.0] {
+            let paint = paint(size);
+            let written: f64 = Legend::of(paint).marks()[2].parse().unwrap();
+            assert_eq!(written, paint.reach(), "for {size}");
+        }
     }
 
     #[test]
