@@ -19,20 +19,20 @@ pub(crate) struct Dataset {
 /// A mesh of the file.
 #[derive(Debug, PartialEq)]
 pub(crate) struct Mesh {
-    pub(crate) code: String,
-    pub(crate) square: HalfMesh,
+    code: String,
+    square: HalfMesh,
     /// The name of the municipality the file puts the mesh in.
-    pub(crate) city: String,
+    city: String,
 }
 
 /// What the file publishes under one `IndicatorCode`: the total, or an
 /// indicator.
 #[derive(Debug, PartialEq)]
 pub(crate) struct Series {
-    pub(crate) code: String,
-    pub(crate) name: String,
+    code: String,
+    name: String,
     /// One value for each mesh, in the order of [`Dataset::meshes`].
-    pub(crate) values: Vec<f64>,
+    values: Vec<f64>,
 }
 
 impl Dataset {
