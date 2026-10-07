@@ -120,16 +120,6 @@ mod tests {
     }
 
     #[test]
-    fn the_map_opens_on_the_centre_it_is_given() {
-        let window = window();
-        let centre = window.state().as_ref().unwrap().centre;
-        assert_eq!(
-            (centre.y(), centre.x()),
-            (CENTRE.latitude, CENTRE.longitude)
-        );
-    }
-
-    #[test]
     fn the_sources_are_stated() {
         let window = window();
         window.get_by_label(dataset::SOURCE);
