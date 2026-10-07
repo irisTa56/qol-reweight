@@ -24,6 +24,14 @@ const ROWS_PER_DEGREE: u32 = 240;
 /// How many half grid squares one degree of longitude spans, each being 22.5".
 const COLUMNS_PER_DEGREE: u32 = 160;
 
+/// A place on the ground, in degrees north of the equator and east of
+/// Greenwich.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Point {
+    pub(crate) latitude: f64,
+    pub(crate) longitude: f64,
+}
+
 /// A half grid square, held as its place among all such squares.
 ///
 /// Both counts are whole numbers, so two squares that share an edge compute

@@ -28,3 +28,12 @@ The terms are the Statistics Bureau of Japan's, from [`地域メッシュ統計�
 | prefecture | `都道府県` |
 | metropolitan area | `都市圏` |
 | municipality | `市区町村` |
+
+## The base map and the screen
+
+| In the code | Japanese term |
+| --- | --- |
+| Geospatial Information Authority of Japan, GSI | `国土地理院` |
+| GSI tiles | `地理院タイル` |
+| pale map | `淡色地図` |
+| Hiragino Sans | `ヒラギノ角ゴシック` |

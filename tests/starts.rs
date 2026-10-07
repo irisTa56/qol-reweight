@@ -1,6 +1,6 @@
-//! Starts of the tool that must end without a map: it says which file it
-//! expects and where that file comes from, and exits. One start with a file it
-//! can read stands beside them, so that refusing everything does not pass.
+//! Starts of the tool that must end without a map. For want of a file it can
+//! read, it says which file it expects and where that file comes from, and
+//! exits; for want of the font, it says so and exits.
 
 use std::fs;
 use std::path::PathBuf;
@@ -76,10 +76,18 @@ fn started_with_a_folder() {
     assert!(said.contains("it could not be opened or read"), "{said}");
 }
 
+/// A file it can read gets past the file, to the font: the tool is not
+/// refusing everything. Only macOS has the font, and there this start would
+/// open the window and wait for it to be closed, so it is tried elsewhere.
+#[cfg(not(target_os = "macos"))]
 #[test]
-fn started_with_a_file_it_can_read() {
+fn started_without_the_font() {
     let path = made_up_file("made-up.csv");
     let output = start(&[path.to_str().unwrap()]);
-    assert!(output.status.success(), "it refused a file it can read");
-    assert!(output.stderr.is_empty(), "it complained");
+    let said = String::from_utf8_lossy(&output.stderr);
+    assert!(!output.status.success(), "it exited as if it had worked");
+    assert!(output.stdout.is_empty(), "it printed a result");
+    assert!(said.contains("The map is not shown"), "{said}");
+    assert!(said.contains("no font of the family"), "{said}");
+    assert!(!said.contains("Usage:"), "{said}");
 }
