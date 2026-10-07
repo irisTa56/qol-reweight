@@ -1,6 +1,7 @@
 //! The tool's window: the map, and under it the statements of its sources.
 
 use eframe::egui::{CentralPanel, Context, Frame, Margin, Panel, Ui, ViewportBuilder};
+use eframe::epaint::text::FontPriority;
 use eframe::{App, NativeOptions};
 use walkers::{HttpTiles, Map, MapMemory, Position, Tiles, lat_lon};
 
@@ -57,7 +58,7 @@ impl Window {
     /// The window as it opens in `context`: `font` draws its Japanese text, and
     /// its map is centred on `centre`.
     fn new(context: &Context, font: JapaneseFont, centre: Point, tiles: Option<HttpTiles>) -> Self {
-        context.set_fonts(font.before_the_defaults());
+        context.add_font(font.into_insert(FontPriority::Highest));
         let mut memory = MapMemory::default();
         memory
             .set_zoom(FIRST_ZOOM)
@@ -105,7 +106,7 @@ impl App for Window {
 /// tool has no font to state the sources in, and shows no map.
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
-    use eframe::egui::{FontDefinitions, FontId, OutputCommand};
+    use eframe::egui::{FontFamily, FontId, OutputCommand};
     use egui_kittest::Harness;
     use egui_kittest::kittest::Queryable as _;
 
@@ -161,34 +162,32 @@ mod tests {
         assert_eq!(opened, [basemap::TILE_LIST]);
     }
 
-    /// The window's own context has the fonts, in the order the font gives
-    /// them.
+    /// The window's own context has the font, before egui's own.
     #[test]
     fn the_window_draws_its_text_in_the_font() {
         let window = window();
         let font = JapaneseFont::installed().expect("macOS has the font");
+        let name = font.into_insert(FontPriority::Highest).name;
         let families = window
             .ctx
             .fonts(|fonts| fonts.definitions().families.clone());
-        assert_eq!(families, font.before_the_defaults().families);
+        for family in [FontFamily::Proportional, FontFamily::Monospace] {
+            assert_eq!(families[&family][0], name);
+            assert!(families[&family].len() > 1, "egui's fonts are gone");
+        }
     }
 
-    /// Which characters the fonts lack, with egui's own put first or not at
-    /// all. egui tells a missing character by the font that draws the mark
-    /// for one, which is the first font, so with the Japanese font first it
-    /// would report every character of that font as missing.
+    /// Whether the fonts lack a character of `text`, with the Japanese font
+    /// after egui's own or not there at all. egui tells a missing character
+    /// by the font that draws the mark for one, which is the first font, so
+    /// with the Japanese font first it would report every character of that
+    /// font as missing.
     fn lacks(text: &str, with_the_font: bool) -> bool {
-        let mut fonts = FontDefinitions::default();
-        if with_the_font {
-            fonts = JapaneseFont::installed()
-                .expect("macOS has the font")
-                .before_the_defaults();
-            for names in fonts.families.values_mut() {
-                names.rotate_left(1);
-            }
-        }
         let mut harness = Harness::new_ui(|_| {});
-        harness.ctx.set_fonts(fonts);
+        if with_the_font {
+            let font = JapaneseFont::installed().expect("macOS has the font");
+            harness.ctx.add_font(font.into_insert(FontPriority::Lowest));
+        }
         harness.run();
         harness
             .ctx

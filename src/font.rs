@@ -3,9 +3,8 @@
 //! egui's own fonts hold no Japanese glyphs, and the statements of the map's
 //! sources are Japanese, so without this font the tool shows no map.
 
-use std::sync::Arc;
-
-use eframe::egui::{FontData, FontDefinitions, FontFamily};
+use eframe::egui::FontFamily;
+use eframe::epaint::text::{FontData, FontInsert, FontPriority, InsertFontFamily};
 use fontdb::{Database, Family, Query};
 use thiserror::Error;
 
@@ -50,24 +49,23 @@ impl JapaneseFont {
             .ok_or(FontError::NotRead)
     }
 
-    /// egui's fonts with this one before them, so that it draws every
-    /// character it has and they draw the rest. A line of text that two fonts
-    /// drew between them would not sit on one baseline.
-    pub(crate) fn before_the_defaults(self) -> FontDefinitions {
-        let mut fonts = FontDefinitions::default();
+    /// The font as egui takes it in, to go before egui's own fonts or after
+    /// them. Before them it draws every character it has and they draw the
+    /// rest, so that a line of text sits on one baseline, which a line two
+    /// fonts drew between them would not.
+    pub(crate) fn into_insert(self, priority: FontPriority) -> FontInsert {
         let data = FontData {
             index: self.face,
             ..FontData::from_owned(self.file)
         };
-        fonts.font_data.insert(FAMILY.to_owned(), Arc::new(data));
-        for family in [FontFamily::Proportional, FontFamily::Monospace] {
-            fonts
-                .families
-                .entry(family)
-                .or_default()
-                .insert(0, FAMILY.to_owned());
-        }
-        fonts
+        let families = [FontFamily::Proportional, FontFamily::Monospace]
+            .into_iter()
+            .map(|family| InsertFontFamily {
+                family,
+                priority: priority.clone(),
+            })
+            .collect();
+        FontInsert::new(FAMILY, data, families)
     }
 }
 
@@ -82,18 +80,5 @@ mod tests {
             JapaneseFont::among(&fonts),
             Err(FontError::NotInstalled)
         ));
-    }
-
-    #[test]
-    fn the_font_comes_before_eguis_own() {
-        let font = JapaneseFont {
-            file: Vec::new(),
-            face: 0,
-        };
-        let fonts = font.before_the_defaults();
-        for family in [FontFamily::Proportional, FontFamily::Monospace] {
-            assert_eq!(fonts.families[&family][0], FAMILY);
-            assert!(fonts.families[&family].len() > 1, "egui's fonts are gone");
-        }
     }
 }
