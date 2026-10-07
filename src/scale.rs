@@ -10,9 +10,10 @@ use colorous::{Color, Gradient};
 /// above, and a pale grey between them.
 const COLOURS: Gradient = colorous::RED_BLUE;
 
-/// The share of the values shown whose size the two ends of the scale cover.
-/// The few beyond it take the colour of an end, which keeps one extreme mesh
-/// from leaving all the others near the neutral colour.
+/// The share of the values shown whose size the two ends of the scale cover,
+/// but for the rounding of the size the ends stand for. The few beyond it
+/// take the colour of an end, which keeps one extreme mesh from leaving all
+/// the others near the neutral colour.
 const COVERED: f64 = 0.98;
 
 /// The scale for one set of values: which value its ends stand for.
