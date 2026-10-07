@@ -43,6 +43,11 @@ impl Mesh {
 }
 
 impl Series {
+    /// What the file calls the total or the indicator.
+    pub(crate) fn name(&self) -> &str {
+        &self.name
+    }
+
     /// One value for each mesh, in the order of [`Dataset::meshes`].
     pub(crate) fn values(&self) -> &[f64] {
         &self.values
@@ -59,11 +64,6 @@ impl Dataset {
     pub(crate) fn extent(&self) -> Extent {
         Extent::of(self.meshes.iter().map(|mesh| mesh.square))
             .expect("a file that reads has a mesh")
-    }
-
-    /// The published total, one value for each mesh.
-    pub(crate) fn total(&self) -> &Series {
-        &self.series[0]
     }
 
     /// The published total, then each indicator of the file.

@@ -15,6 +15,8 @@ const OPACITY: u8 = 170;
 /// Each mesh's square, and the colour it is filled with.
 pub(crate) struct MeshLayer {
     squares: Vec<(HalfMesh, Color32)>,
+    /// The scale the colours were taken from.
+    scale: Scale,
 }
 
 impl MeshLayer {
@@ -31,7 +33,12 @@ impl MeshLayer {
                 (mesh.square(), colour)
             })
             .collect();
-        Self { squares }
+        Self { squares, scale }
+    }
+
+    /// The scale that says which value each colour stands for.
+    pub(crate) fn scale(&self) -> Scale {
+        self.scale
     }
 
     /// The squares as `projector` places them on screen, four corners each in
@@ -74,7 +81,7 @@ mod tests {
     /// Each square the layer draws: its rectangle on screen and its colour.
     fn drawn(totals: &[(&str, f64)], projector: &Projector) -> Vec<(Rect, Color32)> {
         let dataset = dataset_of_totals(totals);
-        let layer = MeshLayer::showing(dataset.meshes(), dataset.total());
+        let layer = MeshLayer::showing(dataset.meshes(), &dataset.series()[0]);
         let Shape::Mesh(triangles) = layer.shape(projector) else {
             panic!("the layer is not drawn as triangles");
         };

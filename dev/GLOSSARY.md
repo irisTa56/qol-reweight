@@ -34,6 +34,8 @@ The terms are the Statistics Bureau of Japan's, from [`地域メッシュ統計�
 | In the code | Japanese term |
 | --- | --- |
 | base map | `ベースマップ` |
+| legend | `凡例` |
+| what the colours show | `色で表す値` |
 | source, of the data or of the base map | `出典` |
 | Geospatial Information Authority of Japan, GSI | `国土地理院` |
 | GSI tiles | `地理院タイル` |

@@ -14,8 +14,8 @@ mod basemap;
 mod dataset;
 mod font;
 mod layer;
+mod legend;
 mod mesh;
-#[cfg_attr(not(test), expect(dead_code, reason = "nothing shows a legend yet"))]
 mod scale;
 #[cfg(test)]
 mod test_support;
