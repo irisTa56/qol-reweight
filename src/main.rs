@@ -6,16 +6,20 @@ use font::JapaneseFont;
 use window::Window;
 
 mod basemap;
-// Until the meshes are drawn, a file is read only for where its meshes are.
-#[cfg_attr(not(test), expect(dead_code, reason = "nothing draws a mesh yet"))]
+// Until what is shown can be chosen, only the total of a file is read.
+#[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "nothing chooses an indicator yet")
+)]
 mod dataset;
 mod font;
-#[cfg_attr(not(test), expect(dead_code, reason = "nothing draws a mesh yet"))]
+mod layer;
 mod mesh;
-#[cfg_attr(not(test), expect(dead_code, reason = "nothing draws a mesh yet"))]
+#[cfg_attr(not(test), expect(dead_code, reason = "nothing shows a legend yet"))]
 mod scale;
 #[cfg(test)]
 mod test_support;
+mod view;
 mod window;
 
 /// What the tool is started with, and where that comes from.

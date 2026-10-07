@@ -2,6 +2,8 @@
 
 use proptest::prelude::*;
 
+use crate::dataset::Dataset;
+
 /// The digits of a half grid square code, named as `mesh`'s documentation
 /// names them.
 #[derive(Clone, Copy, Debug)]
@@ -63,4 +65,18 @@ pub(crate) fn valid_digits() -> impl Strategy<Value = Digits> {
 /// The code of any half grid square.
 pub(crate) fn valid_code() -> impl Strategy<Value = String> {
     valid_digits().prop_map(Digits::code)
+}
+
+/// A file's worth of meshes with a published total each and no indicator,
+/// read as the tool reads a file.
+pub(crate) fn dataset_of_totals(totals: &[(&str, f64)]) -> Dataset {
+    let mut file = String::from(
+        "KeyCode,PrefectureCode,CityCode,Prefecture,City,IndicatorCode,Indicator,Value\n",
+    );
+    for (code, total) in totals {
+        file.push_str(&format!(
+            "{code},00,00000,a prefecture,a city,QOL,Total,{total}\n"
+        ));
+    }
+    Dataset::read(file.as_bytes()).expect("a file made to be read")
 }

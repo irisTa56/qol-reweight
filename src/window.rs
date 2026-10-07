@@ -3,21 +3,18 @@
 use eframe::egui::{CentralPanel, Context, Frame, Margin, Panel, Ui, ViewportBuilder};
 use eframe::epaint::text::FontPriority;
 use eframe::{App, NativeOptions};
-use walkers::{HttpTiles, Map, MapMemory, Position, Tiles, lat_lon};
+use walkers::{HttpTiles, Map, MapMemory, Position, Tiles};
 
 use crate::basemap::{self, PaleMap};
 use crate::dataset::{self, Dataset};
 use crate::font::JapaneseFont;
-use crate::mesh::Point;
+use crate::layer::MeshLayer;
+use crate::view::View;
 
 const TITLE: &str = "QOL Reweight";
 
 /// The window's size when it opens, in points.
 const SIZE: [f32; 2] = [1280.0, 800.0];
-
-/// The zoom level the map opens at, which shows a city and what lies around
-/// it.
-const FIRST_ZOOM: f64 = 10.0;
 
 /// What the screen puts before the statement of the data's source, and before
 /// that of the base map's.
@@ -34,12 +31,15 @@ pub(crate) struct Window {
     /// The base map's tiles, or none where nothing may be fetched.
     tiles: Option<HttpTiles>,
     memory: MapMemory,
+    layer: MeshLayer,
 }
 
 impl Window {
-    /// Opens the window on `dataset`, and returns when it is closed.
+    /// Opens the window on `dataset`, showing its published total, and
+    /// returns when it is closed.
     pub(crate) fn open(dataset: &Dataset, font: JapaneseFont) -> eframe::Result {
-        let centre = dataset.centre();
+        let view = View::fitting(dataset.extent(), SIZE.into());
+        let layer = MeshLayer::showing(dataset.meshes(), dataset.total());
         let options = NativeOptions {
             viewport: ViewportBuilder::default().with_inner_size(SIZE),
             ..NativeOptions::default()
@@ -50,23 +50,30 @@ impl Window {
             Box::new(move |creation| {
                 let context = &creation.egui_ctx;
                 let tiles = HttpTiles::new(PaleMap, context.clone());
-                Ok(Box::new(Self::new(context, font, centre, Some(tiles))))
+                Ok(Box::new(Self::new(context, font, view, layer, Some(tiles))))
             }),
         )
     }
 
     /// The window as it opens in `context`: `font` draws its Japanese text, and
-    /// its map is centred on `centre`.
-    fn new(context: &Context, font: JapaneseFont, centre: Point, tiles: Option<HttpTiles>) -> Self {
+    /// its map shows `view`, with `layer` over the base map.
+    fn new(
+        context: &Context,
+        font: JapaneseFont,
+        view: View,
+        layer: MeshLayer,
+        tiles: Option<HttpTiles>,
+    ) -> Self {
         context.add_font(font.into_insert(FontPriority::Highest));
         let mut memory = MapMemory::default();
         memory
-            .set_zoom(FIRST_ZOOM)
-            .expect("the first zoom level is one the map has");
+            .set_zoom(view.zoom())
+            .expect("a view's zoom level is one the map has");
         Self {
-            centre: lat_lon(centre.latitude(), centre.longitude()),
+            centre: view.centre(),
             tiles,
             memory,
+            layer,
         }
     }
 
@@ -78,7 +85,11 @@ impl Window {
             .show(ui, Self::state_the_sources);
         CentralPanel::default().frame(Frame::NONE).show(ui, |ui| {
             let tiles = self.tiles.as_mut().map(|tiles| tiles as &mut dyn Tiles);
-            ui.add(Map::new(tiles, &mut self.memory, self.centre));
+            let layer = &self.layer;
+            Map::new(tiles, &mut self.memory, self.centre).show(ui, |ui, _, projector, _| {
+                let map = ui.max_rect();
+                ui.painter().with_clip_rect(map).add(layer.shape(projector));
+            });
         });
     }
 
@@ -106,12 +117,15 @@ impl App for Window {
 /// tool has no font to state the sources in, and shows no map.
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
-    use eframe::egui::{FontFamily, FontId, OutputCommand};
+    use eframe::egui::{FontFamily, FontId, OutputCommand, Rect, Shape};
     use egui_kittest::Harness;
     use egui_kittest::kittest::Queryable as _;
 
     use super::*;
-    use crate::mesh::{Extent, HalfMesh};
+    use crate::test_support::dataset_of_totals;
+
+    /// The meshes of the file the window is opened on, with their totals.
+    const MESHES: [(&str, f64); 3] = [("543823431", -1.0), ("543823432", 0.5), ("543823434", 2.0)];
 
     /// The window as the tool makes it, but for its tiles: it has none, so
     /// nothing is fetched. A harness has no context to make the window in
@@ -124,14 +138,44 @@ mod tests {
         };
         let mut harness = Harness::new_ui_state(show, None);
         let font = JapaneseFont::installed().expect("macOS has the font");
-        let square = HalfMesh::from_code("543823431").expect("a code written by hand");
-        let centre = Extent::of([square]).expect("one square").centre();
-        let window = Window::new(&harness.ctx, font, centre, None);
+        let dataset = dataset_of_totals(&MESHES);
+        let view = View::fitting(dataset.extent(), SIZE.into());
+        let layer = MeshLayer::showing(dataset.meshes(), dataset.total());
+        let window = Window::new(&harness.ctx, font, view, layer, None);
         *harness.state_mut() = Some(window);
         // The harness took its size from a frame with no window in it.
         harness.fit_contents();
         harness.run();
         harness
+    }
+
+    /// The meshes are among what the window draws: a rectangle for each, all
+    /// of them in the middle of the map, since the map opens on their extent.
+    #[test]
+    fn the_meshes_are_drawn_in_the_middle_of_the_map() {
+        let mut window = window();
+        // The size the view was fitted to, which is the real window's.
+        window.set_size(SIZE.into());
+        window.run();
+        let squares: Vec<Rect> = window
+            .output()
+            .shapes
+            .iter()
+            .filter_map(|clipped| match &clipped.shape {
+                Shape::Mesh(triangles) => Some(triangles.calc_bounds()),
+                _ => None,
+            })
+            .collect();
+        let [squares] = squares.as_slice() else {
+            panic!("the window draws {} sets of triangles", squares.len());
+        };
+        let screen = window.ctx.content_rect();
+        assert!(squares.is_positive(), "{squares:?}");
+        assert!(screen.contains_rect(*squares), "{squares:?} in {screen:?}");
+        assert!(
+            (squares.center().x - screen.center().x).abs() < 1.0,
+            "{squares:?} in {screen:?}"
+        );
     }
 
     #[test]

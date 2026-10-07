@@ -72,6 +72,28 @@ impl Extent {
             })
     }
 
+    /// Latitude of the southern edge, in degrees.
+    pub(crate) fn south(self) -> f64 {
+        f64::from(self.south) / f64::from(ROWS_PER_DEGREE)
+    }
+
+    /// Latitude of the northern edge, in degrees: one row past the
+    /// northernmost row.
+    pub(crate) fn north(self) -> f64 {
+        f64::from(self.north + 1) / f64::from(ROWS_PER_DEGREE)
+    }
+
+    /// Longitude of the western edge, in degrees east.
+    pub(crate) fn west(self) -> f64 {
+        100.0 + f64::from(self.west) / f64::from(COLUMNS_PER_DEGREE)
+    }
+
+    /// Longitude of the eastern edge, in degrees east: one column past the
+    /// easternmost column.
+    pub(crate) fn east(self) -> f64 {
+        100.0 + f64::from(self.east + 1) / f64::from(COLUMNS_PER_DEGREE)
+    }
+
     /// The middle of the area: midway between its southern and northern
     /// edges, and between its western and eastern ones.
     pub(crate) fn centre(self) -> Point {
