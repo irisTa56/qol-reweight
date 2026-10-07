@@ -2,16 +2,21 @@ use std::env;
 use std::process::ExitCode;
 
 use dataset::Dataset;
+use font::JapaneseFont;
+use window::Window;
 
-// Until the meshes are drawn, a file is read only to be counted.
+mod basemap;
+// Until the meshes are drawn, a file is read only for where its meshes are.
 #[cfg_attr(not(test), expect(dead_code, reason = "nothing draws a mesh yet"))]
 mod dataset;
+mod font;
 #[cfg_attr(not(test), expect(dead_code, reason = "nothing draws a mesh yet"))]
 mod mesh;
 #[cfg_attr(not(test), expect(dead_code, reason = "nothing draws a mesh yet"))]
 mod scale;
 #[cfg(test)]
 mod test_support;
+mod window;
 
 /// What the tool is started with, and where that comes from.
 const USAGE: &str = "\
@@ -22,6 +27,10 @@ one for each prefecture and each metropolitan area, such as QOL_23_Aichi.csv.
 Download it from the platform, starting from its page on the data:
 https://data-platform.mlit.go.jp/#/Page?id=dataintro01";
 
+const NO_MAP_WITHOUT_THE_FONT: &str = "\
+The map is not shown, because the sources of the data and of the base map
+cannot be stated on screen without a font for Japanese text";
+
 fn main() -> ExitCode {
     let mut arguments = env::args_os().skip(1);
     // One file: a second argument would go unread without a word.
@@ -29,20 +38,28 @@ fn main() -> ExitCode {
         eprintln!("{USAGE}");
         return ExitCode::FAILURE;
     };
-    match Dataset::open(&path) {
-        Ok(dataset) => {
-            println!(
-                "Read {} meshes and {} indicators.",
-                dataset.meshes().len(),
-                dataset.series().len() - 1
-            );
-            ExitCode::SUCCESS
-        }
+    let dataset = match Dataset::open(&path) {
+        Ok(dataset) => dataset,
         Err(error) => {
             eprintln!(
                 "{} cannot be read as Urban QOL data: {error}\n\n{USAGE}",
                 path.display()
             );
+            return ExitCode::FAILURE;
+        }
+    };
+    // Before any window: without the font, the map's sources cannot be stated.
+    let font = match JapaneseFont::installed() {
+        Ok(font) => font,
+        Err(error) => {
+            eprintln!("{NO_MAP_WITHOUT_THE_FONT}: {error}.");
+            return ExitCode::FAILURE;
+        }
+    };
+    match Window::open(&dataset, font) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => {
+            eprintln!("The window could not be opened: {error}");
             ExitCode::FAILURE
         }
     }

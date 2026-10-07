@@ -1,9 +1,13 @@
 //! A file of Urban QOL data once it is in memory: its meshes, and what it
 //! publishes for each of them. Reading one is [`file`]'s.
 
-use crate::mesh::HalfMesh;
+use crate::mesh::{Extent, HalfMesh, Point};
 
 mod file;
+
+/// The statement of the data's source that its provider asks for, as the
+/// screen shows it.
+pub(crate) const SOURCE: &str = include_str!("../assets/data-source.txt").trim_ascii_end();
 
 /// A file's meshes, and what it publishes for each of them.
 #[derive(Debug, PartialEq)]
@@ -37,8 +41,45 @@ impl Dataset {
         &self.meshes
     }
 
+    /// The middle of the area the meshes cover.
+    pub(crate) fn centre(&self) -> Point {
+        Extent::of(self.meshes.iter().map(|mesh| mesh.square))
+            .expect("a file that reads has a mesh")
+            .centre()
+    }
+
     /// The published total, then each indicator of the file.
     pub(crate) fn series(&self) -> &[Series] {
         &self.series
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn dataset(codes: &[&str]) -> Dataset {
+        let meshes = codes
+            .iter()
+            .map(|code| Mesh {
+                code: (*code).to_owned(),
+                square: HalfMesh::from_code(code).unwrap(),
+                city: String::new(),
+            })
+            .collect();
+        Dataset {
+            meshes,
+            series: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn the_centre_is_that_of_the_area_the_meshes_cover() {
+        let codes = ["533900001", "543823434"];
+        let squares = codes.map(|code| HalfMesh::from_code(code).unwrap());
+        assert_eq!(
+            dataset(&codes).centre(),
+            Extent::of(squares).unwrap().centre()
+        );
     }
 }
