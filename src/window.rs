@@ -1,6 +1,6 @@
 //! The tool's window: the map, and under it the statements of its sources.
 
-use eframe::egui::{CentralPanel, Context, Frame, Margin, Panel, Ui, ViewportBuilder};
+use eframe::egui::{CentralPanel, Context, Frame, Margin, Panel, Ui, Vec2, ViewportBuilder};
 use eframe::epaint::text::FontPriority;
 use eframe::{App, NativeOptions};
 use walkers::{HttpTiles, Map, MapMemory, Position, Tiles};
@@ -9,6 +9,7 @@ use crate::basemap::{self, PaleMap};
 use crate::dataset::{self, Dataset};
 use crate::font::JapaneseFont;
 use crate::layer::MeshLayer;
+use crate::mesh::Extent;
 use crate::view::View;
 
 const TITLE: &str = "QOL Reweight";
@@ -26,8 +27,11 @@ const BASE_MAP_LABEL: &str = include_str!("../assets/base-map-source-label.txt")
 const SOURCES_MARGIN: Margin = Margin::symmetric(8, 10);
 
 pub(crate) struct Window {
-    /// Where the map is centred until its user moves it.
-    centre: Position,
+    /// The area the meshes cover, which the map opens on.
+    extent: Extent,
+    /// Where the map is centred until its user moves it. None until the
+    /// first frame, which is when the map's own size is known.
+    centre: Option<Position>,
     /// The base map's tiles, or none where nothing may be fetched.
     tiles: Option<HttpTiles>,
     memory: MapMemory,
@@ -38,7 +42,7 @@ impl Window {
     /// Opens the window on `dataset`, showing its published total, and
     /// returns when it is closed.
     pub(crate) fn open(dataset: &Dataset, font: JapaneseFont) -> eframe::Result {
-        let view = View::fitting(dataset.extent(), SIZE.into());
+        let extent = dataset.extent();
         let layer = MeshLayer::showing(dataset.meshes(), dataset.total());
         let options = NativeOptions {
             viewport: ViewportBuilder::default().with_inner_size(SIZE),
@@ -50,29 +54,32 @@ impl Window {
             Box::new(move |creation| {
                 let context = &creation.egui_ctx;
                 let tiles = HttpTiles::new(PaleMap, context.clone());
-                Ok(Box::new(Self::new(context, font, view, layer, Some(tiles))))
+                Ok(Box::new(Self::new(
+                    context,
+                    font,
+                    extent,
+                    layer,
+                    Some(tiles),
+                )))
             }),
         )
     }
 
     /// The window as it opens in `context`: `font` draws its Japanese text, and
-    /// its map shows `view`, with `layer` over the base map.
+    /// its map opens on `extent`, with `layer` over the base map.
     fn new(
         context: &Context,
         font: JapaneseFont,
-        view: View,
+        extent: Extent,
         layer: MeshLayer,
         tiles: Option<HttpTiles>,
     ) -> Self {
         context.add_font(font.into_insert(FontPriority::Highest));
-        let mut memory = MapMemory::default();
-        memory
-            .set_zoom(view.zoom())
-            .expect("a view's zoom level is one the map has");
         Self {
-            centre: view.centre(),
+            extent,
+            centre: None,
             tiles,
-            memory,
+            memory: MapMemory::default(),
             layer,
         }
     }
@@ -84,12 +91,26 @@ impl Window {
             .frame(Frame::side_top_panel(ui.style()).inner_margin(SOURCES_MARGIN))
             .show(ui, Self::state_the_sources);
         CentralPanel::default().frame(Frame::NONE).show(ui, |ui| {
+            let centre = self.centre_fitting(ui.available_size());
             let tiles = self.tiles.as_mut().map(|tiles| tiles as &mut dyn Tiles);
             let layer = &self.layer;
-            Map::new(tiles, &mut self.memory, self.centre).show(ui, |ui, _, projector, _| {
+            Map::new(tiles, &mut self.memory, centre).show(ui, |ui, _, projector, _| {
                 ui.painter().add(layer.shape(projector));
             });
         });
+    }
+
+    /// Where the map is centred. The first time, the map is also zoomed so
+    /// that the extent fits in `map`, its size in points.
+    fn centre_fitting(&mut self, map: Vec2) -> Position {
+        if let Some(centre) = self.centre {
+            return centre;
+        }
+        let view = View::fitting(self.extent, map);
+        self.memory
+            .set_zoom(view.zoom())
+            .expect("a view's zoom level is one the map has");
+        *self.centre.insert(view.centre())
     }
 
     /// Each statement after a label that says what it is the source of.
@@ -120,6 +141,8 @@ mod tests {
     use egui_kittest::Harness;
     use egui_kittest::kittest::Queryable as _;
 
+    use walkers::{Projector, lat_lon};
+
     use super::*;
     use crate::test_support::dataset_of_totals;
 
@@ -138,9 +161,8 @@ mod tests {
         let mut harness = Harness::new_ui_state(show, None);
         let font = JapaneseFont::installed().expect("macOS has the font");
         let dataset = dataset_of_totals(&MESHES);
-        let view = View::fitting(dataset.extent(), SIZE.into());
         let layer = MeshLayer::showing(dataset.meshes(), dataset.total());
-        let window = Window::new(&harness.ctx, font, view, layer, None);
+        let window = Window::new(&harness.ctx, font, dataset.extent(), layer, None);
         *harness.state_mut() = Some(window);
         // The harness took its size from a frame with no window in it.
         harness.fit_contents();
@@ -148,38 +170,41 @@ mod tests {
         harness
     }
 
-    /// The meshes are among what the window draws: a rectangle for each, all
-    /// of them in the middle of the map and taking up much of it, since the
-    /// map opens on their extent.
+    /// The meshes are among what the window draws, and they lie where the
+    /// view that fits their extent to the map's own area puts them.
     #[test]
-    fn the_meshes_are_drawn_in_the_middle_of_the_map() {
+    fn the_map_opens_with_the_meshes_fitted_to_it() {
         let mut window = window();
-        // The size the view was fitted to, which is the real window's.
-        window.set_size(SIZE.into());
+        // The window fits its map once, on its first frame, and the harness
+        // has changed size since: have it open again at the size it has now.
+        window.state_mut().as_mut().unwrap().centre = None;
         window.run();
-        let squares: Vec<Rect> = window
+        let drawn: Vec<(Rect, Rect)> = window
             .output()
             .shapes
             .iter()
             .filter_map(|clipped| match &clipped.shape {
-                Shape::Mesh(triangles) => Some(triangles.calc_bounds()),
+                Shape::Mesh(triangles) => Some((clipped.clip_rect, triangles.calc_bounds())),
                 _ => None,
             })
             .collect();
-        let [squares] = squares.as_slice() else {
-            panic!("the window draws {} sets of triangles", squares.len());
+        let [(map, squares)] = drawn.as_slice() else {
+            panic!("the window draws {} sets of triangles", drawn.len());
         };
-        let screen = window.ctx.content_rect();
-        // The map opens at the zoom that fits them, not at one where they
-        // are a speck.
+
+        let extent = dataset_of_totals(&MESHES).extent();
+        let view = View::fitting(extent, map.size());
+        let mut memory = MapMemory::default();
+        memory.set_zoom(view.zoom()).unwrap();
+        let projector = Projector::new(*map, &memory, view.centre());
+        let south_west = projector.project(lat_lon(extent.south(), extent.west()));
+        let north_east = projector.project(lat_lon(extent.north(), extent.east()));
+        let fitted = Rect::from_two_pos(south_west.to_pos2(), north_east.to_pos2());
+
+        assert!(map.contains_rect(*squares), "{squares:?} in {map:?}");
         assert!(
-            squares.height() > screen.height() / 2.0,
-            "{squares:?} in {screen:?}"
-        );
-        assert!(screen.contains_rect(*squares), "{squares:?} in {screen:?}");
-        assert!(
-            (squares.center().x - screen.center().x).abs() < 1.0,
-            "{squares:?} in {screen:?}"
+            (squares.min - fitted.min).length() < 0.5 && (squares.max - fitted.max).length() < 0.5,
+            "{squares:?} against {fitted:?}"
         );
     }
 

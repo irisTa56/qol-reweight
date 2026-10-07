@@ -120,6 +120,14 @@ mod tests {
         assert!(area.width() < 100.0, "{area:?}");
     }
 
+    /// The four quarters of one 1 km mesh, on which a fraction of a mesh is
+    /// many pixels.
+    #[test]
+    fn a_small_area_is_fitted_as_closely() {
+        let quarters = ["543823431", "543823432", "543823433", "543823434"];
+        assert_fits(extent(&quarters));
+    }
+
     /// One square fills a map this large only past the deepest level the
     /// base map has tiles for.
     #[test]
