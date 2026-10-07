@@ -4,7 +4,7 @@ use eframe::egui::{Color32, Layout, Rect, Response, Sense, Shape, Ui, Widget, po
 use eframe::emath::Align;
 use eframe::epaint::Mesh as Triangles;
 
-use crate::scale::Scale;
+use crate::layer::Paint;
 
 /// How high the bar of colours is, in points.
 const BAR_HEIGHT: f32 = 14.0;
@@ -12,37 +12,41 @@ const BAR_HEIGHT: f32 = 14.0;
 /// How many steps the bar of colours is drawn in, enough to look continuous.
 const STEPS: u16 = 64;
 
-/// A bar of a scale's colours from its lower end to its upper one, and under
-/// it the values its ends and its middle stand for.
+/// What the bar is drawn on, as a square is drawn on the base map: the pale
+/// map is white over most of the land.
+const GROUND: Color32 = Color32::WHITE;
+
+/// A bar of the colours the map paints values in, from the lowest to the
+/// highest, and under it the values its ends and its middle stand for.
 pub(crate) struct Legend {
-    scale: Scale,
+    paint: Paint,
 }
 
 impl Legend {
-    pub(crate) fn of(scale: Scale) -> Self {
-        Self { scale }
+    pub(crate) fn of(paint: Paint) -> Self {
+        Self { paint }
     }
 
     /// What the lower end, the middle, and the upper end stand for, as the
     /// screen writes them.
     fn marks(&self) -> [String; 3] {
-        let reach = two_figures(self.scale.reach());
+        let reach = two_figures(self.paint.reach());
         [format!("-{reach}"), "0".to_owned(), format!("+{reach}")]
     }
 
-    /// The bar, filling `bar`.
+    /// The bar, filling `bar`: the ground, then on it a step of each colour.
     fn colours(&self, bar: Rect) -> Shape {
         let mut triangles = Triangles::default();
+        triangles.add_colored_rect(bar, GROUND);
         let step = bar.width() / f32::from(STEPS);
         for at in 0..STEPS {
             // The value halfway across this step, from minus the reach at
             // the bar's left to plus the reach at its right.
             let share = (f64::from(at) + 0.5) / f64::from(STEPS) * 2.0 - 1.0;
-            let colour = self.scale.colour(self.scale.reach() * share);
             let left = bar.left() + step * f32::from(at);
             triangles.add_colored_rect(
                 Rect::from_min_size(pos2(left, bar.top()), vec2(step, bar.height())),
-                Color32::from_rgb(colour.r, colour.g, colour.b),
+                self.paint.of(self.paint.reach() * share),
             );
         }
         Shape::mesh(triangles)
@@ -72,18 +76,32 @@ fn two_figures(value: f64) -> String {
     if value == 0.0 {
         return "0".to_owned();
     }
-    // One figure before the point leaves one after it, and each place the
-    // first figure lies further right takes one more.
-    let decimals = (1.0 - value.log10().floor()).clamp(0.0, 9.0) as usize;
+    // Where the first figure lies once the value is rounded to two: the
+    // exponent of `d.de<exponent>`. One figure before the point leaves one
+    // after it, and each place further right takes one more.
+    let rounded = format!("{value:.1e}");
+    let exponent: i32 = rounded
+        .split_once('e')
+        .and_then(|(_, exponent)| exponent.parse().ok())
+        .expect("a number in scientific notation has an exponent");
+    let decimals = usize::try_from(1 - exponent).unwrap_or(0);
     format!("{value:.decimals$}")
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::layer::MeshLayer;
+    use crate::test_support::dataset_of_totals;
+
+    /// The paint of a map that shows one mesh, whose value is the reach.
+    fn paint(reach: f64) -> Paint {
+        let dataset = dataset_of_totals(&[("543823431", reach)]);
+        MeshLayer::showing(dataset.meshes(), &dataset.series()[0]).paint()
+    }
 
     fn marks(reach: f64) -> [String; 3] {
-        Legend::of(Scale::fitting(&[reach])).marks()
+        Legend::of(paint(reach)).marks()
     }
 
     #[test]
@@ -97,6 +115,16 @@ mod tests {
         assert_eq!(marks(2.0)[2], "+2.0");
         assert_eq!(marks(37.5)[2], "+38");
         assert_eq!(marks(1234.0)[2], "+1234");
+        assert_eq!(marks(3e-10)[2], "+0.00000000030");
+    }
+
+    /// Rounded to two figures, each of these has its first figure a place
+    /// further left than before.
+    #[test]
+    fn a_reach_that_rounds_up_to_another_figure_is_still_written_to_two() {
+        assert_eq!(marks(9.96)[2], "+10");
+        assert_eq!(marks(0.996)[2], "+1.0");
+        assert_eq!(marks(0.0996)[2], "+0.10");
     }
 
     #[test]
@@ -104,13 +132,14 @@ mod tests {
         assert_eq!(marks(0.0), ["-0", "0", "+0"]);
     }
 
-    /// The bar runs from the colour of the lower end, through the neutral
-    /// one, to the colour of the upper end.
+    /// The bar is the ground with a step of each colour on it, from what the
+    /// map paints a value just above minus the reach in, to what it paints
+    /// one just below the reach in, and it fills the room it is given.
     #[test]
-    fn the_bar_runs_through_the_colours_of_the_scale() {
-        let scale = Scale::fitting(&[4.0]);
+    fn the_bar_shows_the_colours_as_the_map_paints_them() {
+        let paint = paint(4.0);
         let bar = Rect::from_min_size(pos2(10.0, 20.0), vec2(128.0, BAR_HEIGHT));
-        let Shape::Mesh(triangles) = Legend::of(scale).colours(bar) else {
+        let Shape::Mesh(triangles) = Legend::of(paint).colours(bar) else {
             panic!("the bar is not drawn as triangles");
         };
         let colours: Vec<Color32> = triangles
@@ -118,16 +147,19 @@ mod tests {
             .chunks(4)
             .map(|step| step[0].color)
             .collect();
-        let [first, .., last] = colours.as_slice() else {
+        let [ground, steps @ ..] = colours.as_slice() else {
+            panic!("the bar is empty");
+        };
+        let [first, .., last] = steps else {
             panic!("the bar has no steps");
         };
-        let middle = colours[colours.len() / 2];
-        assert!(first.r() > first.b() + 50, "{first:?} is not red");
-        assert!(last.b() > last.r() + 50, "{last:?} is not blue");
-        assert!(
-            middle.r().abs_diff(middle.b()) < 30,
-            "{middle:?} is not neutral"
-        );
+        let half_a_step = 4.0 / f64::from(STEPS);
+        assert_eq!(*ground, GROUND);
+        assert_eq!(steps.len(), usize::from(STEPS));
+        assert_eq!(*first, paint.of(-4.0 + half_a_step));
+        assert_eq!(*last, paint.of(4.0 - half_a_step));
+        assert_eq!(steps[steps.len() / 2], paint.of(half_a_step));
+        assert_ne!(first, last);
         assert_eq!(triangles.calc_bounds(), bar);
     }
 }

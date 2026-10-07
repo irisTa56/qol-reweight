@@ -6,11 +6,6 @@ use font::JapaneseFont;
 use window::Window;
 
 mod basemap;
-// Until what is shown can be chosen, only the total of a file is read.
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "nothing chooses an indicator yet")
-)]
 mod dataset;
 mod font;
 mod layer;

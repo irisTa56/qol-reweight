@@ -119,7 +119,7 @@ impl Window {
     /// meshes anew.
     fn choose_what_is_shown(&mut self, ui: &mut Ui) {
         ui.add_space(CHOICES_SPACE);
-        ui.add(Legend::of(self.layer.scale()));
+        ui.add(Legend::of(self.layer.paint()));
         ui.add_space(CHOICES_SPACE);
         ui.strong(SHOWN_LABEL);
         let mut chosen = self.shown;
@@ -303,6 +303,50 @@ mod tests {
         window.get_by_label("+3.0");
         window.get_by_label("-3.0");
         assert!(window.query_by_label("+2.0").is_none());
+    }
+
+    /// The bar is over its marks, with the mark of the lower end under the
+    /// end where the bar is red and that of the upper end where it is blue.
+    #[test]
+    fn the_legend_puts_each_mark_under_the_colour_it_stands_for() {
+        let window = window();
+        let bars: Vec<_> = window
+            .output()
+            .shapes
+            .iter()
+            .filter_map(|clipped| match &clipped.shape {
+                Shape::Mesh(triangles) if triangles.vertices.len() != 4 * MESHES.len() => {
+                    Some(triangles.vertices.clone())
+                }
+                _ => None,
+            })
+            .collect();
+        let [bar] = bars.as_slice() else {
+            panic!("the window draws {} bars of colours", bars.len());
+        };
+        // The first four corners are the bar's ground; a step of colour
+        // follows for each four after them, from the left.
+        let (left, right) = (bar[4], bar[bar.len() - 1]);
+        let redder = |corner: Vertex| i16::from(corner.color.r()) - i16::from(corner.color.b());
+        let lowest = window.get_by_label("-2.0").rect();
+        let middle = window.get_by_label("0").rect();
+        let highest = window.get_by_label("+2.0").rect();
+
+        assert!(
+            redder(left) > 20 && redder(right) < -20,
+            "{left:?} {right:?}"
+        );
+        assert!(left.pos.x < right.pos.x, "{left:?} {right:?}");
+        assert!(lowest.center().x < middle.center().x && middle.center().x < highest.center().x);
+        assert!(
+            (lowest.left() - left.pos.x).abs() < 8.0,
+            "{lowest:?} {left:?}"
+        );
+        assert!(
+            (highest.right() - right.pos.x).abs() < 8.0,
+            "{highest:?} {right:?}"
+        );
+        assert!(bar.iter().all(|corner| corner.pos.y <= lowest.top()));
     }
 
     #[test]
