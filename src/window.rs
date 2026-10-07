@@ -63,7 +63,7 @@ impl Window {
             .set_zoom(FIRST_ZOOM)
             .expect("the first zoom level is one the map has");
         Self {
-            centre: lat_lon(centre.latitude, centre.longitude),
+            centre: lat_lon(centre.latitude(), centre.longitude()),
             tiles,
             memory,
         }
@@ -110,11 +110,7 @@ mod tests {
     use egui_kittest::kittest::Queryable as _;
 
     use super::*;
-
-    const CENTRE: Point = Point {
-        latitude: 35.0,
-        longitude: 137.0,
-    };
+    use crate::mesh::{Extent, HalfMesh};
 
     /// The window as the tool makes it, but for its tiles: it has none, so
     /// nothing is fetched. A harness has no context to make the window in
@@ -127,7 +123,9 @@ mod tests {
         };
         let mut harness = Harness::new_ui_state(show, None);
         let font = JapaneseFont::installed().expect("macOS has the font");
-        let window = Window::new(&harness.ctx, font, CENTRE, None);
+        let square = HalfMesh::from_code("543823431").expect("a code written by hand");
+        let centre = Extent::of([square]).expect("one square").centre();
+        let window = Window::new(&harness.ctx, font, centre, None);
         *harness.state_mut() = Some(window);
         // The harness took its size from a frame with no window in it.
         harness.fit_contents();

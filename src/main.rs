@@ -10,6 +10,7 @@ mod basemap;
 #[cfg_attr(not(test), expect(dead_code, reason = "nothing draws a mesh yet"))]
 mod dataset;
 mod font;
+#[cfg_attr(not(test), expect(dead_code, reason = "nothing draws a mesh yet"))]
 mod mesh;
 #[cfg_attr(not(test), expect(dead_code, reason = "nothing draws a mesh yet"))]
 mod scale;

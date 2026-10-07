@@ -1,7 +1,7 @@
 //! A file of Urban QOL data once it is in memory: its meshes, and what it
 //! publishes for each of them. Reading one is [`file`]'s.
 
-use crate::mesh::{HalfMesh, Point};
+use crate::mesh::{Extent, HalfMesh, Point};
 
 mod file;
 
@@ -41,28 +41,11 @@ impl Dataset {
         &self.meshes
     }
 
-    /// The middle of the area the meshes cover. A file that reads has a mesh.
+    /// The middle of the area the meshes cover.
     pub(crate) fn centre(&self) -> Point {
-        let (south, north, west, east) = self.meshes.iter().map(|mesh| mesh.square).fold(
-            (
-                f64::INFINITY,
-                f64::NEG_INFINITY,
-                f64::INFINITY,
-                f64::NEG_INFINITY,
-            ),
-            |(south, north, west, east), square| {
-                (
-                    south.min(square.south()),
-                    north.max(square.north()),
-                    west.min(square.west()),
-                    east.max(square.east()),
-                )
-            },
-        );
-        Point {
-            latitude: (south + north) / 2.0,
-            longitude: (west + east) / 2.0,
-        }
+        Extent::of(self.meshes.iter().map(|mesh| mesh.square))
+            .expect("a file that reads has a mesh")
+            .centre()
     }
 
     /// The published total, then each indicator of the file.
@@ -91,27 +74,12 @@ mod tests {
     }
 
     #[test]
-    fn the_centre_of_one_mesh_is_its_middle() {
-        let square = HalfMesh::from_code("543823431").unwrap();
-        let centre = dataset(&["543823431"]).centre();
-        assert_eq!(centre.latitude, (square.south() + square.north()) / 2.0);
-        assert_eq!(centre.longitude, (square.west() + square.east()) / 2.0);
-    }
-
-    /// The first mesh is the one further south and east, so each edge of the
-    /// area comes from the mesh that reaches furthest that way.
-    #[test]
-    fn the_centre_is_midway_between_the_outermost_edges() {
-        let south_east = HalfMesh::from_code("533900001").unwrap();
-        let north_west = HalfMesh::from_code("543823434").unwrap();
-        let centre = dataset(&["533900001", "543823434"]).centre();
+    fn the_centre_is_that_of_the_area_the_meshes_cover() {
+        let codes = ["533900001", "543823434"];
+        let squares = codes.map(|code| HalfMesh::from_code(code).unwrap());
         assert_eq!(
-            centre.latitude,
-            (south_east.south() + north_west.north()) / 2.0
-        );
-        assert_eq!(
-            centre.longitude,
-            (north_west.west() + south_east.east()) / 2.0
+            dataset(&codes).centre(),
+            Extent::of(squares).unwrap().centre()
         );
     }
 }

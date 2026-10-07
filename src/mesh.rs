@@ -24,12 +24,66 @@ const ROWS_PER_DEGREE: u32 = 240;
 /// How many half grid squares one degree of longitude spans, each being 22.5".
 const COLUMNS_PER_DEGREE: u32 = 160;
 
-/// A place on the ground, in degrees north of the equator and east of
-/// Greenwich.
+/// A place on the ground.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct Point {
-    pub(crate) latitude: f64,
-    pub(crate) longitude: f64,
+    latitude: f64,
+    longitude: f64,
+}
+
+impl Point {
+    /// Degrees north of the equator.
+    pub(crate) fn latitude(self) -> f64 {
+        self.latitude
+    }
+
+    /// Degrees east of Greenwich.
+    pub(crate) fn longitude(self) -> f64 {
+        self.longitude
+    }
+}
+
+/// The area some half grid squares cover between them, held as the rows and
+/// columns furthest out.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Extent {
+    south: u32,
+    north: u32,
+    west: u32,
+    east: u32,
+}
+
+impl Extent {
+    /// The area `squares` cover, or none where there is no square.
+    pub(crate) fn of(squares: impl IntoIterator<Item = HalfMesh>) -> Option<Self> {
+        squares
+            .into_iter()
+            .map(|square| Self {
+                south: square.row,
+                north: square.row,
+                west: square.column,
+                east: square.column,
+            })
+            .reduce(|area, square| Self {
+                south: area.south.min(square.south),
+                north: area.north.max(square.north),
+                west: area.west.min(square.west),
+                east: area.east.max(square.east),
+            })
+    }
+
+    /// The middle of the area: midway between its southern and northern
+    /// edges, and between its western and eastern ones.
+    pub(crate) fn centre(self) -> Point {
+        // The northern edge is one row past the northernmost row, and the
+        // eastern edge one column past the easternmost column.
+        let rows = f64::from(self.south + self.north + 1) / 2.0;
+        let columns = f64::from(self.west + self.east + 1) / 2.0;
+        Point {
+            latitude: rows / f64::from(ROWS_PER_DEGREE),
+            longitude: 100.0 + columns / f64::from(COLUMNS_PER_DEGREE),
+        }
+    }
 }
 
 /// A half grid square, held as its place among all such squares.
@@ -113,6 +167,45 @@ mod tests {
 
     fn mesh(code: &str) -> HalfMesh {
         HalfMesh::from_code(code).unwrap_or_else(|e| panic!("{code}: {e}"))
+    }
+
+    /// Equal but for the rounding of a sum of two edges, far below the width
+    /// of a square.
+    fn assert_close(found: f64, expected: f64) {
+        assert!(
+            (found - expected).abs() < 1e-9,
+            "{found} against {expected}"
+        );
+    }
+
+    #[test]
+    fn no_squares_cover_no_area() {
+        assert_eq!(Extent::of([]), None);
+    }
+
+    #[test]
+    fn the_centre_of_one_square_is_its_middle() {
+        let square = mesh("543823431");
+        let centre = Extent::of([square]).unwrap().centre();
+        assert_close(centre.latitude(), (square.south() + square.north()) / 2.0);
+        assert_close(centre.longitude(), (square.west() + square.east()) / 2.0);
+    }
+
+    /// The first square is the one further south and east, so each edge of
+    /// the area comes from the square that reaches furthest that way.
+    #[test]
+    fn the_centre_is_midway_between_the_outermost_edges() {
+        let south_east = mesh("533900001");
+        let north_west = mesh("543823434");
+        let centre = Extent::of([south_east, north_west]).unwrap().centre();
+        assert_close(
+            centre.latitude(),
+            (south_east.south() + north_west.north()) / 2.0,
+        );
+        assert_close(
+            centre.longitude(),
+            (north_west.west() + south_east.east()) / 2.0,
+        );
     }
 
     fn close(actual: f64, expected: f64) -> bool {
