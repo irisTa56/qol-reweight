@@ -342,15 +342,15 @@ mod tests {
     fn choosing_an_indicator_colours_the_meshes_by_it_and_changes_the_legend() {
         let mut window = window();
         // The total reaches 2, and the indicator 3.
-        window.get_by_label("+2.0");
-        window.get_by_label("-2.0");
+        window.get_by_label("+2");
+        window.get_by_label("-2");
 
         choose(&mut window, "Floods");
 
         assert_eq!(ends(&window), ["red", "blue"]);
-        window.get_by_label("+3.0");
-        window.get_by_label("-3.0");
-        assert!(window.query_by_label("+2.0").is_none());
+        window.get_by_label("+3");
+        window.get_by_label("-3");
+        assert!(window.query_by_label("+2").is_none());
         let shown = window.get_by_role(Role::ComboBox).accesskit_node().value();
         assert_eq!(shown.as_deref(), Some("Floods"));
     }
@@ -361,7 +361,7 @@ mod tests {
         choose(&mut window, "Floods");
         choose(&mut window, "Total");
         assert_eq!(ends(&window), ["blue", "red"]);
-        window.get_by_label("+2.0");
+        window.get_by_label("+2");
     }
 
     /// A file with more indicators than the open pull-down shows at once,
@@ -420,9 +420,9 @@ mod tests {
         // follows for each four after them, from the left.
         let (left, right) = (bar[4], bar[bar.len() - 1]);
         let redder = |corner: Vertex| i16::from(corner.color.r()) - i16::from(corner.color.b());
-        let lowest = window.get_by_label("-2.0").rect();
+        let lowest = window.get_by_label("-2").rect();
         let middle = window.get_by_label("0").rect();
-        let highest = window.get_by_label("+2.0").rect();
+        let highest = window.get_by_label("+2").rect();
 
         assert!(
             redder(left) > 20 && redder(right) < -20,

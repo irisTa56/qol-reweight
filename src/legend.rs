@@ -28,9 +28,10 @@ impl Legend {
     }
 
     /// What the lower end, the middle, and the upper end stand for, as the
-    /// screen writes them.
+    /// screen writes them. The reach has two figures at most, which is the
+    /// scale's doing, so it is written as it is.
     fn marks(&self) -> [String; 3] {
-        let reach = two_figures(self.paint.reach());
+        let reach = self.paint.reach();
         [format!("-{reach}"), "0".to_owned(), format!("+{reach}")]
     }
 
@@ -70,28 +71,6 @@ impl Widget for Legend {
     }
 }
 
-/// `value`, which is not negative, written to its first two figures and
-/// zeros from there: a scale's reach has no more figures than that.
-fn two_figures(value: f64) -> String {
-    if value == 0.0 {
-        return "0".to_owned();
-    }
-    // In scientific notation with one decimal the value is `d.de<exponent>`,
-    // its two figures and where the first of them lies.
-    let rounded = format!("{value:.1e}");
-    let exponent: i32 = rounded
-        .split_once('e')
-        .and_then(|(_, exponent)| exponent.parse().ok())
-        .expect("a number in scientific notation has an exponent");
-    let rounded: f64 = rounded
-        .parse()
-        .expect("a number in scientific notation is a number");
-    // One figure before the point leaves one after it, and each place the
-    // first figure lies further right takes one more; further left, none.
-    let decimals = usize::try_from(1 - exponent).unwrap_or(0);
-    format!("{rounded:.decimals$}")
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -113,20 +92,16 @@ mod tests {
         assert_eq!(marks(1.2), ["-1.2", "0", "+1.2"]);
     }
 
-    #[test]
-    fn a_reach_of_any_size_is_written_to_two_figures() {
-        assert_eq!(marks(0.046)[2], "+0.046");
-        assert_eq!(marks(2.0)[2], "+2.0");
-        assert_eq!(marks(38.0)[2], "+38");
-        assert_eq!(marks(1200.0)[2], "+1200");
-        assert_eq!(marks(990000.0)[2], "+990000");
-        assert_eq!(marks(3e-10)[2], "+0.00000000030");
-    }
-
-    /// The scale rounds its reach up to two figures, so the mark is the very
-    /// value the colours were worked out from.
+    /// The scale rounds its reach up to two figures, and the mark is that
+    /// reach, the very value the colours were worked out from, with no
+    /// figure added and none dropped.
     #[test]
     fn the_marks_are_the_reach_the_scale_has() {
+        assert_eq!(marks(1.234)[2], "+1.3");
+        assert_eq!(marks(2.0)[2], "+2");
+        assert_eq!(marks(0.0456)[2], "+0.046");
+        assert_eq!(marks(9.96)[2], "+10");
+        assert_eq!(marks(987_654.0)[2], "+990000");
         for size in [1.234, 9.96, 0.0996, 987_654.0] {
             let paint = paint(size);
             let written: f64 = Legend::of(paint).marks()[2].parse().unwrap();
