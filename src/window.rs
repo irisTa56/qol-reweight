@@ -1,6 +1,6 @@
 //! The tool's window: the map, and under it the statements of its sources.
 
-use eframe::egui::{CentralPanel, Context, Frame, Panel, Ui, ViewportBuilder};
+use eframe::egui::{CentralPanel, Context, Frame, Margin, Panel, Ui, ViewportBuilder};
 use eframe::{App, NativeOptions};
 use walkers::{HttpTiles, Map, MapMemory, Position, Tiles, lat_lon};
 
@@ -22,6 +22,10 @@ const FIRST_ZOOM: f64 = 10.0;
 /// that of the base map's.
 const DATA_LABEL: &str = include_str!("../assets/data-source-label.txt").trim_ascii_end();
 const BASE_MAP_LABEL: &str = include_str!("../assets/base-map-source-label.txt").trim_ascii_end();
+
+/// The space around the statements of the sources, in points: as much above
+/// the first and below the last as there is between the two.
+const SOURCES_MARGIN: Margin = Margin::symmetric(8, 10);
 
 pub(crate) struct Window {
     /// Where the map is centred until its user moves it.
@@ -68,7 +72,9 @@ impl Window {
     /// The map, with the statements of its sources: no frame has the one
     /// without the others.
     fn show(&mut self, ui: &mut Ui) {
-        Panel::bottom("sources").show(ui, Self::state_the_sources);
+        Panel::bottom("sources")
+            .frame(Frame::side_top_panel(ui.style()).inner_margin(SOURCES_MARGIN))
+            .show(ui, Self::state_the_sources);
         CentralPanel::default().frame(Frame::NONE).show(ui, |ui| {
             let tiles = self.tiles.as_mut().map(|tiles| tiles as &mut dyn Tiles);
             ui.add(Map::new(tiles, &mut self.memory, self.centre));
