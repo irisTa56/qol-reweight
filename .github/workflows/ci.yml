@@ -109,8 +109,12 @@ jobs:
       # time. After mise has installed Rust, since the cache's key takes in the
       # version of rustc along with `Cargo.lock`: a new release of Rust, which
       # mise.toml tracks at `latest`, starts a cache of its own rather than
-      # being held to an old one, as the tools above would be.
+      # being held to an old one, as the tools above would be. Not on the
+      # schedule: the key takes in nothing else of the runner image, so the
+      # weekly run builds every crate afresh, those that build against the
+      # image's C toolchain among them, and goes on showing a drift there.
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        if: github.event_name != 'schedule'
       - run: mise run qa:rust
 
   # Stays red while dotfiles `main` carries other shared tasks than the pin in
