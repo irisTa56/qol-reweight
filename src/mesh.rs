@@ -169,15 +169,6 @@ mod tests {
         HalfMesh::from_code(code).unwrap_or_else(|e| panic!("{code}: {e}"))
     }
 
-    /// Equal but for the rounding of a sum of two edges, far below the width
-    /// of a square.
-    fn assert_close(found: f64, expected: f64) {
-        assert!(
-            (found - expected).abs() < 1e-9,
-            "{found} against {expected}"
-        );
-    }
-
     #[test]
     fn no_squares_cover_no_area() {
         assert_eq!(Extent::of([]), None);
@@ -187,8 +178,14 @@ mod tests {
     fn the_centre_of_one_square_is_its_middle() {
         let square = mesh("543823431");
         let centre = Extent::of([square]).unwrap().centre();
-        assert_close(centre.latitude(), (square.south() + square.north()) / 2.0);
-        assert_close(centre.longitude(), (square.west() + square.east()) / 2.0);
+        assert!(close(
+            centre.latitude(),
+            (square.south() + square.north()) / 2.0
+        ));
+        assert!(close(
+            centre.longitude(),
+            (square.west() + square.east()) / 2.0
+        ));
     }
 
     /// The first square is the one further south and east, so each edge of
@@ -198,14 +195,14 @@ mod tests {
         let south_east = mesh("533900001");
         let north_west = mesh("543823434");
         let centre = Extent::of([south_east, north_west]).unwrap().centre();
-        assert_close(
+        assert!(close(
             centre.latitude(),
-            (south_east.south() + north_west.north()) / 2.0,
-        );
-        assert_close(
+            (south_east.south() + north_west.north()) / 2.0
+        ));
+        assert!(close(
             centre.longitude(),
-            (north_west.west() + south_east.east()) / 2.0,
-        );
+            (north_west.west() + south_east.east()) / 2.0
+        ));
     }
 
     fn close(actual: f64, expected: f64) -> bool {
