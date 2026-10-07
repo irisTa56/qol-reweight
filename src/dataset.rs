@@ -1,7 +1,7 @@
 //! A file of Urban QOL data once it is in memory: its meshes, and what it
 //! publishes for each of them. Reading one is [`file`]'s.
 
-use crate::mesh::{Extent, HalfMesh, Point};
+use crate::mesh::{Extent, HalfMesh};
 
 mod file;
 
@@ -35,17 +35,35 @@ pub(crate) struct Series {
     values: Vec<f64>,
 }
 
+impl Mesh {
+    /// The square the mesh's code names.
+    pub(crate) fn square(&self) -> HalfMesh {
+        self.square
+    }
+}
+
+impl Series {
+    /// One value for each mesh, in the order of [`Dataset::meshes`].
+    pub(crate) fn values(&self) -> &[f64] {
+        &self.values
+    }
+}
+
 impl Dataset {
     /// The file's meshes, in the order it first names them.
     pub(crate) fn meshes(&self) -> &[Mesh] {
         &self.meshes
     }
 
-    /// The middle of the area the meshes cover.
-    pub(crate) fn centre(&self) -> Point {
+    /// The area the meshes cover.
+    pub(crate) fn extent(&self) -> Extent {
         Extent::of(self.meshes.iter().map(|mesh| mesh.square))
             .expect("a file that reads has a mesh")
-            .centre()
+    }
+
+    /// The published total, one value for each mesh.
+    pub(crate) fn total(&self) -> &Series {
+        &self.series[0]
     }
 
     /// The published total, then each indicator of the file.
@@ -74,12 +92,9 @@ mod tests {
     }
 
     #[test]
-    fn the_centre_is_that_of_the_area_the_meshes_cover() {
+    fn the_extent_is_the_area_all_the_meshes_cover() {
         let codes = ["533900001", "543823434"];
         let squares = codes.map(|code| HalfMesh::from_code(code).unwrap());
-        assert_eq!(
-            dataset(&codes).centre(),
-            Extent::of(squares).unwrap().centre()
-        );
+        assert_eq!(dataset(&codes).extent(), Extent::of(squares).unwrap());
     }
 }
