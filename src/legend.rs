@@ -92,12 +92,12 @@ mod tests {
         assert_eq!(marks(1.2), ["-1.2", "0", "+1.2"]);
     }
 
-    /// The scale rounds its reach up to two figures, and the mark is that
+    /// The scale rounds its reach to two figures, and the mark is that
     /// reach, the very value the colours were worked out from, with no
     /// figure added and none dropped.
     #[test]
     fn the_marks_are_the_reach_the_scale_has() {
-        assert_eq!(marks(1.234)[2], "+1.3");
+        assert_eq!(marks(1.234)[2], "+1.2");
         assert_eq!(marks(2.0)[2], "+2");
         assert_eq!(marks(0.0456)[2], "+0.046");
         assert_eq!(marks(9.96)[2], "+10");

@@ -24,10 +24,9 @@ pub(crate) struct Scale {
 }
 
 impl Scale {
-    /// The scale that fits `values`: its ends stand for the smallest size of
-    /// two figures that [`COVERED`] of them do not exceed. Two figures, so
-    /// that a legend can write the very value the colours were worked out
-    /// from.
+    /// The scale that fits `values`: its ends stand for the size that
+    /// [`COVERED`] of them do not exceed, rounded to two figures, so that a
+    /// legend can write the very value the colours were worked out from.
     pub(crate) fn fitting(values: &[f64]) -> Self {
         let mut sizes: Vec<f64> = values.iter().map(|value| value.abs()).collect();
         sizes.sort_by(f64::total_cmp);
@@ -40,7 +39,7 @@ impl Scale {
             .copied()
             .unwrap_or(0.0);
         Self {
-            reach: up_to_two_figures(smallest),
+            reach: to_two_figures(smallest),
         }
     }
 
@@ -72,31 +71,13 @@ impl Scale {
     }
 }
 
-/// The smallest number of two figures that is no less than `size`, which is
-/// not negative: 123 gives 130, and 0.12 itself.
-fn up_to_two_figures(size: f64) -> f64 {
-    if size == 0.0 {
-        return 0.0;
-    }
-    // Written as `d.ddde<exponent>` with the fewest digits that give the
-    // number back, the size is rounded on its digits, which no arithmetic on
-    // a binary fraction would do exactly.
-    let written = format!("{size:e}");
-    let (digits, exponent) = written
-        .split_once('e')
-        .expect("a number in scientific notation has an exponent");
-    let exponent: i32 = exponent.parse().expect("the exponent is a whole number");
-    let mut digits = digits
-        .bytes()
-        .filter(u8::is_ascii_digit)
-        .map(|digit| u32::from(digit - b'0'));
-    let first_two = digits.next().unwrap_or(0) * 10 + digits.next().unwrap_or(0);
-    let two = first_two + u32::from(digits.any(|digit| digit != 0));
-    let rounded: f64 = format!("{two}e{}", exponent - 1)
-        .parse()
-        .expect("two digits and an exponent are a number");
-    // Past the largest number there is, the size stands as it is.
-    if rounded.is_finite() { rounded } else { size }
+/// `size` rounded to two figures: written out to two and read back, which
+/// rounds on its decimal digits. The largest number there is stays itself,
+/// where rounding would pass it.
+fn to_two_figures(size: f64) -> f64 {
+    let written = format!("{size:.1e}");
+    let rounded: f64 = written.parse().expect("a number written out reads back");
+    rounded.min(f64::MAX)
 }
 
 #[cfg(test)]
@@ -142,17 +123,18 @@ mod tests {
     }
 
     /// A size of two figures or fewer is its own reach, and any other goes
-    /// up to the next one, into another power of ten where that is next.
+    /// to the nearest one, into another power of ten where that is nearest.
     #[test]
-    fn a_size_is_rounded_up_to_two_figures() {
+    fn a_size_is_rounded_to_two_figures() {
         let reach = |size: f64| Scale::fitting(&[size]).reach();
         assert_eq!(reach(0.12), 0.12);
         assert_eq!(reach(0.3), 0.3);
         assert_eq!(reach(7.0), 7.0);
-        assert_eq!(reach(123.0), 130.0);
-        assert_eq!(reach(0.1201), 0.13);
-        assert_eq!(reach(99.5), 100.0);
-        assert_eq!(reach(0.0991), 0.1);
+        assert_eq!(reach(123.0), 120.0);
+        assert_eq!(reach(127.0), 130.0);
+        assert_eq!(reach(0.1201), 0.12);
+        assert_eq!(reach(99.6), 100.0);
+        assert_eq!(reach(0.0996), 0.1);
         assert_eq!(reach(f64::MAX), f64::MAX);
     }
 
@@ -184,27 +166,24 @@ mod tests {
     }
 
     proptest! {
-        /// The reach covers enough of the values, has two figures, and is
-        /// less than a tenth above the smallest size that covers enough,
-        /// which is as far as rounding up to two figures can take it.
+        /// The reach has two figures and is within a twentieth of the
+        /// smallest size that enough of the values do not exceed, which is
+        /// as far as rounding to two figures can take it.
         #[test]
-        fn the_reach_is_two_figures_that_cover_enough_and_little_more(
+        fn the_reach_is_two_figures_near_the_size_that_covers_enough(
             values in vec(value(), 1..200),
         ) {
             let enough = (values.len() as f64 * COVERED).ceil() as usize;
             let mut sizes: Vec<f64> = values.iter().map(|v| v.abs()).collect();
             sizes.sort_by(f64::total_cmp);
             let smallest = sizes[enough - 1];
-            // Near the largest number there is, a size is kept as it is.
-            prop_assume!(smallest < 1e300);
 
             let reach = Scale::fitting(&values).reach();
-            let within = values.iter().filter(|v| v.abs() <= reach).count();
             let written = format!("{reach:e}");
             let figures = written.bytes().take_while(|b| *b != b'e').filter(u8::is_ascii_digit);
-            prop_assert!(within >= enough);
-            prop_assert!(reach >= smallest && reach <= smallest * 1.100_000_1, "{reach} for {smallest}");
-            prop_assert!(figures.count() <= 2, "{written}");
+            prop_assert!((reach - smallest).abs() <= smallest * 0.05, "{reach} for {smallest}");
+            // But for the largest number there is, which is kept as it is.
+            prop_assert!(figures.count() <= 2 || reach == f64::MAX, "{written}");
         }
 
         #[test]
