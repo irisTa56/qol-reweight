@@ -18,6 +18,11 @@ const SIZE: [f32; 2] = [1280.0, 800.0];
 /// it.
 const FIRST_ZOOM: f64 = 10.0;
 
+/// What the screen puts before the statement of the data's source, and before
+/// that of the base map's.
+const DATA_LABEL: &str = include_str!("../assets/data-source-label.txt").trim_ascii_end();
+const BASE_MAP_LABEL: &str = include_str!("../assets/base-map-source-label.txt").trim_ascii_end();
+
 pub(crate) struct Window {
     /// Where the map is centred until its user moves it.
     centre: Position,
@@ -48,7 +53,7 @@ impl Window {
     /// The window as it opens in `context`: `font` draws its Japanese text, and
     /// its map is centred on `centre`.
     fn new(context: &Context, font: JapaneseFont, centre: Point, tiles: Option<HttpTiles>) -> Self {
-        context.set_fonts(font.after_the_defaults());
+        context.set_fonts(font.before_the_defaults());
         let mut memory = MapMemory::default();
         memory
             .set_zoom(FIRST_ZOOM)
@@ -70,9 +75,14 @@ impl Window {
         });
     }
 
+    /// Each statement after a label that says what it is the source of.
     fn state_the_sources(ui: &mut Ui) {
-        ui.label(dataset::SOURCE);
         ui.horizontal_wrapped(|ui| {
+            ui.label(DATA_LABEL);
+            ui.label(dataset::SOURCE);
+        });
+        ui.horizontal_wrapped(|ui| {
+            ui.label(BASE_MAP_LABEL);
             ui.hyperlink_to(basemap::SOURCE, basemap::TILE_LIST);
             ui.small(basemap::SHORELINE_CREDIT);
         });
@@ -89,7 +99,7 @@ impl App for Window {
 /// tool has no font to state the sources in, and shows no map.
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
-    use eframe::egui::{FontId, OutputCommand};
+    use eframe::egui::{FontDefinitions, FontId, OutputCommand};
     use egui_kittest::Harness;
     use egui_kittest::kittest::Queryable as _;
 
@@ -122,7 +132,9 @@ mod tests {
     #[test]
     fn the_sources_are_stated() {
         let window = window();
+        window.get_by_label(DATA_LABEL);
         window.get_by_label(dataset::SOURCE);
+        window.get_by_label(BASE_MAP_LABEL);
         window.get_by_label(basemap::SOURCE);
         window.get_by_label(basemap::SHORELINE_CREDIT);
     }
@@ -145,33 +157,61 @@ mod tests {
         assert_eq!(opened, [basemap::TILE_LIST]);
     }
 
-    /// A statement is drawn in the text it is written in, with no character
+    /// The window's own context has the fonts, in the order the font gives
+    /// them.
+    #[test]
+    fn the_window_draws_its_text_in_the_font() {
+        let window = window();
+        let font = JapaneseFont::installed().expect("macOS has the font");
+        let families = window
+            .ctx
+            .fonts(|fonts| fonts.definitions().families.clone());
+        assert_eq!(families, font.before_the_defaults().families);
+    }
+
+    /// Which characters the fonts lack, with egui's own put first or not at
+    /// all. egui tells a missing character by the font that draws the mark
+    /// for one, which is the first font, so with the Japanese font first it
+    /// would report every character of that font as missing.
+    fn lacks(text: &str, with_the_font: bool) -> bool {
+        let mut fonts = FontDefinitions::default();
+        if with_the_font {
+            fonts = JapaneseFont::installed()
+                .expect("macOS has the font")
+                .before_the_defaults();
+            for names in fonts.families.values_mut() {
+                names.rotate_left(1);
+            }
+        }
+        let mut harness = Harness::new_ui(|_| {});
+        harness.ctx.set_fonts(fonts);
+        harness.run();
+        harness
+            .ctx
+            .fonts_mut(|fonts| !fonts.has_glyphs(&FontId::default(), text))
+    }
+
+    /// Everything the screen states is drawn as written, with no character
     /// left to the mark that stands for a missing one.
     #[test]
     fn the_font_has_every_character_of_the_statements() {
-        let window = window();
-        let drawn = |text| {
-            window
-                .ctx
-                .fonts_mut(|fonts| fonts.has_glyphs(&FontId::default(), text))
-        };
-        assert!(drawn(dataset::SOURCE));
-        assert!(drawn(basemap::SOURCE));
-        assert!(drawn(basemap::SHORELINE_CREDIT));
+        let stated = [
+            DATA_LABEL,
+            dataset::SOURCE,
+            BASE_MAP_LABEL,
+            basemap::SOURCE,
+            basemap::SHORELINE_CREDIT,
+        ];
+        for text in stated {
+            assert!(!lacks(text, true), "{text}");
+        }
     }
 
-    /// The check above can fail: egui's own fonts lack those characters.
+    /// The check above can fail: egui's own fonts lack the Japanese ones.
     #[test]
     fn without_the_font_the_statements_cannot_be_drawn() {
-        let harness = Harness::new_ui(|ui| {
-            ui.label(dataset::SOURCE);
-        });
-        let drawn = |text| {
-            harness
-                .ctx
-                .fonts_mut(|fonts| fonts.has_glyphs(&FontId::default(), text))
-        };
-        assert!(!drawn(dataset::SOURCE));
-        assert!(!drawn(basemap::SOURCE));
+        for text in [DATA_LABEL, dataset::SOURCE, BASE_MAP_LABEL, basemap::SOURCE] {
+            assert!(lacks(text, false), "{text}");
+        }
     }
 }

@@ -50,9 +50,10 @@ impl JapaneseFont {
             .ok_or(FontError::NotRead)
     }
 
-    /// egui's fonts with this one after them, which then draws the characters
-    /// they lack.
-    pub(crate) fn after_the_defaults(self) -> FontDefinitions {
+    /// egui's fonts with this one before them, so that it draws every
+    /// character it has and they draw the rest. A line of text that two fonts
+    /// drew between them would not sit on one baseline.
+    pub(crate) fn before_the_defaults(self) -> FontDefinitions {
         let mut fonts = FontDefinitions::default();
         let data = FontData {
             index: self.face,
@@ -64,7 +65,7 @@ impl JapaneseFont {
                 .families
                 .entry(family)
                 .or_default()
-                .push(FAMILY.to_owned());
+                .insert(0, FAMILY.to_owned());
         }
         fonts
     }
@@ -81,5 +82,18 @@ mod tests {
             JapaneseFont::among(&fonts),
             Err(FontError::NotInstalled)
         ));
+    }
+
+    #[test]
+    fn the_font_comes_before_eguis_own() {
+        let font = JapaneseFont {
+            file: Vec::new(),
+            face: 0,
+        };
+        let fonts = font.before_the_defaults();
+        for family in [FontFamily::Proportional, FontFamily::Monospace] {
+            assert_eq!(fonts.families[&family][0], FAMILY);
+            assert!(fonts.families[&family].len() > 1, "egui's fonts are gone");
+        }
     }
 }
