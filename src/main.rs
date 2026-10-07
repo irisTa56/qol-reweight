@@ -60,7 +60,7 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    match Window::open(&dataset, font) {
+    match Window::open(dataset, font) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
             eprintln!("The window could not be opened: {error}");

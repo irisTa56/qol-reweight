@@ -20,7 +20,7 @@ pub(crate) const SHORELINE_CREDIT: &str = "Shoreline data is derived from: Unite
      Bethesda, MD: Denver, CO: The Agency; USGS Information Services, 1997.";
 
 /// The deepest zoom level the pale map has tiles for.
-pub(crate) const DEEPEST_ZOOM: u8 = 18;
+const DEEPEST_ZOOM: u8 = 18;
 
 /// GSI's pale map.
 pub(crate) struct PaleMap;

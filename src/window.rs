@@ -1,6 +1,6 @@
 //! The tool's window: the map, and under it the statements of its sources.
 
-use eframe::egui::{CentralPanel, Context, Frame, Margin, Panel, Ui, Vec2, ViewportBuilder};
+use eframe::egui::{CentralPanel, Context, Frame, Margin, Panel, Ui, ViewportBuilder};
 use eframe::epaint::text::FontPriority;
 use eframe::{App, NativeOptions};
 use walkers::{HttpTiles, Map, MapMemory, Position, Tiles};
@@ -9,7 +9,6 @@ use crate::basemap::{self, PaleMap};
 use crate::dataset::{self, Dataset};
 use crate::font::JapaneseFont;
 use crate::layer::MeshLayer;
-use crate::mesh::Extent;
 use crate::view::View;
 
 const TITLE: &str = "QOL Reweight";
@@ -27,11 +26,8 @@ const BASE_MAP_LABEL: &str = include_str!("../assets/base-map-source-label.txt")
 const SOURCES_MARGIN: Margin = Margin::symmetric(8, 10);
 
 pub(crate) struct Window {
-    /// The area the meshes cover, which the map opens on.
-    extent: Extent,
-    /// Where the map is centred until its user moves it. None until the
-    /// first frame, which is when the map's own size is known.
-    centre: Option<Position>,
+    /// Where the map is centred until its user moves it.
+    centre: Position,
     /// The base map's tiles, or none where nothing may be fetched.
     tiles: Option<HttpTiles>,
     memory: MapMemory,
@@ -39,11 +35,8 @@ pub(crate) struct Window {
 }
 
 impl Window {
-    /// Opens the window on `dataset`, showing its published total, and
-    /// returns when it is closed.
-    pub(crate) fn open(dataset: &Dataset, font: JapaneseFont) -> eframe::Result {
-        let extent = dataset.extent();
-        let layer = MeshLayer::showing(dataset.meshes(), dataset.total());
+    /// Opens the window on `dataset`, and returns when it is closed.
+    pub(crate) fn open(dataset: Dataset, font: JapaneseFont) -> eframe::Result {
         let options = NativeOptions {
             viewport: ViewportBuilder::default().with_inner_size(SIZE),
             ..NativeOptions::default()
@@ -54,33 +47,31 @@ impl Window {
             Box::new(move |creation| {
                 let context = &creation.egui_ctx;
                 let tiles = HttpTiles::new(PaleMap, context.clone());
-                Ok(Box::new(Self::new(
-                    context,
-                    font,
-                    extent,
-                    layer,
-                    Some(tiles),
-                )))
+                Ok(Box::new(Self::new(context, font, &dataset, Some(tiles))))
             }),
         )
     }
 
     /// The window as it opens in `context`: `font` draws its Japanese text, and
-    /// its map opens on `extent`, with `layer` over the base map.
+    /// its map is centred on the meshes of `dataset`, each drawn in the
+    /// colour of its published total.
     fn new(
         context: &Context,
         font: JapaneseFont,
-        extent: Extent,
-        layer: MeshLayer,
+        dataset: &Dataset,
         tiles: Option<HttpTiles>,
     ) -> Self {
         context.add_font(font.into_insert(FontPriority::Highest));
+        let view = View::of(dataset.extent());
+        let mut memory = MapMemory::default();
+        memory
+            .set_zoom(view.zoom())
+            .expect("the opening zoom level is one the map has");
         Self {
-            extent,
-            centre: None,
+            centre: view.centre(),
             tiles,
-            memory: MapMemory::default(),
-            layer,
+            memory,
+            layer: MeshLayer::showing(dataset.meshes(), dataset.total()),
         }
     }
 
@@ -91,26 +82,12 @@ impl Window {
             .frame(Frame::side_top_panel(ui.style()).inner_margin(SOURCES_MARGIN))
             .show(ui, Self::state_the_sources);
         CentralPanel::default().frame(Frame::NONE).show(ui, |ui| {
-            let centre = self.centre_fitting(ui.available_size());
             let tiles = self.tiles.as_mut().map(|tiles| tiles as &mut dyn Tiles);
             let layer = &self.layer;
-            Map::new(tiles, &mut self.memory, centre).show(ui, |ui, _, projector, _| {
+            Map::new(tiles, &mut self.memory, self.centre).show(ui, |ui, _, projector, _| {
                 ui.painter().add(layer.shape(projector));
             });
         });
-    }
-
-    /// Where the map is centred. The first time, the map is also zoomed so
-    /// that the extent fits in `map`, its size in points.
-    fn centre_fitting(&mut self, map: Vec2) -> Position {
-        if let Some(centre) = self.centre {
-            return centre;
-        }
-        let view = View::fitting(self.extent, map);
-        self.memory
-            .set_zoom(view.zoom())
-            .expect("a view's zoom level is one the map has");
-        *self.centre.insert(view.centre())
     }
 
     /// Each statement after a label that says what it is the source of.
@@ -138,6 +115,7 @@ impl App for Window {
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
     use eframe::egui::{FontFamily, FontId, OutputCommand, Rect, Shape};
+    use eframe::epaint::Vertex;
     use egui_kittest::Harness;
     use egui_kittest::kittest::Queryable as _;
 
@@ -161,8 +139,7 @@ mod tests {
         let mut harness = Harness::new_ui_state(show, None);
         let font = JapaneseFont::installed().expect("macOS has the font");
         let dataset = dataset_of_totals(&MESHES);
-        let layer = MeshLayer::showing(dataset.meshes(), dataset.total());
-        let window = Window::new(&harness.ctx, font, dataset.extent(), layer, None);
+        let window = Window::new(&harness.ctx, font, &dataset, None);
         *harness.state_mut() = Some(window);
         // The harness took its size from a frame with no window in it.
         harness.fit_contents();
@@ -170,42 +147,63 @@ mod tests {
         harness
     }
 
-    /// The meshes are among what the window draws, and they lie where the
-    /// view that fits their extent to the map's own area puts them.
-    #[test]
-    fn the_map_opens_with_the_meshes_fitted_to_it() {
-        let mut window = window();
-        // The window fits its map once, on its first frame, and the harness
-        // has changed size since: have it open again at the size it has now.
-        window.state_mut().as_mut().unwrap().centre = None;
-        window.run();
-        let drawn: Vec<(Rect, Rect)> = window
+    /// What the window draws of the meshes: the map's rectangle, and each
+    /// corner of each square with its colour.
+    fn meshes_drawn(window: &Harness<'_, Option<Window>>) -> (Rect, Vec<Vertex>) {
+        let drawn: Vec<_> = window
             .output()
             .shapes
             .iter()
             .filter_map(|clipped| match &clipped.shape {
-                Shape::Mesh(triangles) => Some((clipped.clip_rect, triangles.calc_bounds())),
+                Shape::Mesh(triangles) => Some((clipped.clip_rect, triangles.vertices.clone())),
                 _ => None,
             })
             .collect();
-        let [(map, squares)] = drawn.as_slice() else {
+        let [drawn] = drawn.as_slice() else {
             panic!("the window draws {} sets of triangles", drawn.len());
         };
+        drawn.clone()
+    }
+
+    /// The meshes lie where the view the map opens with puts their extent.
+    #[test]
+    fn the_map_opens_centred_on_the_meshes() {
+        let (map, corners) = meshes_drawn(&window());
+        let places: Vec<_> = corners.iter().map(|corner| corner.pos).collect();
+        let squares = Rect::from_points(&places);
 
         let extent = dataset_of_totals(&MESHES).extent();
-        let view = View::fitting(extent, map.size());
+        let view = View::of(extent);
         let mut memory = MapMemory::default();
         memory.set_zoom(view.zoom()).unwrap();
-        let projector = Projector::new(*map, &memory, view.centre());
+        let projector = Projector::new(map, &memory, view.centre());
         let south_west = projector.project(lat_lon(extent.south(), extent.west()));
         let north_east = projector.project(lat_lon(extent.north(), extent.east()));
-        let fitted = Rect::from_two_pos(south_west.to_pos2(), north_east.to_pos2());
+        let expected = Rect::from_two_pos(south_west.to_pos2(), north_east.to_pos2());
 
-        assert!(map.contains_rect(*squares), "{squares:?} in {map:?}");
+        assert!(map.contains_rect(squares), "{squares:?} in {map:?}");
         assert!(
-            (squares.min - fitted.min).length() < 0.5 && (squares.max - fitted.max).length() < 0.5,
-            "{squares:?} against {fitted:?}"
+            (squares.center() - map.center()).length() < 0.5,
+            "{squares:?}"
         );
+        assert!(
+            (squares.min - expected.min).length() < 0.5
+                && (squares.max - expected.max).length() < 0.5,
+            "{squares:?} against {expected:?}"
+        );
+    }
+
+    /// The totals of [`MESHES`] run from below zero to above it, while the
+    /// file's indicator has one value for every mesh.
+    #[test]
+    fn the_meshes_have_the_colours_of_their_totals() {
+        let (_, corners) = meshes_drawn(&window());
+        let colours: Vec<_> = corners.chunks(4).map(|square| square[0].color).collect();
+        let [lowest, _, highest] = colours.as_slice() else {
+            panic!("three meshes are not three squares: {colours:?}");
+        };
+        assert!(lowest.r() > lowest.b(), "{lowest:?} is not red");
+        assert!(highest.b() > highest.r(), "{highest:?} is not blue");
     }
 
     #[test]
