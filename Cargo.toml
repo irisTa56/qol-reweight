@@ -26,6 +26,7 @@ eframe = { version = "0.36.2", default-features = false, features = [
 # reads where Linux says its fonts are: the font looked for is one macOS has.
 fontdb = { version = "0.24.0", default-features = false, features = ["fs", "memmap"] }
 thiserror = "2.0.21"
+unit-prefix = "0.5.2"
 walkers = "0.60.0"
 
 [dev-dependencies]

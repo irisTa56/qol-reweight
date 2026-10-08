@@ -3,6 +3,7 @@
 use eframe::egui::{Color32, Layout, Rect, Response, Sense, Shape, Ui, Widget, pos2, vec2};
 use eframe::emath::Align;
 use eframe::epaint::Mesh as Triangles;
+use unit_prefix::NumberPrefix;
 
 use crate::layer::Paint;
 
@@ -29,9 +30,13 @@ impl Legend {
 
     /// What the lower end, the middle, and the upper end stand for, as the
     /// screen writes them. The reach has two figures at most, which is the
-    /// scale's doing, so it is written as it is.
+    /// scale's doing; from a thousand up it is written with a prefix, k or M
+    /// and so on, in place of its zeros.
     fn marks(&self) -> [String; 3] {
-        let reach = self.paint.reach();
+        let reach = match NumberPrefix::decimal(self.paint.reach()) {
+            NumberPrefix::Standalone(reach) => format!("{reach}"),
+            NumberPrefix::Prefixed(prefix, reach) => format!("{reach}{prefix}"),
+        };
         [format!("-{reach}"), "0".to_owned(), format!("+{reach}")]
     }
 
@@ -101,12 +106,23 @@ mod tests {
         assert_eq!(marks(2.0)[2], "+2");
         assert_eq!(marks(0.0456)[2], "+0.046");
         assert_eq!(marks(9.96)[2], "+10");
-        assert_eq!(marks(987_654.0)[2], "+990000");
-        for size in [1.234, 9.96, 0.0996, 987_654.0] {
+        assert_eq!(marks(990.0)[2], "+990");
+        for size in [1.234, 9.96, 0.0996, 987.0] {
             let paint = paint(size);
             let written: f64 = Legend::of(paint).marks()[2].parse().unwrap();
             assert_eq!(written, paint.reach(), "for {size}");
         }
+    }
+
+    /// k for thousands, M for millions, G for thousands of millions.
+    #[test]
+    fn a_reach_of_a_thousand_or_more_is_written_with_a_prefix() {
+        assert_eq!(marks(1000.0), ["-1k", "0", "+1k"]);
+        assert_eq!(marks(1234.0)[2], "+1.2k");
+        assert_eq!(marks(987_654.0)[2], "+990k");
+        assert_eq!(marks(4_321_000.0)[2], "+4.3M");
+        assert_eq!(marks(77_000_000.0)[2], "+77M");
+        assert_eq!(marks(2e9)[2], "+2G");
     }
 
     #[test]
