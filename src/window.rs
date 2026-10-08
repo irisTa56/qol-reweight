@@ -230,6 +230,7 @@ mod tests {
     use egui_kittest::Harness;
     use egui_kittest::kittest::{NodeT as _, Queryable as _};
 
+    use std::collections::{HashMap, HashSet};
     use std::net::TcpListener;
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -240,6 +241,7 @@ mod tests {
     use walkers::{Projector, TileId, lat_lon};
 
     use super::*;
+    use crate::dataset::{Mesh, Series};
     use crate::readout::{CODE_LABEL, MUNICIPALITY_LABEL, VALUE_LABEL};
     use crate::test_support::{city_of, dataset_of};
 
@@ -927,6 +929,104 @@ mod tests {
     fn without_the_font_the_statements_cannot_be_drawn() {
         for text in [DATA_LABEL, dataset::SOURCE, BASE_MAP_LABEL, basemap::SOURCE] {
             assert!(lacks(text, false), "{text}");
+        }
+    }
+
+    /// Every CSV file in the folder the variable names: what the window
+    /// offers and draws is what an independent reading of the file finds.
+    /// The files are real ones, which the repository does not hold, so the
+    /// test runs only when asked for, and a failure names a mesh or an
+    /// indicator and never a value.
+    #[test]
+    #[ignore = "reads the real files in the folder QOL_REWEIGHT_REAL_FILES names"]
+    fn a_real_file_is_offered_and_drawn_as_it_reads() {
+        let folder = std::env::var_os("QOL_REWEIGHT_REAL_FILES")
+            .expect("QOL_REWEIGHT_REAL_FILES names the folder of the files");
+        let mut files: Vec<_> = std::fs::read_dir(&folder)
+            .expect("the folder can be read")
+            .map(|entry| entry.expect("an entry of the folder").path())
+            .filter(|path| path.extension().is_some_and(|ending| ending == "csv"))
+            .collect();
+        files.sort();
+        assert!(!files.is_empty(), "the folder holds no CSV file");
+
+        for path in files {
+            let name = path.display();
+            let text = std::fs::read_to_string(&path).expect("the file is UTF-8");
+            let mut rows = csv::Reader::from_reader(text.trim_start_matches('\u{feff}').as_bytes());
+            let column = |name: &str| {
+                let headers = rows.headers().expect("a header row");
+                headers
+                    .iter()
+                    .position(|header| header == name)
+                    .expect("the column")
+            };
+            let [key_code, indicator_code, indicator, value] =
+                ["KeyCode", "IndicatorCode", "Indicator", "Value"].map(column);
+            // The indicators' names in the order the file first has them,
+            // the total's set apart, and each value by its mesh and name.
+            let mut meshes = Vec::new();
+            let mut seen = HashSet::new();
+            let mut indicators = Vec::new();
+            let mut total = None;
+            let mut values = HashMap::new();
+            for row in rows.records() {
+                let row = row.expect("a row");
+                let (mesh, name) = (row[key_code].to_owned(), row[indicator].to_owned());
+                if seen.insert(mesh.clone()) {
+                    meshes.push(mesh.clone());
+                }
+                if &row[indicator_code] == "QOL" {
+                    total = Some(name.clone());
+                } else if !indicators.contains(&name) {
+                    indicators.push(name.clone());
+                }
+                let value: f64 = row[value].parse().expect("a number");
+                values.insert((mesh, name), value);
+            }
+            let mut offered = vec![total.expect("the file has a total")];
+            offered.extend(indicators);
+
+            let dataset = Dataset::open(path.as_os_str()).expect("the tool reads the file");
+            let names: Vec<_> = dataset.series().iter().map(Series::name).collect();
+            assert!(names == offered, "{name}: the choices are not the file's");
+            let codes: Vec<_> = dataset.meshes().iter().map(Mesh::code).collect();
+            assert!(codes == meshes, "{name}: the meshes are not the file's");
+            for series in dataset.series() {
+                for (mesh, shown) in dataset.meshes().iter().zip(series.values()) {
+                    let published = values[&(mesh.code().to_owned(), series.name().to_owned())];
+                    assert!(
+                        *shown == published,
+                        "{name}: {} of mesh {} is not as published",
+                        series.name(),
+                        mesh.code()
+                    );
+                }
+            }
+
+            let count = dataset.meshes().len();
+            let mut window = window_on(dataset);
+            let shown = window.get_by_role(Role::ComboBox).accesskit_node().value();
+            assert!(
+                shown.as_deref() == Some(offered[0].as_str()),
+                "{name}: the total is not shown first"
+            );
+            let squares = window
+                .output()
+                .shapes
+                .iter()
+                .filter(|clipped| match &clipped.shape {
+                    Shape::Mesh(triangles) => triangles.vertices.len() == 4 * count,
+                    _ => false,
+                })
+                .count();
+            assert!(squares == 1, "{name}: not every mesh is drawn once");
+            choose(&mut window, &offered[offered.len() - 1]);
+            let shown = window.get_by_role(Role::ComboBox).accesskit_node().value();
+            assert!(
+                shown.as_deref() == Some(offered[offered.len() - 1].as_str()),
+                "{name}: the last indicator cannot be chosen"
+            );
         }
     }
 }
