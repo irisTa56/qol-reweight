@@ -92,6 +92,7 @@ The picture agrees with the one the platform shows for the same file, which sett
 - **`thiserror`**: derives the tool's error types.
 - **`colorous`**: the colours of the scale, from a published colour scheme.
 - **`fontdb`**: finds the font for Japanese text among the fonts installed on the system, by the name of its family.
+- **`unit-prefix`**: writes a large value of the legend with a prefix such as k or M in place of its zeros.
 - **`egui_kittest`**, for tests only: drives the window without showing it (A007).
 - **`proptest`**, for tests only: makes test input in code, text in a Japanese script included, and checks a property over all of it.
 - **Rust checks in `mise.toml` and CI**: formatting, lints, and tests join the tasks that gate a commit and a pull request.
