@@ -125,7 +125,10 @@ impl Window {
             let pointer = Map::new(tiles, &mut self.memory, self.centre)
                 .show(ui, |ui, map, projector, _| {
                     ui.painter().add(layer.shape(projector));
-                    let pointer = map.hover_pos()?;
+                    // A map being dragged counts as pointed at wherever
+                    // the pointer has gone, so the pointer's place is asked
+                    // for as well.
+                    let pointer = map.hover_pos().filter(|at| map.rect.contains(*at))?;
                     Some(projector.unproject(pointer.to_vec2()))
                 })
                 .inner;
@@ -503,19 +506,25 @@ mod tests {
 
     /// The map dragged until the meshes are under the panel beside it, and
     /// the pointer put where the last of them would be drawn: it is on the
-    /// panel and not on the map, so it is on no mesh.
+    /// panel and not on the map, so it is on no mesh, during the drag, which
+    /// began on that mesh, and after it.
     #[test]
     fn pointing_at_the_panel_over_a_mesh_reads_out_nothing() {
         let mut window = window();
-        let (map, _) = meshes_drawn(&window);
-        let beside = map.left() / 2.0;
+        let (map, corners) = meshes_drawn(&window);
+        let places: Vec<_> = corners[8..].iter().map(|corner| corner.pos).collect();
+        let from = Rect::from_points(&places).center();
+        let to = eframe::egui::pos2(map.left() / 2.0, from.y);
         // A drag has the map drawn again and again, so frames are counted
         // out. The pointer rests before it lets go, so that the map does too.
-        let to = eframe::egui::pos2(beside, map.center().y);
-        window.drag_at(map.center());
+        window.hover_at(from);
+        window.run();
+        window.get_by_label(MESHES[2]);
+        window.drag_at(from);
         window.run_steps(2);
         window.hover_at(to);
         window.run_steps(10);
+        assert!(window.query_by_label(MESHES[2]).is_none());
         window.drop_at(to);
         window.run_steps(10);
 
