@@ -36,6 +36,16 @@ pub(crate) struct Series {
 }
 
 impl Mesh {
+    /// The mesh's code, as the file writes it.
+    pub(crate) fn code(&self) -> &str {
+        &self.code
+    }
+
+    /// The name of the municipality the file puts the mesh in.
+    pub(crate) fn city(&self) -> &str {
+        &self.city
+    }
+
     /// The square the mesh's code names.
     pub(crate) fn square(&self) -> HalfMesh {
         self.square
@@ -58,6 +68,12 @@ impl Dataset {
     /// The file's meshes, in the order it first names them.
     pub(crate) fn meshes(&self) -> &[Mesh] {
         &self.meshes
+    }
+
+    /// Which of the meshes is `square`, as its place among them, or none
+    /// where the file has no such mesh.
+    pub(crate) fn mesh_at(&self, square: HalfMesh) -> Option<usize> {
+        self.meshes.iter().position(|mesh| mesh.square == square)
     }
 
     /// The area the meshes cover.
@@ -96,5 +112,14 @@ mod tests {
         let codes = ["533900001", "543823434"];
         let squares = codes.map(|code| HalfMesh::from_code(code).unwrap());
         assert_eq!(dataset(&codes).extent(), Extent::of(squares).unwrap());
+    }
+
+    #[test]
+    fn a_square_is_found_at_its_meshs_place_and_no_other_square_is_found() {
+        let dataset = dataset(&["533900001", "543823434"]);
+        let square = |code| HalfMesh::from_code(code).unwrap();
+        assert_eq!(dataset.mesh_at(square("543823434")), Some(1));
+        assert_eq!(dataset.mesh_at(square("533900001")), Some(0));
+        assert_eq!(dataset.mesh_at(square("543823433")), None);
     }
 }

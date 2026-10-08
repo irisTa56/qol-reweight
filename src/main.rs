@@ -12,6 +12,7 @@ mod layer;
 mod legend;
 mod mesh;
 mod paint;
+mod readout;
 mod scale;
 #[cfg(test)]
 mod test_support;

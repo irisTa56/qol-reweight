@@ -1,5 +1,6 @@
-//! The tool's window: the map, beside it what its colours show, and under
-//! them the statements of its sources.
+//! The tool's window: the map, beside it what its colours show and what the
+//! file says of the mesh pointed at, and under them the statements of its
+//! sources.
 
 use eframe::egui::{CentralPanel, ComboBox, Context, Frame, Margin, Panel, Ui, ViewportBuilder};
 use eframe::epaint::text::FontPriority;
@@ -11,6 +12,8 @@ use crate::dataset::{self, Dataset};
 use crate::font::JapaneseFont;
 use crate::layer::MeshLayer;
 use crate::legend::Legend;
+use crate::mesh::HalfMesh;
+use crate::readout::Readout;
 use crate::view::View;
 
 const TITLE: &str = "QOL Reweight";
@@ -33,7 +36,7 @@ const CHOICES_WIDTH: f32 = 240.0;
 /// past which it scrolls.
 const CHOICES_HEIGHT: f32 = 500.0;
 
-/// The space above the legend and under it, in points.
+/// The space above the legend, under it, and over the readout, in points.
 const CHOICES_SPACE: f32 = 8.0;
 
 /// The space around the statements of the sources, in points: as much above
@@ -51,6 +54,8 @@ pub(crate) struct Window {
     tiles: Option<HttpTiles>,
     memory: MapMemory,
     layer: MeshLayer,
+    /// Which of the dataset's meshes the pointer is on, if it is on one.
+    pointed: Option<usize>,
 }
 
 impl Window {
@@ -95,11 +100,13 @@ impl Window {
             tiles,
             memory,
             layer,
+            pointed: None,
         }
     }
 
     /// The map, with the statements of its sources: no frame has the one
-    /// without the others. Beside the map, what its colours show.
+    /// without the others. Beside the map, what its colours show, and what
+    /// the file says of the mesh the pointer is on.
     fn show(&mut self, ui: &mut Ui) {
         Panel::bottom("sources")
             .frame(Frame::side_top_panel(ui.style()).inner_margin(SOURCES_MARGIN))
@@ -107,14 +114,40 @@ impl Window {
         Panel::left("shown")
             .resizable(false)
             .default_size(CHOICES_WIDTH)
-            .show(ui, |ui| self.choose_what_is_shown(ui));
+            .show(ui, |ui| {
+                self.choose_what_is_shown(ui);
+                ui.add_space(CHOICES_SPACE);
+                ui.add(self.readout());
+            });
         CentralPanel::default().frame(Frame::NONE).show(ui, |ui| {
             let tiles = self.tiles.as_mut().map(|tiles| tiles as &mut dyn Tiles);
             let layer = &self.layer;
-            Map::new(tiles, &mut self.memory, self.centre).show(ui, |ui, _, projector, _| {
-                ui.painter().add(layer.shape(projector));
-            });
+            let pointer = Map::new(tiles, &mut self.memory, self.centre)
+                .show(ui, |ui, map, projector, _| {
+                    ui.painter().add(layer.shape(projector));
+                    let pointer = map.hover_pos()?;
+                    Some(projector.unproject(pointer.to_vec2()))
+                })
+                .inner;
+            let pointed = pointer
+                .and_then(|pointer| HalfMesh::holding(pointer.y(), pointer.x()))
+                .and_then(|square| self.dataset.mesh_at(square));
+            // The readout was drawn before the map was, so it is drawn again.
+            if pointed != self.pointed {
+                self.pointed = pointed;
+                ui.ctx().request_repaint();
+            }
         });
+    }
+
+    /// What the file says of the mesh the pointer is on: its value is the one
+    /// the colours show.
+    fn readout(&self) -> Readout<'_> {
+        let values = self.dataset.series()[self.shown].values();
+        let pointed = self
+            .pointed
+            .map(|at| (&self.dataset.meshes()[at], values[at]));
+        Readout::of(pointed)
     }
 
     /// The legend of what is shown, and under it a pull-down to choose from:
@@ -178,7 +211,8 @@ mod tests {
     use walkers::{Projector, lat_lon};
 
     use super::*;
-    use crate::test_support::dataset_of;
+    use crate::readout::{CODE_LABEL, MUNICIPALITY_LABEL, VALUE_LABEL};
+    use crate::test_support::{city_of, dataset_of};
 
     /// The meshes of the file the window is opened on.
     const MESHES: [&str; 3] = ["543823431", "543823432", "543823434"];
@@ -397,6 +431,76 @@ mod tests {
         assert_eq!(room(&window), room(&short));
     }
 
+    /// Moves the pointer to the middle of the square drawn for the mesh at
+    /// `at` in [`MESHES`].
+    fn point_at(window: &mut Harness<'_, Option<Window>>, at: usize) {
+        let (_, corners) = meshes_drawn(window);
+        let places: Vec<_> = corners[4 * at..][..4]
+            .iter()
+            .map(|corner| corner.pos)
+            .collect();
+        window.hover_at(Rect::from_points(&places).center());
+        window.run();
+    }
+
+    /// The last mesh, whose total is -1 and whose value of the indicator is
+    /// 3: the legend has neither as a mark, so each is found as the readout
+    /// alone writes it.
+    #[test]
+    fn pointing_at_a_mesh_reads_out_its_code_its_municipality_and_the_value_shown() {
+        let mut window = window();
+        for label in [CODE_LABEL, MUNICIPALITY_LABEL, VALUE_LABEL] {
+            window.get_by_label(label);
+        }
+        assert!(window.query_by_label(MESHES[2]).is_none());
+
+        point_at(&mut window, 2);
+        window.get_by_label(MESHES[2]);
+        window.get_by_label(&city_of(MESHES[2]));
+        window.get_by_label("-1");
+
+        point_at(&mut window, 0);
+        window.get_by_label(MESHES[0]);
+        window.get_by_label(&city_of(MESHES[0]));
+        assert!(window.query_by_label(MESHES[2]).is_none());
+        assert!(window.query_by_label("-1").is_none());
+    }
+
+    /// The pull-down is chosen from with the pointer, which leaves the mesh
+    /// to do so and comes back to it.
+    #[test]
+    fn the_value_read_out_is_that_of_what_the_colours_show() {
+        let mut window = window();
+        choose(&mut window, "Floods");
+        point_at(&mut window, 2);
+        window.get_by_label(MESHES[2]);
+        window.get_by_label("3");
+        assert!(window.query_by_label("-1").is_none());
+    }
+
+    /// The meshes are in the middle of the map, and its corner is far from
+    /// them. The readout takes the same room with a mesh and without.
+    #[test]
+    fn pointing_away_from_the_meshes_reads_out_nothing() {
+        let mut window = window();
+        let room = |window: &Harness<'_, Option<Window>>| {
+            [CODE_LABEL, MUNICIPALITY_LABEL, VALUE_LABEL]
+                .map(|label| window.get_by_label(label).rect())
+        };
+        let without = room(&window);
+        point_at(&mut window, 2);
+        window.get_by_label(MESHES[2]);
+        assert_eq!(room(&window), without);
+
+        let (map, _) = meshes_drawn(&window);
+        window.hover_at(map.left_top() + eframe::egui::vec2(5.0, 5.0));
+        window.run();
+        assert!(window.query_by_label(MESHES[2]).is_none());
+        assert!(window.query_by_label(&city_of(MESHES[2])).is_none());
+        assert!(window.query_by_label("-1").is_none());
+        assert_eq!(room(&window), without);
+    }
+
     /// The bar is over its marks, with the mark of the lower end under the
     /// end where the bar is red and that of the upper end where it is blue.
     #[test]
@@ -507,6 +611,9 @@ mod tests {
     fn the_font_has_every_character_of_the_statements() {
         let stated = [
             SHOWN_LABEL,
+            CODE_LABEL,
+            MUNICIPALITY_LABEL,
+            VALUE_LABEL,
             DATA_LABEL,
             dataset::SOURCE,
             BASE_MAP_LABEL,

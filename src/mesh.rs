@@ -112,6 +112,20 @@ impl HalfMesh {
         })
     }
 
+    /// The square that holds a point, given in degrees, or none where the
+    /// point is south of the equator or west of 100 degrees east, which no
+    /// code reaches. A point on the edge two squares share is in either.
+    pub(crate) fn holding(latitude: f64, longitude: f64) -> Option<Self> {
+        let row = (latitude * f64::from(ROWS_PER_DEGREE)).floor();
+        let column = ((longitude - 100.0) * f64::from(COLUMNS_PER_DEGREE)).floor();
+        // Neither comparison holds for a count that is not a number, and a
+        // count past the last `u32` becomes that one, far from every code.
+        (row >= 0.0 && column >= 0.0).then_some(Self {
+            row: row as u32,
+            column: column as u32,
+        })
+    }
+
     /// Latitude of the southern edge, in degrees.
     pub(crate) fn south(self) -> f64 {
         f64::from(self.row) / f64::from(ROWS_PER_DEGREE)
@@ -215,6 +229,14 @@ mod tests {
     }
 
     #[test]
+    fn no_square_holds_a_point_no_code_reaches() {
+        assert_eq!(HalfMesh::holding(-0.001, 138.0), None);
+        assert_eq!(HalfMesh::holding(36.0, 99.999), None);
+        assert_eq!(HalfMesh::holding(f64::NAN, 138.0), None);
+        assert_eq!(HalfMesh::holding(36.0, f64::NAN), None);
+    }
+
+    #[test]
     fn full_width_digits_are_refused() {
         for code in [
             // Nine characters, 27 bytes.
@@ -254,6 +276,20 @@ mod tests {
             let m = mesh(&d.code());
             prop_assert!(close(m.north() - m.south(), 15.0 / 3600.0));
             prop_assert!(close(m.east() - m.west(), 22.5 / 3600.0));
+        }
+
+        /// Anywhere within a square but on its edges, where the point may
+        /// fall to the square across the edge.
+        #[test]
+        fn a_square_holds_the_points_within_it(
+            d in valid_digits(),
+            north in 0.01..0.99f64,
+            east in 0.01..0.99f64,
+        ) {
+            let m = mesh(&d.code());
+            let latitude = m.south() + (m.north() - m.south()) * north;
+            let longitude = m.west() + (m.east() - m.west()) * east;
+            prop_assert_eq!(HalfMesh::holding(latitude, longitude), Some(m));
         }
 
         /// The four quarters of a third-level square tile it: 1 and 2 along
