@@ -501,6 +501,37 @@ mod tests {
         assert_eq!(room(&window), without);
     }
 
+    /// A municipality's name and a value both far longer than the panel is
+    /// wide: the panel stays as wide, so the map stays where it is and the
+    /// pointer stays on the mesh, which is read out in full.
+    #[test]
+    fn a_long_name_and_a_long_value_leave_the_map_where_it_is() {
+        let city = ["A municipality whose name goes on"; 3].join(" and ");
+        // As many figures as a value has at most.
+        let value = (1.0_f64 / 3.0).to_string();
+        let mut file = String::from(
+            "KeyCode,PrefectureCode,CityCode,Prefecture,City,IndicatorCode,Indicator,Value\n",
+        );
+        for code in MESHES {
+            file.push_str(&format!(
+                "{code},00,00000,a prefecture,{city},QOL,Total,{value}\n"
+            ));
+        }
+        let dataset = Dataset::read(file.as_bytes()).expect("a file made to be read");
+        let mut window = window_on(dataset);
+        let (map, _) = meshes_drawn(&window);
+
+        point_at(&mut window, 2);
+        assert_eq!(meshes_drawn(&window).0, map);
+        for label in [CODE_LABEL, MUNICIPALITY_LABEL, VALUE_LABEL] {
+            let label = window.get_by_label(label).rect();
+            let said = window.get_by_label(MESHES[2]).rect();
+            assert!(label.right() < said.left(), "{label:?} {said:?}");
+        }
+        window.get_by_label(&city);
+        window.get_by_label(&value);
+    }
+
     /// The bar is over its marks, with the mark of the lower end under the
     /// end where the bar is red and that of the upper end where it is blue.
     #[test]

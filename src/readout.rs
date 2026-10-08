@@ -1,6 +1,6 @@
 //! The readout: what the file says of the mesh the pointer is on.
 
-use eframe::egui::{Grid, Response, Ui, Widget};
+use eframe::egui::{Label, Response, Ui, Widget, vec2};
 
 use crate::dataset::Mesh;
 
@@ -15,8 +15,14 @@ pub(crate) const VALUE_LABEL: &str = include_str!("../assets/value-label.txt").t
 /// that the readout takes the same room with a mesh and without.
 const NOTHING: &str = "-";
 
+/// How wide the labels' column is, in points: the widest label, and a space
+/// after it.
+const LABELS_WIDTH: f32 = 100.0;
+
 /// A mesh's code, the name of its municipality, and the value the colours
-/// show for it, a line each under one another.
+/// show for it, a line each under one another. It is as wide as the room it
+/// is given whatever it says: a name or a value too long for its line goes
+/// on in the line below.
 pub(crate) struct Readout<'a> {
     /// The mesh the pointer is on and its value, or none where it is on no
     /// mesh.
@@ -50,16 +56,19 @@ impl<'a> Readout<'a> {
 
 impl Widget for Readout<'_> {
     fn ui(self, ui: &mut Ui) -> Response {
-        Grid::new("readout")
-            .num_columns(2)
-            .show(ui, |ui| {
-                for (label, said) in self.lines() {
-                    ui.label(label);
-                    ui.label(said);
-                    ui.end_row();
-                }
-            })
-            .response
+        ui.vertical(|ui| {
+            for (label, said) in self.lines() {
+                ui.horizontal_top(|ui| {
+                    ui.allocate_ui(vec2(LABELS_WIDTH, 0.0), |ui| {
+                        ui.set_min_width(LABELS_WIDTH);
+                        ui.label(label);
+                    });
+                    // In the room the labels leave, and no wider.
+                    ui.add(Label::new(said).wrap());
+                });
+            }
+        })
+        .response
     }
 }
 
