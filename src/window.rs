@@ -539,6 +539,39 @@ mod tests {
         assert!(window.query_by_label("-1").is_none());
     }
 
+    /// A file with many indicators whose names are far longer than the panel
+    /// is wide: open, the pull-down reaches over the map and covers the last
+    /// mesh. The pointer where that mesh is drawn is on a choice and not on
+    /// the map, so it is on no mesh.
+    #[test]
+    fn pointing_at_a_choice_over_a_mesh_reads_out_nothing() {
+        let same: &[f64] = &[0.25, 0.25, 0.25];
+        let long = " with a name that goes on".repeat(5);
+        let many: Vec<(String, String)> = (0..40)
+            .map(|at| (format!("X{at:02}"), format!("Indicator {at}{long}")))
+            .collect();
+        let mut file: Vec<(&str, &str, &[f64])> = many
+            .iter()
+            .map(|(code, name)| (code.as_str(), name.as_str(), same))
+            .collect();
+        file.push(("QOL", "Total", &[2.0, 0.5, -1.0]));
+        let mut window = window_on(dataset_of(&MESHES, &file));
+        let (_, corners) = meshes_drawn(&window);
+        let places: Vec<_> = corners[8..].iter().map(|corner| corner.pos).collect();
+        let mesh = Rect::from_points(&places).center();
+
+        open_the_choices(&mut window);
+        let covered = many
+            .iter()
+            .flat_map(|(_, name)| window.query_all_by_label(name))
+            .any(|choice| choice.rect().contains(mesh));
+        assert!(covered, "no choice lies over the mesh at {mesh:?}");
+        window.hover_at(mesh);
+        window.run();
+        assert!(window.query_by_label(MESHES[2]).is_none());
+        assert!(window.query_by_label("-1").is_none());
+    }
+
     /// A municipality's name and a value both far longer than the panel is
     /// wide: the panel stays as wide, so the map stays where it is and the
     /// pointer stays on the mesh, which is read out in full.
