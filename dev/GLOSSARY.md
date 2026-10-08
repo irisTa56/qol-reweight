@@ -36,6 +36,7 @@ The terms are the Statistics Bureau of Japan's, from [`地域メッシュ統計�
 | base map | `ベースマップ` |
 | legend | `凡例` |
 | what the colours show | `色で表す値` |
+| opacity, of the meshes | `不透明度` |
 | mesh code, as the screen labels it | `メッシュコード` |
 | value, of a mesh | `値` |
 | source, of the data or of the base map | `出典` |

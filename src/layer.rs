@@ -17,9 +17,10 @@ pub(crate) struct MeshLayer {
 
 impl MeshLayer {
     /// The meshes coloured by `series`, which has a value for each of them in
-    /// their order, on the scale that fits those values.
-    pub(crate) fn showing(meshes: &[Mesh], series: &Series) -> Self {
-        let paint = Paint::fitting(series.values());
+    /// their order, on the scale that fits those values, each colour
+    /// covering `opacity` of 255 of the base map.
+    pub(crate) fn showing(meshes: &[Mesh], series: &Series, opacity: u8) -> Self {
+        let paint = Paint::fitting(series.values(), opacity);
         let squares = meshes
             .iter()
             .zip(series.values())
@@ -55,6 +56,7 @@ mod tests {
     use walkers::MapMemory;
 
     use super::*;
+    use crate::paint::OPENING_OPACITY;
     use crate::test_support::dataset_of_totals;
 
     /// The map's place in the window.
@@ -73,7 +75,7 @@ mod tests {
     /// Each square the layer draws: its rectangle on screen and its colour.
     fn drawn(totals: &[(&str, f64)], projector: &Projector) -> Vec<(Rect, Color32)> {
         let dataset = dataset_of_totals(totals);
-        let layer = MeshLayer::showing(dataset.meshes(), &dataset.series()[0]);
+        let layer = MeshLayer::showing(dataset.meshes(), &dataset.series()[0], OPENING_OPACITY);
         let Shape::Mesh(triangles) = layer.shape(projector) else {
             panic!("the layer is not drawn as triangles");
         };
@@ -142,7 +144,7 @@ mod tests {
     fn a_square_has_the_colour_its_value_is_painted_in() {
         let totals = [("543823431", -2.0), ("543823432", 0.0), ("543823433", 1.0)];
         let drawn = drawn(&totals, &centred_on("543823431", 14.0));
-        let paint = Paint::fitting(&[-2.0, 0.0, 1.0]);
+        let paint = Paint::fitting(&[-2.0, 0.0, 1.0], OPENING_OPACITY);
         for ((_, colour), (_, value)) in drawn.iter().zip(totals) {
             assert_eq!(*colour, paint.of(value), "for {value}");
         }

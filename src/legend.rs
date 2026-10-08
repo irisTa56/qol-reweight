@@ -79,10 +79,11 @@ impl Widget for Legend {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::paint::OPENING_OPACITY;
 
     /// The paint of a map whose values reach `reach`.
     fn paint(reach: f64) -> Paint {
-        Paint::fitting(&[reach])
+        Paint::fitting(&[reach], OPENING_OPACITY)
     }
 
     fn marks(reach: f64) -> [String; 3] {
