@@ -21,6 +21,7 @@ Source of the data: `都市QOLデータ2020（大日本ダイヤコンサルタ�
 The tool is checked on macOS only.
 
 1. Install [mise](https://mise.jdx.dev/getting-started.html), and run `mise install` in this repository, which installs the Rust toolchain the tool is built with.
+   It also installs the tools development uses and sets up this clone's git hooks, which run the repository's checks before a commit and a push.
 2. Start the tool with the path of a downloaded file:
 
    ```sh

@@ -72,8 +72,6 @@ Starts the built tool as a user would, for the starts that end without a window.
 - **The file**: one of the platform's CSV files crosses into the tool, by a path on the command line. Its layout is the one the [phase 01 plan](plan/phase-01-local-map.md) records as A001.
 - **The tile server**: requests for GSI's pale map tiles go out, and images come back. Nothing from the file goes with them.
 - **The system's fonts**: Hiragino Sans is read from where the system keeps it.
-- A mesh is drawn where its code puts it on the base map: the tool's map and the platform's show the same pattern for the same file, ending at the same coastline and borders. No test holds this; it was checked by eye when phase 01 closed.
-- Panning and zooming stay smooth with a metropolitan area's file open. No test holds this either.
 - Started without a path, or with a file it cannot read, the tool prints which file it expects and where to download it, and exits with a failure.
 - The [README](../README.md) says how to get a file and start the tool, that only macOS is checked, and what happens without the font.
 
