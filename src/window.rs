@@ -2,7 +2,9 @@
 //! file says of the mesh pointed at, and under them the statements of its
 //! sources.
 
-use eframe::egui::{CentralPanel, ComboBox, Context, Frame, Margin, Panel, Ui, ViewportBuilder};
+use eframe::egui::{
+    CentralPanel, ComboBox, Context, Frame, Margin, Panel, Slider, Ui, ViewportBuilder,
+};
 use eframe::epaint::text::FontPriority;
 use eframe::{App, NativeOptions};
 use walkers::{HttpTiles, Map, MapMemory, Position, Tiles};
@@ -14,6 +16,7 @@ use crate::font::JapaneseFont;
 use crate::layer::MeshLayer;
 use crate::legend::Legend;
 use crate::mesh::HalfMesh;
+use crate::paint::OPENING_OPACITY;
 use crate::readout::Readout;
 use crate::view::View;
 
@@ -29,6 +32,10 @@ const BASE_MAP_LABEL: &str = asset::text!("base-map-source-label.txt");
 
 /// What the screen puts over the pull-down of what the colours can show.
 const SHOWN_LABEL: &str = asset::text!("shown-label.txt");
+
+/// What the screen puts over the slider that sets how much of the base map
+/// the meshes cover.
+const OPACITY_LABEL: &str = asset::text!("opacity-label.txt");
 
 /// How wide the panel with the legend and that pull-down is, in points.
 const CHOICES_WIDTH: f32 = 240.0;
@@ -55,6 +62,8 @@ pub(crate) struct Window {
     tiles: Option<HttpTiles>,
     memory: MapMemory,
     layer: MeshLayer,
+    /// How much of the base map the meshes cover, of 255.
+    opacity: u8,
     /// Which of the dataset's meshes the pointer is on, if it is on one.
     pointed: Option<usize>,
 }
@@ -93,7 +102,8 @@ impl Window {
             .set_zoom(view.zoom())
             .expect("the opening zoom level is one the map has");
         let shown = 0;
-        let layer = MeshLayer::showing(dataset.meshes(), &dataset.series()[shown]);
+        let opacity = OPENING_OPACITY;
+        let layer = MeshLayer::showing(dataset.meshes(), &dataset.series()[shown], opacity);
         Self {
             dataset,
             shown,
@@ -101,6 +111,7 @@ impl Window {
             tiles,
             memory,
             layer,
+            opacity,
             pointed: None,
         }
     }
@@ -154,9 +165,10 @@ impl Window {
         Readout::of(pointed)
     }
 
-    /// The legend of what is shown, and under it a pull-down to choose from:
-    /// the total, then each indicator of the file. A choice colours the
-    /// meshes anew.
+    /// The legend of what is shown, under it a pull-down to choose from, the
+    /// total, then each indicator of the file, and under that a slider for
+    /// how much of the base map the meshes cover, from none of it to all. A
+    /// choice colours the meshes anew, and so does a move of the slider.
     fn choose_what_is_shown(&mut self, ui: &mut Ui) {
         ui.add_space(CHOICES_SPACE);
         ui.add(Legend::of(self.layer.paint()));
@@ -176,9 +188,15 @@ impl Window {
                     ui.selectable_value(&mut chosen, at, series.name());
                 }
             });
-        if chosen != self.shown {
+        ui.add_space(CHOICES_SPACE);
+        ui.strong(OPACITY_LABEL);
+        let mut opacity = self.opacity;
+        ui.spacing_mut().slider_width = ui.available_width();
+        ui.add(Slider::new(&mut opacity, 0..=u8::MAX).show_value(false));
+        if chosen != self.shown || opacity != self.opacity {
             self.shown = chosen;
-            self.layer = MeshLayer::showing(self.dataset.meshes(), &series[chosen]);
+            self.opacity = opacity;
+            self.layer = MeshLayer::showing(self.dataset.meshes(), &series[chosen], opacity);
         }
     }
 
@@ -433,6 +451,76 @@ mod tests {
         choose(&mut window, &long);
         assert_eq!(ends(&window), ["blue", "red"]);
         assert_eq!(room(&window), room(&short));
+    }
+
+    /// Presses and lets go on the slider, `along` of the way from its left
+    /// end to its right.
+    fn slide_to(window: &mut Harness<'_, Option<Window>>, along: f32) {
+        let slider = window.get_by_role(Role::Slider).rect();
+        let at = slider.left_center() + eframe::egui::vec2(slider.width() * along, 0.0);
+        window.drag_at(at);
+        window.run();
+        window.drop_at(at);
+        window.run();
+    }
+
+    /// How much of the base map the first mesh's square covers, and the
+    /// legend's bar past its ground, each of 255.
+    fn covered(window: &Harness<'_, Option<Window>>) -> [u8; 2] {
+        let (_, corners) = meshes_drawn(window);
+        let bar = window
+            .output()
+            .shapes
+            .iter()
+            .find_map(|clipped| match &clipped.shape {
+                Shape::Mesh(triangles) if triangles.vertices.len() != 4 * MESHES.len() => {
+                    Some(triangles.vertices[4].color)
+                }
+                _ => None,
+            })
+            .expect("the window draws the legend's bar");
+        [corners[0].color.a(), bar.a()]
+    }
+
+    /// The slider is under its label. The meshes open letting the base map
+    /// through; slid to the right end they hide it, to the left end they
+    /// leave it as it is, and in between they cover more of it the further
+    /// right. The legend's bar follows, and the colours keep their ends.
+    #[test]
+    fn the_slider_sets_how_much_of_the_base_map_the_meshes_cover() {
+        let mut window = window();
+        let label = window.get_by_label(OPACITY_LABEL).rect();
+        let slider = window.get_by_role(Role::Slider).rect();
+        assert!(label.bottom() <= slider.top(), "{label:?} {slider:?}");
+        assert_eq!(covered(&window), [OPENING_OPACITY; 2]);
+
+        slide_to(&mut window, 1.0);
+        assert_eq!(covered(&window), [255; 2]);
+        assert_eq!(ends(&window), ["blue", "red"]);
+
+        slide_to(&mut window, 0.0);
+        assert_eq!(covered(&window), [0; 2]);
+
+        slide_to(&mut window, 0.25);
+        let [faint, _] = covered(&window);
+        slide_to(&mut window, 0.75);
+        let [strong, bar] = covered(&window);
+        assert!(
+            0 < faint && faint < strong && strong < 255,
+            "{faint} {strong}"
+        );
+        assert_eq!(bar, strong);
+    }
+
+    /// Another indicator is painted as the slider was left, not as the tool
+    /// opens.
+    #[test]
+    fn what_the_slider_set_stays_when_another_indicator_is_chosen() {
+        let mut window = window();
+        slide_to(&mut window, 1.0);
+        choose(&mut window, "Floods");
+        assert_eq!(covered(&window), [255; 2]);
+        assert_eq!(ends(&window), ["red", "blue"]);
     }
 
     /// Moves the pointer to the middle of the square drawn for the mesh at
@@ -714,6 +802,7 @@ mod tests {
     fn the_font_has_every_character_of_the_statements() {
         let stated = [
             SHOWN_LABEL,
+            OPACITY_LABEL,
             CODE_LABEL,
             MUNICIPALITY_LABEL,
             VALUE_LABEL,
