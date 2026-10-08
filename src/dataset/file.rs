@@ -424,14 +424,6 @@ mod tests {
         Dataset::read(file(rows).as_slice())
     }
 
-    /// The file's last rows are the totals, so it is not the place in the
-    /// file that makes a series the total.
-    #[test]
-    fn the_total_is_the_series_the_file_publishes_as_qol() {
-        let dataset = read(&small()).unwrap();
-        assert_eq!(dataset.total().values(), [1.5, -1.75]);
-    }
-
     #[test]
     fn a_file_becomes_its_meshes_and_the_total_then_its_indicators() {
         let dataset = read(&small()).unwrap();

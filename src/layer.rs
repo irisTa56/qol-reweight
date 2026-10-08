@@ -12,26 +12,52 @@ use crate::scale::Scale;
 /// rest shows through, which keeps the place names readable.
 const OPACITY: u8 = 170;
 
+/// How a value is painted on the map: in its colour on a scale, covering
+/// the base map only in part.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Paint {
+    scale: Scale,
+}
+
+impl Paint {
+    /// The colour a square with `value` is filled with.
+    pub(crate) fn of(self, value: f64) -> Color32 {
+        let colour = self.scale.colour(value);
+        Color32::from_rgba_unmultiplied(colour.r, colour.g, colour.b, OPACITY)
+    }
+
+    /// The value the deepest colour one way stands for, and its negative the
+    /// other way.
+    pub(crate) fn reach(self) -> f64 {
+        self.scale.reach()
+    }
+}
+
 /// Each mesh's square, and the colour it is filled with.
 pub(crate) struct MeshLayer {
     squares: Vec<(HalfMesh, Color32)>,
+    /// What the colours were taken from.
+    paint: Paint,
 }
 
 impl MeshLayer {
     /// The meshes coloured by `series`, which has a value for each of them in
     /// their order, on the scale that fits those values.
     pub(crate) fn showing(meshes: &[Mesh], series: &Series) -> Self {
-        let scale = Scale::fitting(series.values());
+        let paint = Paint {
+            scale: Scale::fitting(series.values()),
+        };
         let squares = meshes
             .iter()
             .zip(series.values())
-            .map(|(mesh, &value)| {
-                let colour = scale.colour(value);
-                let colour = Color32::from_rgba_unmultiplied(colour.r, colour.g, colour.b, OPACITY);
-                (mesh.square(), colour)
-            })
+            .map(|(mesh, &value)| (mesh.square(), paint.of(value)))
             .collect();
-        Self { squares }
+        Self { squares, paint }
+    }
+
+    /// How the squares are painted, which a legend shows.
+    pub(crate) fn paint(&self) -> Paint {
+        self.paint
     }
 
     /// The squares as `projector` places them on screen, four corners each in
@@ -74,7 +100,7 @@ mod tests {
     /// Each square the layer draws: its rectangle on screen and its colour.
     fn drawn(totals: &[(&str, f64)], projector: &Projector) -> Vec<(Rect, Color32)> {
         let dataset = dataset_of_totals(totals);
-        let layer = MeshLayer::showing(dataset.meshes(), dataset.total());
+        let layer = MeshLayer::showing(dataset.meshes(), &dataset.series()[0]);
         let Shape::Mesh(triangles) = layer.shape(projector) else {
             panic!("the layer is not drawn as triangles");
         };
