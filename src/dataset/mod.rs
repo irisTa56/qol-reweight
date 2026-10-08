@@ -1,13 +1,14 @@
 //! A file of Urban QOL data once it is in memory: its meshes, and what it
 //! publishes for each of them. Reading one is [`file`]'s.
 
+use crate::asset;
 use crate::mesh::{Extent, HalfMesh};
 
 mod file;
 
 /// The statement of the data's source that its provider asks for, as the
 /// screen shows it.
-pub(crate) const SOURCE: &str = include_str!("../../assets/data-source.txt").trim_ascii_end();
+pub(crate) const SOURCE: &str = asset::text!("data-source.txt");
 
 /// A file's meshes, and what it publishes for each of them.
 #[derive(Debug, PartialEq)]

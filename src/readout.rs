@@ -2,14 +2,14 @@
 
 use eframe::egui::{Label, Response, Ui, Widget, vec2};
 
+use crate::asset;
 use crate::dataset::Mesh;
 
 /// What the screen puts before the mesh's code, before the name of its
 /// municipality, and before its value.
-pub(crate) const CODE_LABEL: &str = include_str!("../assets/mesh-code-label.txt").trim_ascii_end();
-pub(crate) const MUNICIPALITY_LABEL: &str =
-    include_str!("../assets/municipality-label.txt").trim_ascii_end();
-pub(crate) const VALUE_LABEL: &str = include_str!("../assets/value-label.txt").trim_ascii_end();
+pub(crate) const CODE_LABEL: &str = asset::text!("mesh-code-label.txt");
+pub(crate) const MUNICIPALITY_LABEL: &str = asset::text!("municipality-label.txt");
+pub(crate) const VALUE_LABEL: &str = asset::text!("value-label.txt");
 
 /// What stands for each of the three while the pointer is on no mesh, so
 /// that the readout takes the same room with a mesh and without.

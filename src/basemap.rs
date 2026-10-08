@@ -7,8 +7,10 @@
 use walkers::TileId;
 use walkers::sources::{Attribution, TileSource};
 
+use crate::asset;
+
 /// What the screen calls the tiles' source.
-pub(crate) const SOURCE: &str = include_str!("../assets/base-map-source.txt").trim_ascii_end();
+pub(crate) const SOURCE: &str = asset::text!("base-map-source.txt");
 
 /// GSI's list of its tiles, which the statement of the source links to.
 pub(crate) const TILE_LIST: &str = "https://maps.gsi.go.jp/development/ichiran.html";

@@ -5,6 +5,7 @@ use dataset::Dataset;
 use font::JapaneseFont;
 use window::Window;
 
+mod asset;
 mod basemap;
 mod dataset;
 mod font;

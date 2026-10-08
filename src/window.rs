@@ -7,6 +7,7 @@ use eframe::epaint::text::FontPriority;
 use eframe::{App, NativeOptions};
 use walkers::{HttpTiles, Map, MapMemory, Position, Tiles};
 
+use crate::asset;
 use crate::basemap::{self, PaleMap};
 use crate::dataset::{self, Dataset};
 use crate::font::JapaneseFont;
@@ -23,11 +24,11 @@ const SIZE: [f32; 2] = [1280.0, 800.0];
 
 /// What the screen puts before the statement of the data's source, and before
 /// that of the base map's.
-const DATA_LABEL: &str = include_str!("../assets/data-source-label.txt").trim_ascii_end();
-const BASE_MAP_LABEL: &str = include_str!("../assets/base-map-source-label.txt").trim_ascii_end();
+const DATA_LABEL: &str = asset::text!("data-source-label.txt");
+const BASE_MAP_LABEL: &str = asset::text!("base-map-source-label.txt");
 
 /// What the screen puts over the pull-down of what the colours can show.
-const SHOWN_LABEL: &str = include_str!("../assets/shown-label.txt").trim_ascii_end();
+const SHOWN_LABEL: &str = asset::text!("shown-label.txt");
 
 /// How wide the panel with the legend and that pull-down is, in points.
 const CHOICES_WIDTH: f32 = 240.0;
