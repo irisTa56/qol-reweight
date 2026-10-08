@@ -48,3 +48,35 @@ impl TileSource for PaleMap {
         DEEPEST_ZOOM
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The address GSI's list gives for the pale map, with the zoom level
+    /// before the column and the row.
+    #[test]
+    fn a_tile_is_asked_of_gsi_by_its_zoom_level_column_and_row() {
+        let tile = TileId {
+            x: 3,
+            y: 5,
+            zoom: 7,
+        };
+        assert_eq!(
+            PaleMap.tile_url(tile),
+            "https://cyberjapandata.gsi.go.jp/xyz/pale/7/3/5.png"
+        );
+    }
+
+    #[test]
+    fn the_map_is_given_the_source_and_the_list_it_links_to() {
+        let attribution = PaleMap.attribution();
+        assert_eq!(attribution.text, SOURCE);
+        assert_eq!(attribution.url, TILE_LIST);
+    }
+
+    #[test]
+    fn no_tile_is_asked_for_past_the_deepest_level_the_map_has() {
+        assert_eq!(PaleMap.max_zoom(), DEEPEST_ZOOM);
+    }
+}

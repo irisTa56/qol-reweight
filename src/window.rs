@@ -230,7 +230,14 @@ mod tests {
     use egui_kittest::Harness;
     use egui_kittest::kittest::{NodeT as _, Queryable as _};
 
-    use walkers::{Projector, lat_lon};
+    use std::net::TcpListener;
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::thread;
+    use std::time::{Duration, Instant};
+
+    use walkers::sources::{Attribution, TileSource};
+    use walkers::{Projector, TileId, lat_lon};
 
     use super::*;
     use crate::readout::{CODE_LABEL, MUNICIPALITY_LABEL, VALUE_LABEL};
@@ -256,6 +263,15 @@ mod tests {
 
     /// The same, opened on `dataset`.
     fn window_on(dataset: Dataset) -> Harness<'static, Option<Window>> {
+        window_with(dataset, |_| None)
+    }
+
+    /// The window opened on `dataset`, with the tiles `tiles` makes in its
+    /// context.
+    fn window_with(
+        dataset: Dataset,
+        tiles: impl FnOnce(&Context) -> Option<HttpTiles>,
+    ) -> Harness<'static, Option<Window>> {
         let show = |ui: &mut Ui, window: &mut Option<Window>| {
             if let Some(window) = window {
                 window.show(ui);
@@ -263,7 +279,8 @@ mod tests {
         };
         let mut harness = Harness::new_ui_state(show, None);
         let font = JapaneseFont::installed().expect("macOS has the font");
-        let window = Window::new(&harness.ctx, font, dataset, None);
+        let tiles = tiles(&harness.ctx);
+        let window = Window::new(&harness.ctx, font, dataset, tiles);
         *harness.state_mut() = Some(window);
         // The harness took its size from a frame with no window in it.
         harness.fit_contents();
@@ -318,6 +335,81 @@ mod tests {
                 && (squares.max - expected.max).length() < 0.5,
             "{squares:?} against {expected:?}"
         );
+    }
+
+    /// A tile server on this machine that hangs up on whoever calls, and
+    /// counts the calls. The tool has no other address to ask for a tile.
+    struct DeadServer {
+        port: u16,
+        calls: Arc<AtomicUsize>,
+    }
+
+    impl DeadServer {
+        fn start() -> Self {
+            let listener = TcpListener::bind("127.0.0.1:0").expect("a free port");
+            let port = listener.local_addr().expect("the port bound").port();
+            let calls = Arc::new(AtomicUsize::new(0));
+            let counted = Arc::clone(&calls);
+            thread::spawn(move || {
+                for call in listener.incoming() {
+                    drop(call);
+                    counted.fetch_add(1, Ordering::SeqCst);
+                }
+            });
+            Self { port, calls }
+        }
+    }
+
+    /// The tiles of a server at `port` on this machine.
+    struct TilesAt {
+        port: u16,
+    }
+
+    impl TileSource for TilesAt {
+        fn tile_url(&self, tile: TileId) -> String {
+            let Self { port } = self;
+            format!(
+                "http://127.0.0.1:{port}/{}/{}/{}.png",
+                tile.zoom, tile.x, tile.y
+            )
+        }
+
+        fn attribution(&self) -> Attribution {
+            PaleMap.attribution()
+        }
+    }
+
+    /// The map asks the server for tiles and gets none, and the meshes and
+    /// the statements of the sources are on screen all the same, in the
+    /// frames before the server is called and in those after.
+    #[test]
+    fn without_the_base_map_the_meshes_are_drawn_all_the_same() {
+        let server = DeadServer::start();
+        let port = server.port;
+        let mut window = window_with(dataset_of(&MESHES, &FILE), |context| {
+            Some(HttpTiles::new(TilesAt { port }, context.clone()))
+        });
+        let (_, at_first) = meshes_drawn(&window);
+
+        let asked = Instant::now();
+        while server.calls.load(Ordering::SeqCst) == 0 {
+            assert!(
+                asked.elapsed() < Duration::from_secs(10),
+                "the map asked the server for no tile"
+            );
+            thread::sleep(Duration::from_millis(20));
+            window.step();
+        }
+        // Long enough for the map to hear that the tile did not come.
+        for _ in 0..10 {
+            thread::sleep(Duration::from_millis(20));
+            window.step();
+        }
+
+        assert_eq!(meshes_drawn(&window).1, at_first);
+        assert_eq!(ends(&window), ["blue", "red"]);
+        window.get_by_label(dataset::SOURCE);
+        window.get_by_label(basemap::SOURCE);
     }
 
     /// Which end of the scale the first mesh and the last are drawn at:
