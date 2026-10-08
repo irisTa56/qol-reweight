@@ -6,32 +6,7 @@ use walkers::{Projector, lat_lon};
 
 use crate::dataset::{Mesh, Series};
 use crate::mesh::HalfMesh;
-use crate::scale::Scale;
-
-/// How much of a square's colour covers the base map under it, of 255. The
-/// rest shows through, which keeps the place names readable.
-const OPACITY: u8 = 170;
-
-/// How a value is painted on the map: in its colour on a scale, covering
-/// the base map only in part.
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct Paint {
-    scale: Scale,
-}
-
-impl Paint {
-    /// The colour a square with `value` is filled with.
-    pub(crate) fn of(self, value: f64) -> Color32 {
-        let colour = self.scale.colour(value);
-        Color32::from_rgba_unmultiplied(colour.r, colour.g, colour.b, OPACITY)
-    }
-
-    /// The value the deepest colour one way stands for, and its negative the
-    /// other way.
-    pub(crate) fn reach(self) -> f64 {
-        self.scale.reach()
-    }
-}
+use crate::paint::Paint;
 
 /// Each mesh's square, and the colour it is filled with.
 pub(crate) struct MeshLayer {
@@ -44,9 +19,7 @@ impl MeshLayer {
     /// The meshes coloured by `series`, which has a value for each of them in
     /// their order, on the scale that fits those values.
     pub(crate) fn showing(meshes: &[Mesh], series: &Series) -> Self {
-        let paint = Paint {
-            scale: Scale::fitting(series.values()),
-        };
+        let paint = Paint::fitting(series.values());
         let squares = meshes
             .iter()
             .zip(series.values())
@@ -166,20 +139,12 @@ mod tests {
     }
 
     #[test]
-    fn a_square_has_the_colour_of_its_value_and_lets_the_base_map_through() {
+    fn a_square_has_the_colour_its_value_is_painted_in() {
         let totals = [("543823431", -2.0), ("543823432", 0.0), ("543823433", 1.0)];
         let drawn = drawn(&totals, &centred_on("543823431", 14.0));
-        let scale = Scale::fitting(&[-2.0, 0.0, 1.0]);
+        let paint = Paint::fitting(&[-2.0, 0.0, 1.0]);
         for ((_, colour), (_, value)) in drawn.iter().zip(totals) {
-            let on_the_scale = scale.colour(value);
-            let expected = Color32::from_rgba_unmultiplied(
-                on_the_scale.r,
-                on_the_scale.g,
-                on_the_scale.b,
-                OPACITY,
-            );
-            assert_eq!(*colour, expected, "for {value}");
-            assert!(colour.a() < 255, "{colour:?} hides the base map");
+            assert_eq!(*colour, paint.of(value), "for {value}");
         }
         assert_ne!(drawn[0].1, drawn[1].1);
         assert_ne!(drawn[1].1, drawn[2].1);

@@ -5,7 +5,7 @@ use eframe::emath::Align;
 use eframe::epaint::Mesh as Triangles;
 use unit_prefix::NumberPrefix;
 
-use crate::layer::Paint;
+use crate::paint::Paint;
 
 /// How high the bar of colours is, in points.
 const BAR_HEIGHT: f32 = 14.0;
@@ -79,13 +79,10 @@ impl Widget for Legend {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::layer::MeshLayer;
-    use crate::test_support::dataset_of_totals;
 
-    /// The paint of a map that shows one mesh, whose value is the reach.
+    /// The paint of a map whose values reach `reach`.
     fn paint(reach: f64) -> Paint {
-        let dataset = dataset_of_totals(&[("543823431", reach)]);
-        MeshLayer::showing(dataset.meshes(), &dataset.series()[0]).paint()
+        Paint::fitting(&[reach])
     }
 
     fn marks(reach: f64) -> [String; 3] {
