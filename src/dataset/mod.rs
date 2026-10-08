@@ -7,7 +7,7 @@ mod file;
 
 /// The statement of the data's source that its provider asks for, as the
 /// screen shows it.
-pub(crate) const SOURCE: &str = include_str!("../assets/data-source.txt").trim_ascii_end();
+pub(crate) const SOURCE: &str = include_str!("../../assets/data-source.txt").trim_ascii_end();
 
 /// A file's meshes, and what it publishes for each of them.
 #[derive(Debug, PartialEq)]
