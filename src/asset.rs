@@ -2,7 +2,8 @@
 //! source file does not hold.
 
 /// The text of the file named `name` under `assets/`, as the screen shows
-/// it: without the line end the file closes with.
+/// it: without the line end the file closes with, nor any other ASCII white
+/// space at its end, so a text cannot end in a space.
 ///
 /// It is a macro because `include_str!` takes the file's name as written
 /// where it is called, which a function's parameter is not. The name is
