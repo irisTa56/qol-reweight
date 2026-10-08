@@ -501,6 +501,35 @@ mod tests {
         assert_eq!(room(&window), without);
     }
 
+    /// The map dragged until the meshes are under the panel beside it, and
+    /// the pointer put where the last of them would be drawn: it is on the
+    /// panel and not on the map, so it is on no mesh.
+    #[test]
+    fn pointing_at_the_panel_over_a_mesh_reads_out_nothing() {
+        let mut window = window();
+        let (map, _) = meshes_drawn(&window);
+        let beside = map.left() / 2.0;
+        // A drag has the map drawn again and again, so frames are counted
+        // out. The pointer rests before it lets go, so that the map does too.
+        let to = eframe::egui::pos2(beside, map.center().y);
+        window.drag_at(map.center());
+        window.run_steps(2);
+        window.hover_at(to);
+        window.run_steps(10);
+        window.drop_at(to);
+        window.run_steps(10);
+
+        let (map, corners) = meshes_drawn(&window);
+        let places: Vec<_> = corners[8..].iter().map(|corner| corner.pos).collect();
+        let square = Rect::from_points(&places);
+        assert!(square.right() < map.left(), "{square:?} beside {map:?}");
+        window.hover_at(square.center());
+        window.run_steps(3);
+        assert_eq!(meshes_drawn(&window).1, corners, "the map came to rest");
+        assert!(window.query_by_label(MESHES[2]).is_none());
+        assert!(window.query_by_label("-1").is_none());
+    }
+
     /// A municipality's name and a value both far longer than the panel is
     /// wide: the panel stays as wide, so the map stays where it is and the
     /// pointer stays on the mesh, which is read out in full.
