@@ -54,6 +54,6 @@ Before every push, check that no commit it would publish carries anything of thi
 
 - Source files hold no Japanese text and no other character an editor may draw two columns wide, since one such character puts the lines around it out of vertical alignment.
   - [`dev/GLOSSARY.md`](dev/GLOSSARY.md) pairs each English name the code uses with the Japanese term it stands for, so add the pair there when the code takes a new one.
-  - Japanese text the tool shows on screen lives in a file under `assets/`, which the code takes in with `include_str!`, so that it can be read and checked as written, which an escape cannot.
+  - Japanese text the tool shows on screen lives in a file under `assets/`, which the code takes in with `asset::text!`, so that it can be read and checked as written, which an escape cannot.
   - A test makes its input in code, and where it needs text in a Japanese script it generates that text, as [`proptest`](https://docs.rs/proptest) does from a pattern such as `\p{Katakana}{2,4}`.
 - Where a widely used crate with few dependencies of its own does a job, such as `thiserror` for error types, use it rather than writing the job out by hand.

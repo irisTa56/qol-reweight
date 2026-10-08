@@ -67,9 +67,10 @@ pub(crate) fn valid_code() -> impl Strategy<Value = String> {
     valid_digits().prop_map(Digits::code)
 }
 
-/// A file read as the tool reads one: a mesh for each of `codes`, and for
-/// each of `series`, in that order in the file, its `IndicatorCode`, its
-/// name, and a value for each mesh.
+/// A file read as the tool reads one: a mesh for each of `codes`, in a
+/// municipality named after its code as [`city_of`] has it, and for each of
+/// `series`, in that order in the file, its `IndicatorCode`, its name, and a
+/// value for each mesh.
 pub(crate) fn dataset_of(codes: &[&str], series: &[(&str, &str, &[f64])]) -> Dataset {
     let mut file = String::from(
         "KeyCode,PrefectureCode,CityCode,Prefecture,City,IndicatorCode,Indicator,Value\n",
@@ -77,11 +78,18 @@ pub(crate) fn dataset_of(codes: &[&str], series: &[(&str, &str, &[f64])]) -> Dat
     for (indicator_code, name, values) in series {
         for (code, value) in codes.iter().zip(*values) {
             file.push_str(&format!(
-                "{code},00,00000,a prefecture,a city,{indicator_code},{name},{value}\n"
+                "{code},00,00000,a prefecture,{},{indicator_code},{name},{value}\n",
+                city_of(code)
             ));
         }
     }
     Dataset::read(file.as_bytes()).expect("a file made to be read")
+}
+
+/// The municipality [`dataset_of`] puts the mesh `code` names in: one of its
+/// own for each mesh, so that a name tells which mesh it was read from.
+pub(crate) fn city_of(code: &str) -> String {
+    format!("City {code}")
 }
 
 /// A file's worth of meshes with a published total each. It also has one

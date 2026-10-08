@@ -5,6 +5,7 @@ use dataset::Dataset;
 use font::JapaneseFont;
 use window::Window;
 
+mod asset;
 mod basemap;
 mod dataset;
 mod font;
@@ -12,6 +13,7 @@ mod layer;
 mod legend;
 mod mesh;
 mod paint;
+mod readout;
 mod scale;
 #[cfg(test)]
 mod test_support;
