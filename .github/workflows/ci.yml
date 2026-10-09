@@ -16,10 +16,12 @@ name: CI
 # `ubuntu-latest` runner image; the mise binary, which `mise-action` resolves at
 # run time since no step sets its `version` input; the TruffleHog image, which
 # its action pulls at `latest`; the gitleaks binary, which `GITLEAKS_VERSION:
-# latest` below resolves at run time; and every tool mise.toml tracks at
-# `latest`, which each run installs afresh (see `cache: false` below). GitHub
-# disables a `schedule` trigger after 60 days with no repository activity, so
-# this canary goes quiet on a dormant repository.
+# latest` below resolves at run time; every tool mise.toml tracks at `latest`,
+# which each run installs afresh (see `cache: false` below); and the RustSec
+# advisory database, which `qa:rust:deny` fetches on each run, so that an
+# advisory issued against a crate already in use shows in a week with no
+# commit. GitHub disables a `schedule` trigger after 60 days with no repository
+# activity, so this canary goes quiet on a dormant repository.
 
 on:
   pull_request:
