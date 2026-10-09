@@ -88,15 +88,17 @@ run = "cargo test --locked"
 # stops, before anything is built on it.
 #
 # In two steps so that it runs without a network, as the rest of `qa:**` does.
-# The first brings the database up to date and may fail; the second reads only
-# the copy under `~/.cargo`, which that step last fetched, and fails where there
-# is none, as on a CI runner whose fetch failed, or where it is over 90 days
-# old. One step would be `cargo deny check advisories`, which fails whenever its
-# own fetch does.
+# The first may fail: it brings the database up to date and downloads the crates
+# `Cargo.lock` names, which the second reads to find what depends on what. The
+# second reads only the copies under `~/.cargo` that the first last fetched. It
+# fails where one is missing, as on a CI runner whose fetch failed, or where the
+# database is over 90 days old. One step would be `cargo deny check advisories`,
+# which fails whenever its own fetch does, and `--offline` is the only switch
+# that stops that fetch, the fetch of the crates along with it.
 [tasks."qa:rust:deny"]
 description = "Check the dependencies against the RustSec advisories"
 run = [
-  "cargo deny fetch db || echo 'warning: the advisory database was not updated; checking the copy already here' >&2",
+  "{ cargo deny fetch db && cargo fetch --locked; } || echo 'warning: the advisory database or the crates were not updated; checking the copies already here' >&2",
   "cargo deny --locked --offline check advisories",
 ]
 
