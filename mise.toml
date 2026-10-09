@@ -82,33 +82,22 @@ run = "cargo clippy --locked --all-targets -- -D warnings"
 description = "Run Rust tests"
 run = "cargo test --locked"
 
-# Fails on a crate the build reaches, on any platform, that the RustSec advisory
-# database names. On cargo-deny's defaults that is a vulnerable crate or an
-# unmaintained one anywhere among them, and an unsound one only where
-# `Cargo.toml` names it: an unsound crate that comes in through another passes
-# with nothing printed. An entry of `Cargo.lock` that no enabled feature reaches
-# is not checked.
+# Fails on a crate the RustSec advisory database names, within what cargo-deny
+# checks by default, which is neither every kind of advisory nor every entry
+# of `Cargo.lock`:
+# https://embarkstudios.github.io/cargo-deny/checks/advisories/cfg.html
 #
 # Here, and not in CI alone, so that the commit that brings such a crate in
 # stops, before anything is built on it. An advisory issued against a crate
-# already among them stops every commit and every CI run from then on, whatever
-# they change, until the crate is replaced or a `deny.toml` beside this file
-# names the advisory's ID under `ignore` in `[advisories]`.
+# already in use stops every commit and every CI run from then on, whatever
+# they change, until the crate is replaced or a `deny.toml` ignores the advisory.
 #
 # In two steps so that it runs without a network, as the rest of `qa:**` does.
-# The first may fail: it brings the database up to date and downloads the crates
-# `Cargo.lock` names, which the second reads to find what depends on what. The
-# second reads only the copies under `~/.cargo` that the first last fetched. It
-# fails where one is missing, as on a CI runner whose fetch failed, or where the
-# database is over 90 days old. One step would be `cargo deny check advisories`,
-# which fails whenever its own fetch does, and `--offline` is the only switch
-# that stops that fetch, the fetch of the crates along with it.
-#
-# The fetch of the database is cut off after 20 seconds, as a failed one: a
-# network that takes a connection and answers nothing would otherwise hold the
-# commit for as long as it stays that way. `timeout` is GNU coreutils', which a
-# CI runner has and macOS has only once it is installed there; without it the
-# first step fails every time, and the database is never brought up to date.
+# The first may fail: it fetches the database, for 20 seconds at most since a
+# network that answers nothing would otherwise hold the commit, and the crates.
+# The second reads only what is already under `~/.cargo`; `--offline` is the
+# only switch cargo-deny 0.20 has for that. `timeout` is GNU coreutils', which
+# macOS has only once it is installed.
 [tasks."qa:rust:deny"]
 description = "Check the dependencies against the RustSec advisories"
 run = [
