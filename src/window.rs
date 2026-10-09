@@ -692,6 +692,19 @@ mod tests {
         window.get_by_label(&value);
     }
 
+    /// A reach too large and one too small for the legend to write in the
+    /// room a mark has: the panel stays as wide, so the map is where a file of
+    /// ordinary values has it.
+    #[test]
+    fn a_mark_too_long_for_the_legend_leaves_the_map_where_it_is() {
+        let (map, _) = meshes_drawn(&window());
+        for reach in [1e-300, 1e300] {
+            let values: &[f64] = &[-reach, 0.0, reach];
+            let window = window_on(dataset_of(&MESHES, &[("QOL", "Total", values)]));
+            assert_eq!(meshes_drawn(&window).0, map, "a reach of {reach:e}");
+        }
+    }
+
     /// The bar is over its marks, with the mark of the lower end under the
     /// end where the bar is red and that of the upper end where it is blue.
     #[test]
