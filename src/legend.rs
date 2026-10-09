@@ -1,6 +1,6 @@
 //! The legend: which colour stands for which value.
 
-use eframe::egui::{Color32, Layout, Rect, Response, Sense, Shape, Ui, Widget, pos2, vec2};
+use eframe::egui::{Color32, Label, Layout, Rect, Response, Sense, Shape, Ui, Widget, pos2, vec2};
 use eframe::emath::Align;
 use eframe::epaint::Mesh as Triangles;
 use unit_prefix::NumberPrefix;
@@ -66,10 +66,15 @@ impl Widget for Legend {
             let size = vec2(ui.available_width(), BAR_HEIGHT);
             let (bar, _) = ui.allocate_exact_size(size, Sense::hover());
             ui.painter().add(self.colours(bar));
+            // A mark keeps to its third of the bar: one too long for it, as
+            // a reach past the largest prefix or far under 1 is written, is
+            // cut short, and the panel stays as wide.
             ui.columns(3, |columns| {
-                columns[0].label(lowest);
-                columns[1].vertical_centered(|ui| ui.label(middle));
-                columns[2].with_layout(Layout::right_to_left(Align::Min), |ui| ui.label(highest));
+                columns[0].add(Label::new(lowest).truncate());
+                columns[1].vertical_centered(|ui| ui.add(Label::new(middle).truncate()));
+                columns[2].with_layout(Layout::right_to_left(Align::Min), |ui| {
+                    ui.add(Label::new(highest).truncate())
+                });
             });
         })
         .response
