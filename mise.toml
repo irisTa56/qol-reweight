@@ -82,13 +82,18 @@ run = "cargo clippy --locked --all-targets -- -D warnings"
 description = "Run Rust tests"
 run = "cargo test --locked"
 
-# Fails on a crate in `Cargo.lock` that the RustSec advisory database names: a
-# vulnerable one, and an unmaintained one too, which is cargo-deny's default.
+# Fails on a crate the build reaches, on any platform, that the RustSec advisory
+# database names. On cargo-deny's defaults that is a vulnerable crate or an
+# unmaintained one anywhere among them, and an unsound one only where
+# `Cargo.toml` names it: an unsound crate that comes in through another passes
+# with nothing printed. An entry of `Cargo.lock` that no enabled feature reaches
+# is not checked.
+#
 # Here, and not in CI alone, so that the commit that brings such a crate in
 # stops, before anything is built on it. An advisory issued against a crate
-# already here stops every commit and every CI run from then on, whatever they
-# change, until the crate is replaced or a `deny.toml` beside this file names
-# the advisory's ID under `ignore` in `[advisories]`.
+# already among them stops every commit and every CI run from then on, whatever
+# they change, until the crate is replaced or a `deny.toml` beside this file
+# names the advisory's ID under `ignore` in `[advisories]`.
 #
 # In two steps so that it runs without a network, as the rest of `qa:**` does.
 # The first may fail: it brings the database up to date and downloads the crates
