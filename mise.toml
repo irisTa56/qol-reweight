@@ -1,4 +1,5 @@
 [tools]
+cargo-deny = "latest"
 lychee = "latest"
 rumdl = "latest"
 # rustup installs the toolchain and keeps it outside mise's own directory.
@@ -80,6 +81,24 @@ run = "cargo clippy --locked --all-targets -- -D warnings"
 [tasks."qa:rust:test"]
 description = "Run Rust tests"
 run = "cargo test --locked"
+
+# Fails on a crate in `Cargo.lock` that the RustSec advisory database names: a
+# vulnerable one, and an unmaintained one too, which is cargo-deny's default.
+# Here, and not in CI alone, so that the commit that brings such a crate in
+# stops, before anything is built on it.
+#
+# In two steps so that it runs without a network, as the rest of `qa:**` does.
+# The first brings the database up to date and may fail; the second reads only
+# the copy under `~/.cargo`, which that step last fetched, and fails where there
+# is none, as on a CI runner whose fetch failed, or where it is over 90 days
+# old. One step would be `cargo deny check advisories`, which fails whenever its
+# own fetch does.
+[tasks."qa:rust:deny"]
+description = "Check the dependencies against the RustSec advisories"
+run = [
+  "cargo deny fetch db || echo 'warning: the advisory database was not updated; checking the copy already here' >&2",
+  "cargo deny --locked --offline check advisories",
+]
 
 # Not in `qa:**`: a full-repo external link check is too slow and
 # network-bound for pre-commit; `link-check:staged` requests only the links of
