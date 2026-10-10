@@ -69,9 +69,11 @@ Starts the built tool as a user would, for the starts that end without a window.
 
 ## Boundaries and outside-visible behavior
 
-- **The file**: one of the platform's CSV files crosses into the tool, by a path on the command line. Its layout is the one the [phase 01 plan](plan/phase-01-local-map.md) records as A001.
+- **The file**: one of the platform's CSV files crosses into the tool, by a path on the command line. Its layout is the one the [phase 01 plan](plan/phase-01-local-map.md) records as A001, and its mesh codes are taken to be half grid square codes on the base map's geodetic system, which that plan's A002 and A003 checked against public data for the files of three regions. No test holds this for a file of another region.
 - **The tile server**: requests for GSI's pale map tiles go out, and images come back. Nothing from the file goes with them.
 - **The system's fonts**: Hiragino Sans is read from where the system keeps it.
+- Over the base map, the meshes lie on the land it draws, and it names places in Japanese under them. No test holds this.
+- Panning and zooming stay smooth with a metropolitan area's file open. No test holds this either.
 - Started without a path, or with a file it cannot read, the tool prints which file it expects and where to download it, and exits with a failure.
 - The [README](../README.md) says how to get a file and start the tool, that only macOS is checked, and what happens without the font.
 

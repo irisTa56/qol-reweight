@@ -1,6 +1,6 @@
 # Phase 01: Published values on a local map
 
-- Status: In progress
+- Status: Closed
 - Roadmap: [Published values on a local map](../ROADMAP.md#phases)
 
 ## Goal
@@ -118,6 +118,7 @@ The path from the file to the map is settled without the platform's map: the too
   - Evidence: `a_real_file_is_offered_and_drawn_as_it_reads` in `src/window.rs`, run on macOS, 2026-10-10, on the commit that adds this line, over the files of Aichi, Tokyo, and the Chukyo metropolitan area: it passes. Its second reading uses the CSV reader alone and none of the tool's `src/dataset/`.
 - **With the Chukyo metropolitan area's file open, the base map names places in Japanese under the meshes, the meshes lie where the base map draws land, with none out at sea and no steady offset along the coast, and panning and zooming stay smooth.** — verifies R001, R005, A002, A003, A005, A006.
   - Check: the maintainer looks at the tool.
+  - Evidence: the maintainer opened the Chukyo metropolitan area's file on 2026-10-10 and found all three to hold, with no picture kept.
 - **Mesh codes turn into the squares the standard defines, files that differ in indicators and in the byte order mark load, and zero gets the neutral colour with the two ends at plus and minus a high percentile of the absolute values shown.** — verifies R001, R002, R003, A001.
   - Check: automated tests on synthetic data, passing in CI.
   - Evidence: [CI run 38026118139](https://github.com/irisTa56/qol-reweight/actions/runs/38026118139), on `main` at `1c556b1`, 2026-10-10: its `rust-check` job passes the tests of `src/mesh.rs`, `src/dataset/file.rs`, and `src/scale.rs` among its 61 unit tests.
