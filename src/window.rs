@@ -1,9 +1,10 @@
-//! The tool's window: the map, beside it what its colours show and what the
-//! file says of the mesh pointed at, and under them the statements of its
+//! The tool's window: the map, on it what the file says of the mesh pointed
+//! at, beside it what its colours show, and under them the statements of its
 //! sources.
 
 use eframe::egui::{
-    CentralPanel, ComboBox, Context, Frame, Margin, Panel, Slider, Ui, ViewportBuilder,
+    CentralPanel, ComboBox, Context, Frame, Margin, Panel, PopupAnchor, Slider, Tooltip, Ui,
+    ViewportBuilder,
 };
 use eframe::epaint::text::FontPriority;
 use eframe::{App, NativeOptions};
@@ -44,8 +45,15 @@ const CHOICES_WIDTH: f32 = 240.0;
 /// past which it scrolls.
 const CHOICES_HEIGHT: f32 = 500.0;
 
-/// The space above the legend, under it, and over the readout, in points.
+/// The space above the legend and under it, in points.
 const CHOICES_SPACE: f32 = 8.0;
+
+/// How wide the readout is, in points: its labels, and on a line ten
+/// characters of a municipality's name, or a value of sixteen.
+const READOUT_WIDTH: f32 = 240.0;
+
+/// How far from the pointer the readout is, in points.
+const READOUT_GAP: f32 = 12.0;
 
 /// The space around the statements of the sources, in points: as much above
 /// the first and below the last as there is between the two.
@@ -64,8 +72,6 @@ pub(crate) struct Window {
     layer: MeshLayer,
     /// How much of the base map the meshes cover, of 255.
     opacity: u8,
-    /// Which of the dataset's meshes the pointer is on, if it is on one.
-    pointed: Option<usize>,
 }
 
 impl Window {
@@ -112,13 +118,12 @@ impl Window {
             memory,
             layer,
             opacity,
-            pointed: None,
         }
     }
 
     /// The map, with the statements of its sources: no frame has the one
-    /// without the others. Beside the map, what its colours show, and what
-    /// the file says of the mesh the pointer is on.
+    /// without the others. Beside the map, what its colours show, and beside
+    /// the pointer, what the file says of the mesh it is on.
     fn show(&mut self, ui: &mut Ui) {
         Panel::bottom("sources")
             .frame(Frame::side_top_panel(ui.style()).inner_margin(SOURCES_MARGIN))
@@ -126,43 +131,42 @@ impl Window {
         Panel::left("shown")
             .resizable(false)
             .default_size(CHOICES_WIDTH)
-            .show(ui, |ui| {
-                self.choose_what_is_shown(ui);
-                ui.add_space(CHOICES_SPACE);
-                ui.add(self.readout());
-            });
+            .show(ui, |ui| self.choose_what_is_shown(ui));
         CentralPanel::default().frame(Frame::NONE).show(ui, |ui| {
             let tiles = self.tiles.as_mut().map(|tiles| tiles as &mut dyn Tiles);
             let layer = &self.layer;
-            let pointer = Map::new(tiles, &mut self.memory, self.centre)
-                .show(ui, |ui, map, projector, _| {
+            let map =
+                Map::new(tiles, &mut self.memory, self.centre).show(ui, |ui, map, projector, _| {
                     ui.painter().add(layer.shape(projector));
                     // A map being dragged counts as pointed at wherever
                     // the pointer has gone, so the pointer's place is asked
                     // for as well.
                     let pointer = map.hover_pos().filter(|at| map.rect.contains(*at))?;
                     Some(projector.unproject(pointer.to_vec2()))
-                })
-                .inner;
-            let pointed = pointer
+                });
+            let pointed = map
+                .inner
                 .and_then(|pointer| HalfMesh::holding(pointer.y(), pointer.x()))
                 .and_then(|square| self.dataset.mesh_at(square));
-            // The readout was drawn before the map was, so it is drawn again.
-            if pointed != self.pointed {
-                self.pointed = pointed;
-                ui.ctx().request_repaint();
+            if let Some(pointed) = pointed {
+                let (context, map) = (ui.ctx().clone(), map.response);
+                Tooltip::always_open(context, map.layer_id, map.id, PopupAnchor::Pointer)
+                    .gap(READOUT_GAP)
+                    .show(|ui| {
+                        // As wide for every mesh, so it does not change
+                        // sides or wrap anew from one mesh to the next.
+                        ui.set_width(READOUT_WIDTH);
+                        ui.add(self.readout(pointed))
+                    });
             }
         });
     }
 
-    /// What the file says of the mesh the pointer is on: its value is the one
-    /// the colours show.
-    fn readout(&self) -> Readout<'_> {
+    /// What the file says of the mesh at `pointed` among the dataset's: its
+    /// value is the one the colours show.
+    fn readout(&self, pointed: usize) -> Readout<'_> {
         let values = self.dataset.series()[self.shown].values();
-        let pointed = self
-            .pointed
-            .map(|at| (&self.dataset.meshes()[at], values[at]));
-        Readout::of(pointed)
+        Readout::of(&self.dataset.meshes()[pointed], values[pointed])
     }
 
     /// The legend of what is shown, under it a pull-down to choose from, the
@@ -225,7 +229,7 @@ impl App for Window {
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
     use eframe::egui::accesskit::Role;
-    use eframe::egui::{FontFamily, FontId, OutputCommand, Rect, Shape};
+    use eframe::egui::{FontFamily, FontId, OutputCommand, Pos2, Rect, Shape};
     use eframe::epaint::Vertex;
     use egui_kittest::Harness;
     use egui_kittest::kittest::{NodeT as _, Queryable as _};
@@ -618,32 +622,62 @@ mod tests {
     }
 
     /// Moves the pointer to the middle of the square drawn for the mesh at
-    /// `at` in [`MESHES`].
-    fn point_at(window: &mut Harness<'_, Option<Window>>, at: usize) {
+    /// `at` in [`MESHES`], and says where that is.
+    fn point_at(window: &mut Harness<'_, Option<Window>>, at: usize) -> Pos2 {
         let (_, corners) = meshes_drawn(window);
         let places: Vec<_> = corners[4 * at..][..4]
             .iter()
             .map(|corner| corner.pos)
             .collect();
-        window.hover_at(Rect::from_points(&places).center());
+        let middle = Rect::from_points(&places).center();
+        window.hover_at(middle);
         window.run();
+        middle
+    }
+
+    /// Whether the window says any of what a readout says of the mesh at
+    /// `at` in [`MESHES`], whose value is written `value`, or any of a
+    /// readout's labels.
+    fn reads_out(window: &Harness<'_, Option<Window>>, at: usize, value: &str) -> bool {
+        let city = city_of(MESHES[at]);
+        [
+            CODE_LABEL,
+            MUNICIPALITY_LABEL,
+            VALUE_LABEL,
+            MESHES[at],
+            &city,
+            value,
+        ]
+        .into_iter()
+        .any(|said| window.query_by_label(said).is_some())
     }
 
     /// The last mesh, whose total is -1 and whose value of the indicator is
     /// 3: the legend has neither as a mark, so each is found as the readout
-    /// alone writes it.
+    /// alone writes it. The readout is a little way from the pointer, and
+    /// with the pointer off the meshes the window says none of it.
     #[test]
     fn pointing_at_a_mesh_reads_out_its_code_its_municipality_and_the_value_shown() {
         let mut window = window();
-        for label in [CODE_LABEL, MUNICIPALITY_LABEL, VALUE_LABEL] {
-            window.get_by_label(label);
-        }
-        assert!(window.query_by_label(MESHES[2]).is_none());
+        assert!(!reads_out(&window, 2, "-1"));
 
-        point_at(&mut window, 2);
-        window.get_by_label(MESHES[2]);
-        window.get_by_label(&city_of(MESHES[2]));
-        window.get_by_label("-1");
+        let pointer = point_at(&mut window, 2);
+        let city = city_of(MESHES[2]);
+        for said in [
+            CODE_LABEL,
+            MUNICIPALITY_LABEL,
+            VALUE_LABEL,
+            MESHES[2],
+            &city,
+            "-1",
+        ] {
+            let said = window.get_by_label(said).rect();
+            assert!(!said.contains(pointer), "{said:?} under {pointer:?}");
+            assert!(
+                said.distance_to_pos(pointer) < 200.0,
+                "{said:?} {pointer:?}"
+            );
+        }
 
         point_at(&mut window, 0);
         window.get_by_label(MESHES[0]);
@@ -665,26 +699,17 @@ mod tests {
     }
 
     /// The meshes are in the middle of the map, and its corner is far from
-    /// them. The readout takes the same room with a mesh and without.
+    /// them.
     #[test]
     fn pointing_away_from_the_meshes_reads_out_nothing() {
         let mut window = window();
-        let room = |window: &Harness<'_, Option<Window>>| {
-            [CODE_LABEL, MUNICIPALITY_LABEL, VALUE_LABEL]
-                .map(|label| window.get_by_label(label).rect())
-        };
-        let without = room(&window);
         point_at(&mut window, 2);
         window.get_by_label(MESHES[2]);
-        assert_eq!(room(&window), without);
 
         let (map, _) = meshes_drawn(&window);
         window.hover_at(map.left_top() + eframe::egui::vec2(5.0, 5.0));
         window.run();
-        assert!(window.query_by_label(MESHES[2]).is_none());
-        assert!(window.query_by_label(&city_of(MESHES[2])).is_none());
-        assert!(window.query_by_label("-1").is_none());
-        assert_eq!(room(&window), without);
+        assert!(!reads_out(&window, 2, "-1"));
     }
 
     /// The map dragged until the meshes are under the panel beside it, and
@@ -707,7 +732,7 @@ mod tests {
         window.run_steps(2);
         window.hover_at(to);
         window.run_steps(10);
-        assert!(window.query_by_label(MESHES[2]).is_none());
+        assert!(!reads_out(&window, 2, "-1"));
         window.drop_at(to);
         window.run_steps(10);
 
@@ -718,8 +743,7 @@ mod tests {
         window.hover_at(square.center());
         window.run_steps(3);
         assert_eq!(meshes_drawn(&window).1, corners, "the map came to rest");
-        assert!(window.query_by_label(MESHES[2]).is_none());
-        assert!(window.query_by_label("-1").is_none());
+        assert!(!reads_out(&window, 2, "-1"));
     }
 
     /// A file with many indicators whose names are far longer than the panel
@@ -751,16 +775,15 @@ mod tests {
         assert!(covered, "no choice lies over the mesh at {mesh:?}");
         window.hover_at(mesh);
         window.run();
-        assert!(window.query_by_label(MESHES[2]).is_none());
-        assert!(window.query_by_label("-1").is_none());
+        assert!(!reads_out(&window, 2, "-1"));
     }
 
     /// A municipality's name and a value both far longer than the panel is
-    /// wide: the panel stays as wide, so the map stays where it is and the
-    /// pointer stays on the mesh, which is read out in full.
+    /// wide: each is read out in full beside the pointer, and the panel and
+    /// the map are where they are with nothing read out.
     #[test]
-    fn a_long_name_and_a_long_value_leave_the_map_where_it_is() {
-        let city = ["A municipality whose name goes on"; 3].join(" and ");
+    fn a_long_name_and_a_long_value_are_read_out_in_full_and_move_nothing() {
+        let city = ["A municipality whose name goes on"; 6].join(" and ");
         // As many figures as a value has at most.
         let value = (1.0_f64 / 3.0).to_string();
         let mut file = String::from(
@@ -773,17 +796,76 @@ mod tests {
         }
         let dataset = Dataset::read(file.as_bytes()).expect("a file made to be read");
         let mut window = window_on(dataset);
-        let (map, _) = meshes_drawn(&window);
+        let room = |window: &Harness<'_, Option<Window>>| {
+            let (map, _) = meshes_drawn(window);
+            (window.get_by_role(Role::ComboBox).rect(), map)
+        };
+        let without = room(&window);
 
         point_at(&mut window, 2);
-        assert_eq!(meshes_drawn(&window).0, map);
+        assert_eq!(room(&window), without);
+        // A line cut short would be as high as the code's one line.
+        let line = window.get_by_label(MESHES[2]).rect().height();
+        for said in [&city, &value] {
+            let said = window.get_by_label(said).rect();
+            assert!(said.height() > 1.5 * line, "{said:?} on a line of {line}");
+        }
         for label in [CODE_LABEL, MUNICIPALITY_LABEL, VALUE_LABEL] {
             let label = window.get_by_label(label).rect();
             let said = window.get_by_label(MESHES[2]).rect();
             assert!(label.right() < said.left(), "{label:?} {said:?}");
         }
-        window.get_by_label(&city);
-        window.get_by_label(&value);
+    }
+
+    /// The pointer goes from a mesh with a short name straight to one with a
+    /// long name, which is read out in the room it has when it is pointed at
+    /// from off the meshes.
+    #[test]
+    fn a_long_name_after_a_short_one_is_read_out_as_it_is_by_itself() {
+        let long = "A municipality of a middling name";
+        let mut file = String::from(
+            "KeyCode,PrefectureCode,CityCode,Prefecture,City,IndicatorCode,Indicator,Value\n",
+        );
+        for (code, city) in MESHES.iter().zip(["Ab", "Ab", long]) {
+            file.push_str(&format!(
+                "{code},00,00000,a prefecture,{city},QOL,Total,1\n"
+            ));
+        }
+        let read = || Dataset::read(file.as_bytes()).expect("a file made to be read");
+
+        let mut window = window_on(read());
+        point_at(&mut window, 2);
+        let by_itself = window.get_by_label(long).rect();
+
+        let mut window = window_on(read());
+        point_at(&mut window, 0);
+        point_at(&mut window, 2);
+        assert_eq!(window.get_by_label(long).rect(), by_itself);
+    }
+
+    /// In the window as it opens, a negative value of sixteen characters, as
+    /// long as one under a thousandth is written to ten figures, is on one
+    /// line: broken, its sign would stand on a line by itself.
+    #[test]
+    fn a_value_of_sixteen_characters_is_read_out_on_one_line() {
+        let value = "-0.0001234567891";
+        let mut file = String::from(
+            "KeyCode,PrefectureCode,CityCode,Prefecture,City,IndicatorCode,Indicator,Value\n",
+        );
+        for code in MESHES {
+            file.push_str(&format!(
+                "{code},00,00000,a prefecture,a city,QOL,Total,{value}\n"
+            ));
+        }
+        let dataset = Dataset::read(file.as_bytes()).expect("a file made to be read");
+        let mut window = window_on(dataset);
+        window.set_size(SIZE.into());
+        // The statements of the sources wrap anew, and the map with them.
+        window.run_steps(5);
+        point_at(&mut window, 2);
+        let line = window.get_by_label(MESHES[2]).rect().height();
+        let said = window.get_by_label(value).rect();
+        assert_eq!(said.height(), line, "{said:?}");
     }
 
     /// A reach too large and one too small for the legend to write in the

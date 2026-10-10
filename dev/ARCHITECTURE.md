@@ -50,7 +50,7 @@ What the window shows of the data.
 
 ### [`src/window.rs`](../src/window.rs)
 
-`Window` holds the dataset, what is chosen on screen, and the map's state, and lays out each frame: the statements of the sources at the bottom, the legend, the pull-down, the slider, and the readout in a panel on the left, and the map with the meshes in the rest.
+`Window` holds the dataset, what is chosen on screen, and the map's state, and lays out each frame: the statements of the sources at the bottom, the legend, the pull-down, and the slider in a panel on the left, the map with the meshes in the rest, and the readout beside the pointer while it is on a mesh.
 Its tests drive it without showing it.
 
 ### [`tests/starts.rs`](../tests/starts.rs)
