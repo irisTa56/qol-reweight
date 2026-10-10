@@ -75,8 +75,9 @@ mod tests {
         assert_eq!(attribution.url, TILE_LIST);
     }
 
+    /// GSI's list gives the pale map tiles down to zoom level 18.
     #[test]
     fn no_tile_is_asked_for_past_the_deepest_level_the_map_has() {
-        assert_eq!(PaleMap.max_zoom(), DEEPEST_ZOOM);
+        assert_eq!(PaleMap.max_zoom(), 18);
     }
 }

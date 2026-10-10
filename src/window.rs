@@ -1006,9 +1006,15 @@ mod tests {
 
             let count = dataset.meshes().len();
             let mut window = window_on(dataset);
-            let shown = window.get_by_role(Role::ComboBox).accesskit_node().value();
+            // A search that finds nothing would print the whole window, the
+            // legend's marks with it, so each search here says only that it
+            // found nothing.
+            let shown = |window: &Harness<'_, Option<Window>>| {
+                let pull_down = window.query_all_by_role(Role::ComboBox).next();
+                pull_down.and_then(|pull_down| pull_down.accesskit_node().value())
+            };
             assert!(
-                shown.as_deref() == Some(offered[0].as_str()),
+                shown(&window).as_deref() == Some(offered[0].as_str()),
                 "{name}: the total is not shown first"
             );
             let squares = window
@@ -1021,10 +1027,30 @@ mod tests {
                 })
                 .count();
             assert!(squares == 1, "{name}: not every mesh is drawn once");
-            choose(&mut window, &offered[offered.len() - 1]);
-            let shown = window.get_by_role(Role::ComboBox).accesskit_node().value();
+
+            let last = offered[offered.len() - 1].as_str();
+            let Some(pull_down) = window.query_all_by_role(Role::ComboBox).next() else {
+                panic!("{name}: the window has no pull-down");
+            };
+            pull_down.click();
+            window.run();
+            // Into view first, then clicked where it then is.
+            for step in 0..2 {
+                let found = window
+                    .query_all_by_label(last)
+                    .find(|named| named.accesskit_node().role() != Role::ComboBox);
+                let Some(found) = found else {
+                    panic!("{name}: the open pull-down lacks the last indicator");
+                };
+                if step == 0 {
+                    found.scroll_to_me();
+                } else {
+                    found.click();
+                }
+                window.run();
+            }
             assert!(
-                shown.as_deref() == Some(offered[offered.len() - 1].as_str()),
+                shown(&window).as_deref() == Some(last),
                 "{name}: the last indicator cannot be chosen"
             );
         }
