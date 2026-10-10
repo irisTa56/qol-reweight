@@ -58,3 +58,4 @@ QOL_REWEIGHT_REAL_FILES=path/to/folder cargo test a_real_file -- --ignored --sho
 ```
 
 With `--show-output` the run also says, for each file, whether its total is the sum of its indicators in every mesh or in none.
+The folder has to hold at least one file whose total is that sum, or the run fails.

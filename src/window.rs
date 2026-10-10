@@ -747,9 +747,9 @@ mod tests {
     }
 
     /// Whether the window says any of what a readout says of the mesh at
-    /// `at` in [`MESHES`], whose value is written `value`, or any of a
-    /// readout's labels.
-    fn reads_out(window: &Harness<'_, Option<Window>>, at: usize, value: &str) -> bool {
+    /// `at` in [`MESHES`]: a readout's labels, the mesh's code, or its
+    /// municipality. A value is said only after the label of its line.
+    fn reads_out(window: &Harness<'_, Option<Window>>, at: usize) -> bool {
         let city = city_of(MESHES[at]);
         [
             CODE_LABEL,
@@ -757,7 +757,6 @@ mod tests {
             VALUE_LABEL,
             MESHES[at],
             &city,
-            value,
         ]
         .into_iter()
         .any(|said| window.query_by_label(said).is_some())
@@ -771,7 +770,7 @@ mod tests {
     fn pointing_at_a_mesh_reads_out_its_code_its_municipality_and_the_value_shown() {
         let mut window = window();
         choose(&mut window, "Total");
-        assert!(!reads_out(&window, 2, "-1"));
+        assert!(!reads_out(&window, 2));
 
         let pointer = point_at(&mut window, 2);
         let city = city_of(MESHES[2]);
@@ -821,7 +820,7 @@ mod tests {
         let (map, _) = meshes_drawn(&window);
         window.hover_at(map.left_top() + eframe::egui::vec2(5.0, 5.0));
         window.run();
-        assert!(!reads_out(&window, 2, "-1"));
+        assert!(!reads_out(&window, 2));
     }
 
     /// The map dragged until the meshes are under the panel beside it, and
@@ -844,7 +843,7 @@ mod tests {
         window.run_steps(2);
         window.hover_at(to);
         window.run_steps(10);
-        assert!(!reads_out(&window, 2, "-1"));
+        assert!(!reads_out(&window, 2));
         window.drop_at(to);
         window.run_steps(10);
 
@@ -855,7 +854,7 @@ mod tests {
         window.hover_at(square.center());
         window.run_steps(3);
         assert_eq!(meshes_drawn(&window).1, corners, "the map came to rest");
-        assert!(!reads_out(&window, 2, "-1"));
+        assert!(!reads_out(&window, 2));
     }
 
     /// A file with many indicators whose names are far longer than the panel
@@ -887,7 +886,7 @@ mod tests {
         assert!(covered, "no choice lies over the mesh at {mesh:?}");
         window.hover_at(mesh);
         window.run();
-        assert!(!reads_out(&window, 2, "-1"));
+        assert!(!reads_out(&window, 2));
     }
 
     /// A municipality's name and a value both far longer than the panel is
