@@ -1,5 +1,7 @@
 //! What the tests of more than one module make their input with.
 
+use std::path::PathBuf;
+
 use proptest::prelude::*;
 
 use crate::dataset::Dataset;
@@ -104,4 +106,22 @@ pub(crate) fn dataset_of_totals(totals: &[(&str, f64)]) -> Dataset {
         &codes,
         &[("A01", "An indicator", &same), ("QOL", "Total", &totals)],
     )
+}
+
+/// Every CSV file in the folder `QOL_REWEIGHT_REAL_FILES` names, in the order
+/// of their names. The files are real ones, which the repository does not
+/// hold, so a test that reads them runs only when asked for, and what it
+/// says of a failure names a file, a mesh, or an indicator and never a
+/// value.
+pub(crate) fn real_files() -> Vec<PathBuf> {
+    let folder = std::env::var_os("QOL_REWEIGHT_REAL_FILES")
+        .expect("QOL_REWEIGHT_REAL_FILES names the folder of the files");
+    let mut files: Vec<_> = std::fs::read_dir(&folder)
+        .expect("the folder can be read")
+        .map(|entry| entry.expect("an entry of the folder").path())
+        .filter(|path| path.extension().is_some_and(|ending| ending == "csv"))
+        .collect();
+    files.sort();
+    assert!(!files.is_empty(), "the folder holds no CSV file");
+    files
 }

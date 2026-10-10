@@ -4,7 +4,7 @@ use eframe::egui::{Color32, Rect, Shape};
 use eframe::epaint::Mesh as Triangles;
 use walkers::{Projector, lat_lon};
 
-use crate::dataset::{Mesh, Series};
+use crate::dataset::Mesh;
 use crate::mesh::HalfMesh;
 use crate::paint::Paint;
 
@@ -16,14 +16,14 @@ pub(crate) struct MeshLayer {
 }
 
 impl MeshLayer {
-    /// The meshes coloured by `series`, which has a value for each of them in
+    /// The meshes coloured by `values`, which has a value for each of them in
     /// their order, on the scale that fits those values, each colour
     /// covering `opacity` of 255 of the base map.
-    pub(crate) fn showing(meshes: &[Mesh], series: &Series, opacity: u8) -> Self {
-        let paint = Paint::fitting(series.values(), opacity);
+    pub(crate) fn showing(meshes: &[Mesh], values: &[f64], opacity: u8) -> Self {
+        let paint = Paint::fitting(values, opacity);
         let squares = meshes
             .iter()
-            .zip(series.values())
+            .zip(values)
             .map(|(mesh, &value)| (mesh.square(), paint.of(value)))
             .collect();
         Self { squares, paint }
@@ -75,7 +75,11 @@ mod tests {
     /// Each square the layer draws: its rectangle on screen and its colour.
     fn drawn(totals: &[(&str, f64)], projector: &Projector) -> Vec<(Rect, Color32)> {
         let dataset = dataset_of_totals(totals);
-        let layer = MeshLayer::showing(dataset.meshes(), &dataset.series()[0], OPENING_OPACITY);
+        let layer = MeshLayer::showing(
+            dataset.meshes(),
+            dataset.series()[0].values(),
+            OPENING_OPACITY,
+        );
         let Shape::Mesh(triangles) = layer.shape(projector) else {
             panic!("the layer is not drawn as triangles");
         };
