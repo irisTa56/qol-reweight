@@ -860,6 +860,31 @@ mod tests {
         assert_eq!(window.get_by_label(long).rect(), by_itself);
     }
 
+    /// In the window as it opens, a negative value of sixteen characters, as
+    /// long as one under a thousandth is written to ten figures, is on one
+    /// line: broken, its sign would stand on a line by itself.
+    #[test]
+    fn a_value_of_sixteen_characters_is_read_out_on_one_line() {
+        let value = "-0.0001234567891";
+        let mut file = String::from(
+            "KeyCode,PrefectureCode,CityCode,Prefecture,City,IndicatorCode,Indicator,Value\n",
+        );
+        for code in MESHES {
+            file.push_str(&format!(
+                "{code},00,00000,a prefecture,a city,QOL,Total,{value}\n"
+            ));
+        }
+        let dataset = Dataset::read(file.as_bytes()).expect("a file made to be read");
+        let mut window = window_on(dataset);
+        window.set_size(SIZE.into());
+        // The statements of the sources wrap anew, and the map with them.
+        window.run_steps(5);
+        point_at(&mut window, 2);
+        let line = window.get_by_label(MESHES[2]).rect().height();
+        let said = window.get_by_label(value).rect();
+        assert_eq!(said.height(), line, "{said:?}");
+    }
+
     /// A window in which half the map is narrower than the readout is where
     /// it has the room: the readout is narrower too, and stays on the map.
     #[test]
