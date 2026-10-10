@@ -16,12 +16,13 @@ name: CI
 # `ubuntu-latest` runner image; the mise binary, which `mise-action` resolves at
 # run time since no step sets its `version` input; the TruffleHog image, which
 # its action pulls at `latest`; the gitleaks binary, which `GITLEAKS_VERSION:
-# latest` below resolves at run time; every tool mise.toml tracks at `latest`,
-# which each run installs afresh (see `cache: false` below); and the RustSec
-# advisory database, which `qa:rust:deny` fetches on each run, so that an
-# advisory issued against a crate already in use shows in a week with no
-# commit. GitHub disables a `schedule` trigger after 60 days with no repository
-# activity, so this canary goes quiet on a dormant repository.
+# latest` below resolves at run time; every tool a job's task calls, which
+# mise.toml tracks at `latest` and each run installs afresh (see `cache: false`
+# below); and the RustSec advisory database, which `qa:rust:deny` fetches on
+# each run, so that an advisory issued against a crate already in use shows in
+# a week with no commit. GitHub disables a `schedule` trigger after 60 days
+# with no repository activity, so this canary goes quiet on a dormant
+# repository.
 
 on:
   pull_request:
@@ -32,6 +33,16 @@ on:
 
 permissions:
   contents: read
+
+env:
+  # Each job installs the tools its own task calls and no other (`install_args`
+  # below), so a tool added to mise.toml for another purpose costs no job here
+  # anything. `mise run` would otherwise install what is missing before it
+  # runs a task. With this off, a task whose tool the job left out fails on
+  # the missing command, in that job's log, unless the runner image has the
+  # command itself: it ships a Rust toolchain of its own, so a job that runs
+  # cargo without `rust` among its tools runs the image's, not mise.toml's.
+  MISE_TASK_RUN_AUTO_INSTALL: "false"
 
 concurrency:
   # `event_name` in the key: without it, the Monday-morning schedule run and a
@@ -52,6 +63,7 @@ jobs:
           # restored cache would hold every tool at the release it was first
           # saved with until mise.toml changed.
           cache: false
+          install_args: rumdl
       - run: mise run qa:md
 
   # On a pull request the action reads the PR's commits from one unpaginated API
@@ -97,6 +109,7 @@ jobs:
       - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
         with:
           cache: false # as in `markdown-lint`
+          install_args: lychee
       - run: mise run qa:links:offline
 
   # `qa:rust` is the aggregate of every `qa:rust:` task.
@@ -107,6 +120,7 @@ jobs:
       - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
         with:
           cache: false # as in `markdown-lint`
+          install_args: rust cargo-deny
       # Keeps the dependencies' build between runs, which is most of this job's
       # time. After mise has installed Rust, since the cache's key takes in the
       # version of every installed rustc along with `Cargo.lock`: a new release
@@ -130,4 +144,5 @@ jobs:
       - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
         with:
           cache: false # as in `markdown-lint`
+          install: false # the task calls git and mise alone
       - run: mise run shared-tasks:check

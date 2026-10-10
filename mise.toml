@@ -65,7 +65,8 @@ description = "Check links offline (no network)"
 run = "lychee --offline --no-progress --config lychee.toml ."
 
 # What the CI job `rust-check` runs, so a `qa:rust:` task added below reaches CI
-# without a change there.
+# without a change there, unless it calls a tool that job does not install: the
+# job names its tools as `install_args` in .github/workflows/ci.yml.
 [tasks."qa:rust"]
 description = "Run all Rust checks"
 depends = ["qa:rust:**"]
