@@ -7,6 +7,14 @@ rumdl = "latest"
 # rustup profile a machine defaults to.
 rust = { version = "latest", components = ["clippy", "rustfmt"] }
 
+# mise skips a `git::` entry of `task_config.includes` unless this is on, since
+# 2026.10.5 (jdx/mise#14114), and every shared task below goes with it. Here
+# rather than in CI's environment, since `pre-commit` and the pre-push scan run
+# those tasks on each machine too. It turns on every feature mise marks
+# experimental, not this one alone.
+[settings]
+experimental = true
+
 [hooks]
 # Keep the git-hook generation first: a failing step aborts the rest while
 # `mise install` still exits 0, and a missing hook is the failure that stays
