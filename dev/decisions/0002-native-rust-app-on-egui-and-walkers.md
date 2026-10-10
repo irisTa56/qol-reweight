@@ -1,6 +1,6 @@
 # 0002. Build the tool as a native Rust application on egui and walkers
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-10-05
 
 ## Context
