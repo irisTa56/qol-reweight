@@ -4,7 +4,7 @@
 
 QOL Reweight is a native desktop application in Rust [0002].
 Started with the path of one CSV file of Urban QOL data, it reads the file into memory, opens a window, and draws each of the file's 500 m meshes as a filled square over a base map of raster tiles.
-The colour of a square is the value the file publishes for that mesh, the total or one indicator, on a scale fitted to the values being shown.
+The colour of a square is the mesh's weighted sum, which is the sum of the values the file publishes for its indicators, each times a multiplier, or a value the file publishes for the mesh, the total or one indicator, on a scale fitted to the values being shown.
 The file stays on its user's disk and is the tool's only source of data [0001].
 
 ## Code map
@@ -26,6 +26,10 @@ Where any of the three fails it prints why and exits without a window.
 
 `Dataset`, a file in memory: its meshes, each with its code, its square, and its municipality, and its series, the total first and then each indicator, each with one value for every mesh.
 [`file.rs`](../src/dataset/file.rs) reads a CSV file into one, and refuses a file that is not laid out as the platform's are, naming the line.
+
+### [`src/multipliers.rs`](../src/multipliers.rs)
+
+`Multipliers` holds a multiplier for each indicator of a dataset, and gives each mesh's weighted sum under them.
 
 ### [`src/scale.rs`](../src/scale.rs) and [`src/paint.rs`](../src/paint.rs)
 
@@ -80,7 +84,7 @@ Starts the built tool as a user would, for the starts that end without a window.
 ## Cross-cutting concerns
 
 - **Errors**: each module that can fail has its own error type, derived with `thiserror`, and `main` prints it. Nothing is recovered from: a file that cannot be read in full is not shown in part.
-- **Testing**: unit tests sit in each module's file, on synthetic data that [`src/test_support.rs`](../src/test_support.rs) makes. The tests that drive the window need the font, so they run on macOS only; CI runs on Linux, where the start-up test for a system without the font runs instead. One test, in `src/window.rs`, reads real files from a folder outside the repository and checks the tool against a second reading of each; it runs only when asked for, as the [README](../README.md#development) says.
+- **Testing**: unit tests sit in each module's file, on synthetic data that [`src/test_support.rs`](../src/test_support.rs) makes. The tests that drive the window need the font, so they run on macOS only; CI runs on Linux, where the start-up test for a system without the font runs instead. Two tests, in `src/window.rs` and `src/multipliers.rs`, read real files from a folder outside the repository and check the tool against a second reading of each; they run only when asked for, as the [README](../README.md#development) says.
 - **Text on screen**: every Japanese text is a file under `assets/`, and [`GLOSSARY.md`](GLOSSARY.md) pairs each English name in the code with its Japanese term.
 
 [0001]: decisions/0001-csv-kept-on-disk-as-data-source.md

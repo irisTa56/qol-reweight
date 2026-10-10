@@ -87,6 +87,12 @@ impl Dataset {
     pub(crate) fn series(&self) -> &[Series] {
         &self.series
     }
+
+    /// Each indicator of the file, in the order [`Dataset::series`] has
+    /// them after the total.
+    pub(crate) fn indicators(&self) -> &[Series] {
+        self.series.get(1..).unwrap_or_default()
+    }
 }
 
 #[cfg(test)]

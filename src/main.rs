@@ -12,6 +12,7 @@ mod font;
 mod layer;
 mod legend;
 mod mesh;
+mod multipliers;
 mod paint;
 mod readout;
 mod scale;

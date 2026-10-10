@@ -17,6 +17,7 @@ use crate::font::JapaneseFont;
 use crate::layer::MeshLayer;
 use crate::legend::Legend;
 use crate::mesh::HalfMesh;
+use crate::multipliers::Multipliers;
 use crate::paint::OPENING_OPACITY;
 use crate::readout::Readout;
 use crate::view::View;
@@ -33,6 +34,9 @@ const BASE_MAP_LABEL: &str = asset::text!("base-map-source-label.txt");
 
 /// What the screen puts over the pull-down of what the colours can show.
 const SHOWN_LABEL: &str = asset::text!("shown-label.txt");
+
+/// What the screen calls the weighted sum among what the colours can show.
+const WEIGHTED_SUM_LABEL: &str = asset::text!("weighted-sum-label.txt");
 
 /// What the screen puts over the slider that sets how much of the base map
 /// the meshes cover.
@@ -59,11 +63,23 @@ const READOUT_GAP: f32 = 12.0;
 /// the first and below the last as there is between the two.
 const SOURCES_MARGIN: Margin = Margin::symmetric(8, 10);
 
+/// What the colours show.
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Shown {
+    /// Each mesh's weighted sum.
+    WeightedSum,
+    /// What the file publishes, as the series at this place among the
+    /// dataset's: the total, or an indicator.
+    Published(usize),
+}
+
 pub(crate) struct Window {
     dataset: Dataset,
-    /// Which of the dataset's series the colours show: the total, which
-    /// comes first, until another is chosen.
-    shown: usize,
+    /// Each mesh's weighted sum, with every multiplier at 1.
+    sums: Vec<f64>,
+    /// What the colours show: the weighted sum, until something else is
+    /// chosen.
+    shown: Shown,
     /// Where the map is centred until its user moves it.
     centre: Position,
     /// The base map's tiles, or none where nothing may be fetched.
@@ -94,7 +110,7 @@ impl Window {
 
     /// The window as it opens in `context`: `font` draws its Japanese text, and
     /// its map is centred on the meshes of `dataset`, each drawn in the
-    /// colour of its published total.
+    /// colour of its weighted sum with every multiplier at 1.
     fn new(
         context: &Context,
         font: JapaneseFont,
@@ -107,12 +123,13 @@ impl Window {
         memory
             .set_zoom(view.zoom())
             .expect("the opening zoom level is one the map has");
-        let shown = 0;
+        let sums = Multipliers::ones_for(&dataset).weighted_sums(&dataset);
         let opacity = OPENING_OPACITY;
-        let layer = MeshLayer::showing(dataset.meshes(), &dataset.series()[shown], opacity);
+        let layer = MeshLayer::showing(dataset.meshes(), &sums, opacity);
         Self {
             dataset,
-            shown,
+            sums,
+            shown: Shown::WeightedSum,
             centre: view.centre(),
             tiles,
             memory,
@@ -162,17 +179,31 @@ impl Window {
         });
     }
 
-    /// What the file says of the mesh at `pointed` among the dataset's: its
+    /// What is read out of the mesh at `pointed` among the dataset's: its
     /// value is the one the colours show.
     fn readout(&self, pointed: usize) -> Readout<'_> {
-        let values = self.dataset.series()[self.shown].values();
-        Readout::of(&self.dataset.meshes()[pointed], values[pointed])
+        let mesh = &self.dataset.meshes()[pointed];
+        let value = self.values()[pointed];
+        match self.shown {
+            Shown::WeightedSum => Readout::summed(mesh, value),
+            Shown::Published(_) => Readout::published(mesh, value),
+        }
+    }
+
+    /// The value the colours show for each mesh, in the order of the
+    /// dataset's meshes.
+    fn values(&self) -> &[f64] {
+        match self.shown {
+            Shown::WeightedSum => &self.sums,
+            Shown::Published(at) => self.dataset.series()[at].values(),
+        }
     }
 
     /// The legend of what is shown, under it a pull-down to choose from, the
-    /// total, then each indicator of the file, and under that a slider for
-    /// how much of the base map the meshes cover, from none of it to all. A
-    /// choice colours the meshes anew, and so does a move of the slider.
+    /// weighted sum, then the total and each indicator of the file, and
+    /// under that a slider for how much of the base map the meshes cover,
+    /// from none of it to all. A choice colours the meshes anew, and so does
+    /// a move of the slider.
     fn choose_what_is_shown(&mut self, ui: &mut Ui) {
         ui.add_space(CHOICES_SPACE);
         ui.add(Legend::of(self.layer.paint()));
@@ -180,16 +211,21 @@ impl Window {
         ui.strong(SHOWN_LABEL);
         let series = self.dataset.series();
         let mut chosen = self.shown;
+        let name = match chosen {
+            Shown::WeightedSum => WEIGHTED_SUM_LABEL,
+            Shown::Published(at) => series[at].name(),
+        };
         // Closed, it takes one line whatever the file holds, and a name too
         // long for that line is cut short.
         ComboBox::from_id_salt("shown")
-            .selected_text(series[chosen].name())
+            .selected_text(name)
             .width(ui.available_width())
             .height(CHOICES_HEIGHT)
             .truncate()
             .show_ui(ui, |ui| {
+                ui.selectable_value(&mut chosen, Shown::WeightedSum, WEIGHTED_SUM_LABEL);
                 for (at, series) in series.iter().enumerate() {
-                    ui.selectable_value(&mut chosen, at, series.name());
+                    ui.selectable_value(&mut chosen, Shown::Published(at), series.name());
                 }
             });
         ui.add_space(CHOICES_SPACE);
@@ -200,7 +236,7 @@ impl Window {
         if chosen != self.shown || opacity != self.opacity {
             self.shown = chosen;
             self.opacity = opacity;
-            self.layer = MeshLayer::showing(self.dataset.meshes(), &series[chosen], opacity);
+            self.layer = MeshLayer::showing(self.dataset.meshes(), self.values(), opacity);
         }
     }
 
@@ -247,7 +283,7 @@ mod tests {
     use super::*;
     use crate::dataset::{Mesh, Series};
     use crate::readout::{CODE_LABEL, MUNICIPALITY_LABEL, VALUE_LABEL};
-    use crate::test_support::{city_of, dataset_of};
+    use crate::test_support::{city_of, dataset_of, real_files};
 
     /// The meshes of the file the window is opened on.
     const MESHES: [&str; 3] = ["543823431", "543823432", "543823434"];
@@ -413,7 +449,7 @@ mod tests {
         }
 
         assert_eq!(meshes_drawn(&window).1, at_first);
-        assert_eq!(ends(&window), ["blue", "red"]);
+        assert_eq!(ends(&window), ["red", "blue"]);
         window.get_by_label(dataset::SOURCE);
         window.get_by_label(basemap::SOURCE);
     }
@@ -434,11 +470,66 @@ mod tests {
         })
     }
 
-    /// The totals of [`FILE`] fall from above zero to below it, which no
-    /// indicator of the file does.
+    /// The window opened on a file whose indicators add up to sums that
+    /// fall from above zero to below it, as neither indicator does, and
+    /// whose total is something else again. The figures are ones a binary
+    /// fraction only comes near, so adding them leaves more figures than
+    /// they have.
+    fn window_of_sums() -> Harness<'static, Option<Window>> {
+        let file: [(&str, &str, &[f64]); 3] = [
+            ("A01", "Stations", &[0.1, 0.2, -0.4]),
+            ("B02", "Floods", &[0.7, 0.1, -0.4]),
+            ("QOL", "Total", &[5.0, 5.0, 5.0]),
+        ];
+        window_on(dataset_of(&MESHES, &file))
+    }
+
+    /// With every multiplier at 1 a mesh's weighted sum is the sum of its
+    /// indicators, which the window opens on: the colours, the legend, and
+    /// what the pull-down names are the sum's and not the total's.
     #[test]
-    fn the_meshes_have_the_colours_of_their_totals() {
-        assert_eq!(ends(&window()), ["blue", "red"]);
+    fn the_window_opens_on_the_weighted_sum_of_the_indicators() {
+        let window = window_of_sums();
+        assert_eq!(ends(&window), ["blue", "red"]);
+        window.get_by_label("+0.8");
+        window.get_by_label("-0.8");
+        let shown = window.get_by_role(Role::ComboBox).accesskit_node().value();
+        assert_eq!(shown.as_deref(), Some(WEIGHTED_SUM_LABEL));
+    }
+
+    /// The second mesh's sum, which adding leaves a little over three
+    /// tenths: it is read out to ten figures, where it is three tenths.
+    #[test]
+    fn a_weighted_sum_is_read_out_to_ten_figures() {
+        let mut window = window_of_sums();
+        let added = (0.2_f64 + 0.1).to_string();
+        assert_ne!(added, "0.3");
+        point_at(&mut window, 1);
+        window.get_by_label(MESHES[1]);
+        window.get_by_label("0.3");
+        assert!(window.query_by_label(&added).is_none());
+    }
+
+    /// The published total is read out as the file writes it, which is not
+    /// the sum of that file's indicators.
+    #[test]
+    fn choosing_the_total_shows_what_the_file_publishes() {
+        let mut window = window_of_sums();
+        choose(&mut window, "Total");
+        window.get_by_label("+5");
+        point_at(&mut window, 1);
+        window.get_by_label("5");
+        assert!(window.query_by_label("0.3").is_none());
+    }
+
+    /// The totals of [`FILE`] fall from above zero to below it, which no
+    /// indicator of the file does, and its weighted sums rise.
+    #[test]
+    fn the_meshes_have_the_colours_of_what_is_chosen() {
+        let mut window = window();
+        assert_eq!(ends(&window), ["red", "blue"]);
+        choose(&mut window, "Total");
+        assert_eq!(ends(&window), ["blue", "red"]);
     }
 
     /// Opens the pull-down, so that its choices are on screen.
@@ -464,19 +555,20 @@ mod tests {
         window.run();
     }
 
-    /// Closed, the pull-down names what is shown, the total at first. Open,
-    /// it has the total and then the indicators in the order the file has
-    /// them, which is not the order of the file's rows, where the total comes
-    /// last.
+    /// Closed, the pull-down names what is shown, the weighted sum at first.
+    /// Open, it has the weighted sum, the total, and then the indicators in
+    /// the order the file has them, which is not the order of the file's
+    /// rows, where the total comes last.
     #[test]
-    fn the_choices_are_the_total_then_the_indicators_of_the_file() {
+    fn the_choices_are_the_weighted_sum_the_total_then_the_indicators_of_the_file() {
         let mut window = window();
         window.get_by_label(SHOWN_LABEL);
         let shown = window.get_by_role(Role::ComboBox).accesskit_node().value();
-        assert_eq!(shown.as_deref(), Some("Total"));
+        assert_eq!(shown.as_deref(), Some(WEIGHTED_SUM_LABEL));
 
         open_the_choices(&mut window);
-        let mut choices: Vec<_> = ["Total", "Stations", "Floods"]
+        let offered = [WEIGHTED_SUM_LABEL, "Total", "Stations", "Floods"];
+        let mut choices: Vec<_> = offered
             .into_iter()
             .flat_map(|name| window.query_all_by_label(name))
             .filter(|named| named.accesskit_node().role() != Role::ComboBox)
@@ -489,12 +581,13 @@ mod tests {
             .collect();
         choices.sort_by(|above, below| above.0.total_cmp(&below.0));
         let names: Vec<_> = choices.into_iter().map(|(_, name)| name).collect();
-        assert_eq!(names, ["Total", "Stations", "Floods"]);
+        assert_eq!(names, offered);
     }
 
     #[test]
     fn choosing_an_indicator_colours_the_meshes_by_it_and_changes_the_legend() {
         let mut window = window();
+        choose(&mut window, "Total");
         // The total reaches 2, and the indicator 3.
         window.get_by_label("+2");
         window.get_by_label("-2");
@@ -512,6 +605,7 @@ mod tests {
     #[test]
     fn choosing_the_total_again_brings_its_colours_back() {
         let mut window = window();
+        choose(&mut window, "Total");
         choose(&mut window, "Floods");
         choose(&mut window, "Total");
         assert_eq!(ends(&window), ["blue", "red"]);
@@ -544,6 +638,7 @@ mod tests {
         };
         let mut window = window_on(dataset_of(&MESHES, &file));
         assert_eq!(room(&window), room(&short));
+        choose(&mut window, "Total");
         assert_eq!(ends(&window), ["red", "blue"]);
 
         choose(&mut window, &long);
@@ -594,7 +689,7 @@ mod tests {
 
         slide_to(&mut window, 1.0);
         assert_eq!(covered(&window), [255; 2]);
-        assert_eq!(ends(&window), ["blue", "red"]);
+        assert_eq!(ends(&window), ["red", "blue"]);
 
         slide_to(&mut window, 0.0);
         assert_eq!(covered(&window), [0; 2]);
@@ -653,12 +748,13 @@ mod tests {
     }
 
     /// The last mesh, whose total is -1 and whose value of the indicator is
-    /// 3: the legend has neither as a mark, so each is found as the readout
-    /// alone writes it. The readout is a little way from the pointer, and
+    /// 3, with the total chosen: the legend has neither as a mark, so each
+    /// is found as the readout alone writes it. The readout is a little way from the pointer, and
     /// with the pointer off the meshes the window says none of it.
     #[test]
     fn pointing_at_a_mesh_reads_out_its_code_its_municipality_and_the_value_shown() {
         let mut window = window();
+        choose(&mut window, "Total");
         assert!(!reads_out(&window, 2, "-1"));
 
         let pointer = point_at(&mut window, 2);
@@ -796,6 +892,7 @@ mod tests {
         }
         let dataset = Dataset::read(file.as_bytes()).expect("a file made to be read");
         let mut window = window_on(dataset);
+        choose(&mut window, "Total");
         let room = |window: &Harness<'_, Option<Window>>| {
             let (map, _) = meshes_drawn(window);
             (window.get_by_role(Role::ComboBox).rect(), map)
@@ -859,6 +956,7 @@ mod tests {
         }
         let dataset = Dataset::read(file.as_bytes()).expect("a file made to be read");
         let mut window = window_on(dataset);
+        choose(&mut window, "Total");
         window.set_size(SIZE.into());
         // The statements of the sources wrap anew, and the map with them.
         window.run_steps(5);
@@ -885,7 +983,8 @@ mod tests {
     /// end where the bar is red and that of the upper end where it is blue.
     #[test]
     fn the_legend_puts_each_mark_under_the_colour_it_stands_for() {
-        let window = window();
+        let mut window = window();
+        choose(&mut window, "Total");
         let bars: Vec<_> = window
             .output()
             .shapes
@@ -991,6 +1090,7 @@ mod tests {
     fn the_font_has_every_character_of_the_statements() {
         let stated = [
             SHOWN_LABEL,
+            WEIGHTED_SUM_LABEL,
             OPACITY_LABEL,
             CODE_LABEL,
             MUNICIPALITY_LABEL,
@@ -1014,25 +1114,12 @@ mod tests {
         }
     }
 
-    /// Every CSV file in the folder the variable names: what the window
-    /// offers and draws is what an independent reading of the file finds.
-    /// The files are real ones, which the repository does not hold, so the
-    /// test runs only when asked for, and a failure names a mesh or an
-    /// indicator and never a value.
+    /// Every real file: what the window offers and draws is what an
+    /// independent reading of the file finds.
     #[test]
     #[ignore = "reads the real files in the folder QOL_REWEIGHT_REAL_FILES names"]
     fn a_real_file_is_offered_and_drawn_as_it_reads() {
-        let folder = std::env::var_os("QOL_REWEIGHT_REAL_FILES")
-            .expect("QOL_REWEIGHT_REAL_FILES names the folder of the files");
-        let mut files: Vec<_> = std::fs::read_dir(&folder)
-            .expect("the folder can be read")
-            .map(|entry| entry.expect("an entry of the folder").path())
-            .filter(|path| path.extension().is_some_and(|ending| ending == "csv"))
-            .collect();
-        files.sort();
-        assert!(!files.is_empty(), "the folder holds no CSV file");
-
-        for path in files {
+        for path in real_files() {
             let name = path.display();
             let text = std::fs::read_to_string(&path).expect("the file is UTF-8");
             let mut rows = csv::Reader::from_reader(text.trim_start_matches('\u{feff}').as_bytes());
@@ -1096,8 +1183,8 @@ mod tests {
                 pull_down.and_then(|pull_down| pull_down.accesskit_node().value())
             };
             assert!(
-                shown(&window).as_deref() == Some(offered[0].as_str()),
-                "{name}: the total is not shown first"
+                shown(&window).as_deref() == Some(WEIGHTED_SUM_LABEL),
+                "{name}: the weighted sum is not shown first"
             );
             let squares = window
                 .output()
