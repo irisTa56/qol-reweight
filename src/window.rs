@@ -48,6 +48,10 @@ const CHOICES_HEIGHT: f32 = 500.0;
 /// The space above the legend and under it, in points.
 const CHOICES_SPACE: f32 = 8.0;
 
+/// How wide the readout is, in points, where the map has the room: its
+/// labels, and a dozen characters of a municipality's name on a line.
+const READOUT_WIDTH: f32 = 270.0;
+
 /// How far from the pointer the readout is, in points.
 const READOUT_GAP: f32 = 12.0;
 
@@ -154,14 +158,14 @@ impl Window {
                 // it is, which keeps the readout off the panel while half
                 // the map has room for its labels and a mesh's code.
                 let room = map.rect.width() / 2.0 - READOUT_GAP - READOUT_FRAME;
-                let width = ui.spacing().tooltip_width.min(room);
+                let width = READOUT_WIDTH.min(room);
                 Tooltip::always_open(context, map.layer_id, map.id, PopupAnchor::Pointer)
                     .gap(READOUT_GAP)
                     .width(width)
                     .show(|ui| {
-                        // The tooltip keeps the width of what it last said,
-                        // so each mesh is given the whole room anew.
-                        ui.set_max_width(width);
+                        // As wide for every mesh, so it does not change
+                        // sides or wrap anew from one mesh to the next.
+                        ui.set_width(width);
                         ui.add(self.readout(pointed))
                     });
             }
