@@ -48,17 +48,12 @@ const CHOICES_HEIGHT: f32 = 500.0;
 /// The space above the legend and under it, in points.
 const CHOICES_SPACE: f32 = 8.0;
 
-/// How wide the readout is, in points, where the map has the room: its
-/// labels, and on a line ten characters of a municipality's name, or a
-/// value of sixteen.
+/// How wide the readout is, in points: its labels, and on a line ten
+/// characters of a municipality's name, or a value of sixteen.
 const READOUT_WIDTH: f32 = 240.0;
 
 /// How far from the pointer the readout is, in points.
 const READOUT_GAP: f32 = 12.0;
-
-/// At most how much wider the readout's frame is than what it says, in
-/// points.
-const READOUT_FRAME: f32 = 20.0;
 
 /// The space around the statements of the sources, in points: as much above
 /// the first and below the last as there is between the two.
@@ -155,17 +150,12 @@ impl Window {
                 .and_then(|square| self.dataset.mesh_at(square));
             if let Some(pointed) = pointed {
                 let (context, map) = (ui.ctx().clone(), map.response);
-                // No wider than fits beside the pointer wherever on the map
-                // it is, which keeps the readout off the panel while half
-                // the map has room for its labels and a mesh's code.
-                let room = map.rect.width() / 2.0 - READOUT_GAP - READOUT_FRAME;
-                let width = READOUT_WIDTH.min(room).max(0.0);
                 Tooltip::always_open(context, map.layer_id, map.id, PopupAnchor::Pointer)
                     .gap(READOUT_GAP)
                     .show(|ui| {
                         // As wide for every mesh, so it does not change
                         // sides or wrap anew from one mesh to the next.
-                        ui.set_width(width);
+                        ui.set_width(READOUT_WIDTH);
                         ui.add(self.readout(pointed))
                     });
             }
@@ -664,15 +654,14 @@ mod tests {
 
     /// The last mesh, whose total is -1 and whose value of the indicator is
     /// 3: the legend has neither as a mark, so each is found as the readout
-    /// alone writes it. The readout is on the map, a little way from the
-    /// pointer, and the panel says none of it.
+    /// alone writes it. The readout is a little way from the pointer, and
+    /// with the pointer off the meshes the window says none of it.
     #[test]
     fn pointing_at_a_mesh_reads_out_its_code_its_municipality_and_the_value_shown() {
         let mut window = window();
         assert!(!reads_out(&window, 2, "-1"));
 
         let pointer = point_at(&mut window, 2);
-        let (map, _) = meshes_drawn(&window);
         let city = city_of(MESHES[2]);
         for said in [
             CODE_LABEL,
@@ -683,7 +672,6 @@ mod tests {
             "-1",
         ] {
             let said = window.get_by_label(said).rect();
-            assert!(map.contains_rect(said), "{said:?} in {map:?}");
             assert!(!said.contains(pointer), "{said:?} under {pointer:?}");
             assert!(
                 said.distance_to_pos(pointer) < 200.0,
@@ -816,11 +804,6 @@ mod tests {
 
         point_at(&mut window, 2);
         assert_eq!(room(&window), without);
-        let (_, map) = without;
-        for said in [MESHES[2], &city, &value] {
-            let said = window.get_by_label(said).rect();
-            assert!(map.contains_rect(said), "{said:?} in {map:?}");
-        }
         // A line cut short would be as high as the code's one line.
         let line = window.get_by_label(MESHES[2]).rect().height();
         for said in [&city, &value] {
@@ -883,35 +866,6 @@ mod tests {
         let line = window.get_by_label(MESHES[2]).rect().height();
         let said = window.get_by_label(value).rect();
         assert_eq!(said.height(), line, "{said:?}");
-    }
-
-    /// A window in which half the map is narrower than the readout is where
-    /// it has the room: the readout is narrower too, and stays on the map.
-    #[test]
-    fn a_readout_wider_than_half_the_map_is_narrowed_to_stay_on_the_map() {
-        let mut window = window();
-        window.set_size(eframe::egui::vec2(640.0, 600.0));
-        // The statements of the sources wrap anew, and the map with them.
-        window.run_steps(5);
-        point_at(&mut window, 2);
-        let (map, _) = meshes_drawn(&window);
-        assert!(map.width() / 2.0 < READOUT_WIDTH, "{map:?}");
-        for said in [CODE_LABEL, MESHES[2]] {
-            let said = window.get_by_label(said).rect();
-            assert!(map.contains_rect(said), "{said:?} in {map:?}");
-        }
-    }
-
-    /// A window so narrow that half the map has no room for a readout at
-    /// all: the mesh is read out all the same.
-    #[test]
-    fn a_window_too_narrow_for_the_readout_still_reads_a_mesh_out() {
-        let mut window = window();
-        window.set_size(eframe::egui::vec2(300.0, 600.0));
-        // The statements of the sources wrap anew, and the map with them.
-        window.run_steps(5);
-        point_at(&mut window, 2);
-        window.get_by_label(MESHES[2]);
     }
 
     /// A reach too large and one too small for the legend to write in the
