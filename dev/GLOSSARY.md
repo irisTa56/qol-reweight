@@ -17,6 +17,17 @@ The terms are the Statistics Bureau of Japan's, from [`地域メッシュ統計�
 | half grid square | `2分の1地域メッシュ` |
 | 2 km square | `2倍地域メッシュ` |
 
+## Reference data
+
+The development documents use these terms, and the code does not.
+The first is e-Stat's, from its [boundary data](https://www.e-stat.go.jp/gis/statmap-search?type=2), and the other two are in the outline above.
+
+| In the documents | Japanese term |
+| --- | --- |
+| fourth-level mesh, e-Stat's name for a half grid square | `4次メッシュ` |
+| world geodetic system | `世界測地系` |
+| older Japanese datum | `日本測地系` |
+
 ## The data
 
 | In the code | Japanese term |

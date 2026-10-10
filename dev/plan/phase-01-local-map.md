@@ -6,7 +6,7 @@
 ## Goal
 
 On the maintainer's machine, the tool opens one of the platform's CSV files, a prefecture's or a metropolitan area's, and shows its published values on a map of 500 m meshes, the total or one indicator at a time.
-The picture agrees with the one the platform shows for the same file, which settles the path from the file to the map.
+The path from the file to the map is settled without the platform's map: the tool's reading of each real file is checked against a second reading, where a mesh lies rests on assumptions checked against public reference data, and the map as drawn is looked at over the base map.
 
 ## Requirements & Constraints
 
@@ -26,6 +26,7 @@ The picture agrees with the one the platform shows for the same file, which sett
 - **R008** (constraint): The tool sends the platform no request ([0001]). The base map's tiles are its only use of the network, and the meshes are drawn without it.
 - **R009** (constraint): The tool reads the file and writes nothing that comes from it.
 - **R010** (constraint): Nothing that comes from the data is committed, as [`CLAUDE.md`](../../CLAUDE.md#keeping-the-data-out-of-the-repository) spells out, so the tests run on synthetic data and the phase's evidence holds no picture and no value.
+  - A test that needs a real file takes it from outside the repository, runs only when asked for, and holds no value: what it expects is read from the file.
 - **R011** (constraint): The tool is checked on macOS only, and reads the font for Japanese text from there. On Windows and Linux it is not checked, and where it finds no such font it shows no map, as R006 says; the README says so.
 
 ### Out of scope
@@ -53,11 +54,20 @@ The picture agrees with the one the platform shows for the same file, which sett
     - `Value`
   - Risk: another file is laid out differently, noticed by the tool refusing a file downloaded from the platform.
 - **A002**: `KeyCode` is a half grid square code: nine digits whose ninth is 1 to 4 for the south-west, south-east, north-west, and north-east quarter of a 1 km mesh, each 15″ of latitude by 22.5″ of longitude. Source: [地域メッシュ統計の特質・沿革](https://www.stat.go.jp/data/mesh/pdf/gaiyo1.pdf), pp. 8–12 and 19, checked 2026-10-05; every code in the three files has nine digits and ends in 1 to 4.
-  - Risk: squares land in the wrong place, noticed by a pattern that is mirrored or scrambled within each 1 km against the platform's map.
-- **A003**: The mesh codes are on the world geodetic system the base map uses, as the [2020 census mesh statistics](https://www.stat.go.jp/data/mesh/index.html) are. Unverified: those statistics are compiled in two such systems, JGD2000 and JGD2011, and nothing read says which the data uses, or that it uses either.
-  - Risk: every mesh is displaced, as it would be were the codes on the older Japanese datum, which lies about 450 m from the world geodetic system near Tokyo ([国土地理院](https://www.gsi.go.jp/LAW/G2000-g2000-h3.htm), checked 2026-10-05), noticed by one steady offset against the coastline and against the platform's map.
-- **A004**: The platform draws each file's meshes on a map, where its user chooses the total or one indicator, which is the picture the phase compares against. Source: [the platform's search result for the catalogue](https://data-platform.mlit.go.jp/#/searchlink/df633780-e1bd-436d-b6f6-13885a70c254), on whose map the maintainer saw the meshes coloured, and the colours change on choosing the total or an indicator in the legend, for Aichi (checked 2026-10-05) and for Tokyo and the Chukyo metropolitan area (checked 2026-10-06).
-  - Risk: the platform's map changes or stops showing a file, noticed on opening it for the files the phase checks.
+  - e-Stat's boundary data agrees: for every mesh in its files of the first-level squares the three files cover, the square these rules give is the square the file holds, to within the rounding of the arithmetic, and every mesh of the three files is in them (a trial script, run 2026-10-10).
+    - The data is on its [list of boundary files](https://www.e-stat.go.jp/gis/statmap-search?page=1&type=2&aggregateUnitForBoundary=H&coordsys=1&format=shape), which offers the 500 m meshes, its fourth-level meshes, as Shapefiles in latitude and longitude on the world geodetic system, one for each first-level square, dated 2010-12-08 (checked 2026-10-09).
+    - Each record is one rectangle with a nine-digit `KEY_CODE`, as the definition document on that page says, and the files name their geodetic system as JGD2000. A file does not hold every mesh of its first-level square: some of those opened hold fewer.
+    - Its content may be used under [e-Stat's terms](https://www.e-stat.go.jp/terms-of-use), which follow the government's standard terms of use 2.0 and are compatible with CC BY 4.0; the [terms of its GIS](https://www.e-stat.go.jp/gis-terms) refer to them for what the system provides (checked 2026-10-09).
+  - The codes of the three files are those of the 2020 census's statistics on 500 m meshes, quarters included: nearly every mesh of each file has a row in the census's table of population, and many times as many lack one once the quarters of each 1 km mesh are renumbered, east for west, north for south, or both (a trial script, run 2026-10-10).
+    - The table is e-Stat's table of population and households, `T001141`, of the 2020 census on its fourth-level meshes, in its JGD2011 edition, on its [list of statistics](https://www.e-stat.go.jp/gis/statmap-search?page=1&type=1&toukeiCode=00200521&toukeiYear=2020&aggregateUnit=H), dated 2025-10-09, one file for each first-level square (checked 2026-10-10). A file has a row with a nine-digit `KEY_CODE` for a part of its square's meshes, taken here to be those where the census counted someone.
+    - A few meshes of each file have no row as they are. Why was not looked into.
+    - e-Stat's terms, above, cover it.
+  - Risk: the codes of a file follow other rules, so its squares land in the wrong place, noticed by meshes drawn off the land, which shows a gross error and not a wrong order of the quarters, and by running the two trials on that file.
+- **A003**: The mesh codes are on the world geodetic system the base map uses, as the [2020 census mesh statistics](https://www.stat.go.jp/data/mesh/index.html) are. Source: the trial against the census's table under A002, in which many times as many meshes of each file lack a row once every mesh is moved by as far as the older Japanese datum lies from the world geodetic system, in either direction (run 2026-10-10).
+  - Those statistics are compiled in two such systems, JGD2000 and JGD2011, and nothing read says which the data uses. The two differ by far less than a mesh: JGD2011 revised JGD2000 for the ground the 2011 earthquake moved, and the origin of latitude and longitude, in Tokyo, moved by about 27 cm ([GSI](https://www.gsi.go.jp/sokuchikijun/jgd2000-2011.html), checked 2026-10-09).
+  - Risk: every mesh is displaced, as it would be were the codes on the older Japanese datum, which lies about 450 m from the world geodetic system near Tokyo ([GSI](https://www.gsi.go.jp/LAW/G2000-g2000-h3.htm), checked 2026-10-05), noticed by one steady offset of the meshes against the coast the base map draws.
+  - Risk: a file of another region is on another system than these three, noticed by running the same trial on that file.
+- **A004**: Withdrawn 2026-10-09, when the phase stopped comparing against the platform's map (see Decisions). It read: the platform draws each file's meshes on a map, where its user chooses the total or one indicator, which is the picture the phase compares against. Source: [the platform's search result for the catalogue](https://data-platform.mlit.go.jp/#/searchlink/df633780-e1bd-436d-b6f6-13885a70c254), on whose map the maintainer saw the meshes coloured, and the colours change on choosing the total or an indicator in the legend, for Aichi (checked 2026-10-05) and for Tokyo and the Chukyo metropolitan area (checked 2026-10-06).
 - **A005**: An application may load GSI tiles as they are needed without applying, on stating the source as 「国土地理院」 or 「地理院タイル」 with a link to the tile list. Source: [地理院タイル一覧](https://maps.gsi.go.jp/development/ichiran.html), checked 2026-10-05. The page says nothing of how many requests are allowed.
   - The pale map's tiles at zoom level 8 and below ask for a credit to their shoreline data as well, in the notes of their own entries on that page.
   - Risk: tiles are refused, noticed by a base map that stays blank, at a zoom level it has tiles for, while the network is up.
@@ -80,7 +90,10 @@ The picture agrees with the one the platform shows for the same file, which sett
 - The user sets how much of the base map shows through the meshes rather than the tool fixing it, because the maintainer finds a place hard to tell where the base map cannot be seen (said 2026-10-05).
 - What can be checked by a test that drives the window is checked that way rather than by hand, because the test goes on guarding the behaviour after the phase closes.
   - Those tests run on macOS on the maintainer's machine rather than in CI, because CI runs on Linux, where the tool shows no map for want of the font (R011), and the maintainer starts with CI as it is (said 2026-10-06).
-  - The comparison with the platform's map stays by hand: the platform refused a browser driven by a program (HTTP 403, tried 2026-10-05), and no picture of real data can be kept to compare against.
+- The path from the file to the map is settled without the platform's map rather than by eye against it, because the eye had no way to the platform that can be repeated: it refused a browser driven by a program (HTTP 403, tried 2026-10-05, and again 2026-10-09 with two browsers), and no picture of real data can be kept to compare against (the maintainer, 2026-10-09).
+  - The tool's reading of a real file is checked by a test against a second reading of that file, which runs on the maintainer's machine when asked for rather than in CI, because the repository holds no real file.
+  - Where a mesh lies rests on A002 and A003, each checked once against public reference data rather than by a test kept with the code, because what was checked is the standard's rules and the geodetic system of the data, which no change to the tool can alter (the maintainer, 2026-10-10). The tool's own arithmetic is held to those rules by tests in CI.
+  - What is left to the eye is what only an eye judges, on the tool alone: that the base map names places in Japanese, that the meshes lie where the base map draws land, which no program checks, and that panning and zooming stay smooth.
 - The tool is checked on macOS only rather than made to show Japanese text everywhere, because it is a personal tool on a macOS machine, and a font shipped with it would be a file to add and a licence to check.
   - Without the font it shows no map rather than a map whose source statements cannot be read, because the roadmap makes stating the data's source a condition of showing the data.
 
@@ -100,13 +113,11 @@ The picture agrees with the one the platform shows for the same file, which sett
 
 ## Done when
 
-- **With Aichi's file, the map of the total shows the pattern the platform's map shows: high and low places fall in the same places, and the meshes end at the same coastline and prefectural border. Panning and zooming stay smooth.** — verifies R001, R005, A002, A003, A004, A006.
-  - Check: the maintainer looks at the tool and the platform's map side by side, for the total and for two indicators. The evidence is the statement that they agree, with no picture.
-- **With Tokyo's file, the same holds, and the list of choices is that file's indicators and not Aichi's.** — verifies R001, R002, A001.
-  - Check: as above, by the maintainer.
-- **With the Chukyo metropolitan area's file, the same holds across the prefectures it covers.** — verifies R001, A001, A006.
-  - Check: as above, by the maintainer.
-- **Mesh codes turn into the squares the standard defines, files that differ in indicators and in the byte order mark load, and zero gets the neutral colour with the two ends at plus and minus a high percentile of the absolute values shown.** — verifies R001, R002, R003, A001, A002.
+- **For each of the three files, the tool holds the meshes, the choices, and every value as a second reading of the file finds them, one that shares no code with the tool's own reading, draws every mesh once, and offers that file's indicators, the total first.** — verifies R001, R002, A001.
+  - Check: an automated test that reads the real files, run on the maintainer's machine when asked for. The evidence is the run, with no value.
+- **With the Chukyo metropolitan area's file open, the base map names places in Japanese under the meshes, the meshes lie where the base map draws land, with none out at sea and no steady offset along the coast, and panning and zooming stay smooth.** — verifies R001, R005, A002, A003, A005, A006.
+  - Check: the maintainer looks at the tool.
+- **Mesh codes turn into the squares the standard defines, files that differ in indicators and in the byte order mark load, and zero gets the neutral colour with the two ends at plus and minus a high percentile of the absolute values shown.** — verifies R001, R002, R003, A001.
   - Check: automated tests on synthetic data, passing in CI.
 - **Choosing another indicator recolours the map and changes the legend, pointing at a mesh shows its code, its municipality, and its value, and the base map shows through the meshes more or less as the user sets it.** — verifies R002, R003, R004, R005, A007.
   - Check: an automated test that drives the window with a synthetic file whose values are known from how it was made, passing on macOS.
@@ -120,9 +131,8 @@ The picture agrees with the one the platform shows for the same file, which sett
   - Check: the README read.
 - **With the network off, the meshes are drawn over a blank base map, and the tool makes no request to the platform.** — verifies R008.
   - Check: an automated test that draws a synthetic file with a tile server that cannot be reached, passing on macOS, and each place the code names the platform's host read to be text the tool shows, not an address it requests.
-- **The tool leaves no file behind that holds anything from the CSV, and the repository holds no data: test inputs are made by code, and no commit of the phase carries a picture or a value from a real file.** — verifies R009, R010.
+- **The tool leaves no file behind that holds anything from the CSV, and the repository holds no data: the tests that run on synthetic data make their input in code, the test on real files takes them from outside the repository, and no commit of the phase carries a picture or a value from a real file.** — verifies R009, R010.
   - Check: the code read for what it writes, and the check before each push that `CLAUDE.md` asks for.
-- A005 has no item of its own: its source is the terms page, and its warning sign would appear in the first item.
 
 ## Open questions
 

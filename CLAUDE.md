@@ -26,6 +26,7 @@ A name or a method is not a value, so writing it is fine: an indicator's name, a
 That the platform itself shows something does not take it out of the list above: its figures, its map view, and the thresholds of its legend come from the data, so link to them and do not copy them.
 
 Tests run on synthetic data, made up for the purpose and not sampled from the real data.
+A test that needs a real file is the exception: it takes the file from a folder outside the repository that an environment variable names, runs only when asked for, and holds no value, since what it expects is read from the file it is given.
 
 Research notes and downloaded data may hold such values, which is why they are kept in the private workspace the `dev-docs` skill describes, outside this repository's working tree.
 Before every push, check that no commit it would publish carries anything of this kind, in its tree or its message, and rewrite those commits first if one does.
@@ -55,6 +56,6 @@ Before every push, check that no commit it would publish carries anything of thi
 - Source files hold no Japanese text and no other character an editor may draw two columns wide, since one such character puts the lines around it out of vertical alignment.
   - [`dev/GLOSSARY.md`](dev/GLOSSARY.md) pairs each English name the code uses with the Japanese term it stands for, so add the pair there when the code takes a new one.
   - Japanese text the tool shows on screen lives in a file under `assets/`, which the code takes in with `asset::text!`, so that it can be read and checked as written, which an escape cannot.
-  - A test makes its input in code, and where it needs text in a Japanese script it generates that text, as [`proptest`](https://docs.rs/proptest) does from a pattern such as `\p{Katakana}{2,4}`.
+  - A test on synthetic data makes its input in code, and where it needs text in a Japanese script it generates that text, as [`proptest`](https://docs.rs/proptest) does from a pattern such as `\p{Katakana}{2,4}`.
 - A panel keeps its size whatever text the file gives it: a name or a value too long for its room is cut short or wrapped, and a window test holds the map's rectangle still with generated text far longer than that room.
 - Where a widely used crate with few dependencies of its own does a job, such as `thiserror` for error types, use it rather than writing the job out by hand.
