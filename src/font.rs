@@ -4,12 +4,20 @@
 //! sources are Japanese, so without this font the tool shows no map.
 
 use eframe::egui::FontFamily;
-use eframe::epaint::text::{FontData, FontInsert, FontPriority, InsertFontFamily};
+use eframe::epaint::text::{FontData, FontInsert, FontPriority, FontTweak, InsertFontFamily};
 use fontdb::{Database, Family, Query};
 use thiserror::Error;
 
 /// The family the font is looked up by. macOS has it.
 const FAMILY: &str = "Hiragino Sans";
+
+/// How far down the font's glyphs are drawn, as a fraction of the text's size.
+/// The font's line gap is half its em, and egui makes a row as tall as the
+/// ascent, the descent and the gap together, with the whole gap under the
+/// descender. Unmoved, the glyphs sit a quarter of an em above the row's
+/// middle, in a button as in a label; moved down by half the gap, they sit in
+/// the middle.
+const Y_OFFSET_FACTOR: f32 = 0.25;
 
 /// A font file's contents, and which of its faces draws Japanese text.
 #[derive(Debug)]
@@ -51,11 +59,15 @@ impl JapaneseFont {
 
     /// The font as egui takes it in, to go before egui's own fonts or after
     /// them. Before them it draws every character it has and they draw the
-    /// rest, so that a line of text sits on one baseline, which a line two
-    /// fonts drew between them would not.
+    /// rest, so that the Latin letters and the digits of a line are in the
+    /// typeface of its Japanese text, and not in another beside it.
     pub(crate) fn into_insert(self, priority: FontPriority) -> FontInsert {
         let data = FontData {
             index: self.face,
+            tweak: FontTweak {
+                y_offset_factor: Y_OFFSET_FACTOR,
+                ..FontTweak::default()
+            },
             ..FontData::from_owned(self.file)
         };
         let families = [FontFamily::Proportional, FontFamily::Monospace]
