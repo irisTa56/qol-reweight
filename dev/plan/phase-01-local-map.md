@@ -1,6 +1,6 @@
 # Phase 01: Published values on a local map
 
-- Status: Closed
+- Status: Closed 2026-10-10
 - Roadmap: [Published values on a local map](../ROADMAP.md#phases)
 
 ## Goal
