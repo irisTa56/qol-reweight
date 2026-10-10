@@ -522,6 +522,22 @@ mod tests {
         assert!(window.query_by_label("0.3").is_none());
     }
 
+    /// The weighted sum is chosen again from the list, after the total.
+    #[test]
+    fn choosing_the_weighted_sum_again_brings_its_colours_back() {
+        let mut window = window_of_sums();
+        choose(&mut window, "Total");
+        assert!(window.query_by_label("+0.8").is_none());
+
+        choose(&mut window, WEIGHTED_SUM_LABEL);
+        assert_eq!(ends(&window), ["blue", "red"]);
+        window.get_by_label("+0.8");
+        let shown = window.get_by_role(Role::ComboBox).accesskit_node().value();
+        assert_eq!(shown.as_deref(), Some(WEIGHTED_SUM_LABEL));
+        point_at(&mut window, 1);
+        window.get_by_label("0.3");
+    }
+
     /// The totals of [`FILE`] fall from above zero to below it, which no
     /// indicator of the file does, and its weighted sums rise.
     #[test]
@@ -974,7 +990,8 @@ mod tests {
         let (map, _) = meshes_drawn(&window());
         for reach in [1e-300, 1e300] {
             let values: &[f64] = &[-reach, 0.0, reach];
-            let window = window_on(dataset_of(&MESHES, &[("QOL", "Total", values)]));
+            let mut window = window_on(dataset_of(&MESHES, &[("QOL", "Total", values)]));
+            choose(&mut window, "Total");
             assert_eq!(meshes_drawn(&window).0, map, "a reach of {reach:e}");
         }
     }

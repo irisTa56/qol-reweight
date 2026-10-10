@@ -90,18 +90,26 @@ mod tests {
         sum: f64,
         /// Their sizes added up.
         size: f64,
-        /// How far the sum of the rows as written may lie from the sum of
-        /// what they were rounded from: half of the last figure's place for
-        /// each row, the total's with them.
+        /// How far the sum of the rows as written may lie from the total as
+        /// written, where both come of the same figures: one in the tenth
+        /// significant figure of each row, the total's with them.
         rounding: f64,
         indicators: u32,
         total: Option<f64>,
     }
 
-    /// Half of the place the last figure of `written` has.
-    fn half_a_place(written: &str) -> f64 {
-        let decimals = written.split_once('.').map_or(0, |(_, after)| after.len());
-        0.5 * 10f64.powi(-i32::try_from(decimals).expect("a few decimals"))
+    /// One in the tenth significant figure of `value`, past which the files
+    /// write nothing, whether they round to it or cut there. Zero has no
+    /// figure to be out by.
+    fn one_in_the_tenth_figure(value: f64) -> f64 {
+        if value == 0.0 {
+            return 0.0;
+        }
+        // The exponent of a finite number that is not zero is a small
+        // whole number.
+        #[expect(clippy::cast_possible_truncation)]
+        let first = value.abs().log10().floor() as i32;
+        10f64.powi(first - 9)
     }
 
     /// How many significant figures `written` has: its digits from the first
@@ -143,7 +151,7 @@ mod tests {
                 );
                 let number: f64 = written.parse().expect("a number");
                 let mesh = read.entry(row[key_code].to_owned()).or_default();
-                mesh.rounding += half_a_place(written);
+                mesh.rounding += one_in_the_tenth_figure(number);
                 if &row[indicator_code] == "QOL" {
                     mesh.total = Some(number);
                 } else {
