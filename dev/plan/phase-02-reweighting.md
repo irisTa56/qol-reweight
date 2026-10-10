@@ -16,17 +16,19 @@ The map follows a multiplier while it is being moved, and with every multiplier 
   - The slider is logarithmic: 10 is at its right end, 1 close to its middle, and 0 at its left end, where no other multiplier is drawn, so a slider at 0 can be told from one at 0.1 by where its handle is.
   - A number can be typed into the field, and one outside the range becomes the nearest end.
 - **R004**: One button sets every multiplier to 1, and another sets every multiplier to 0.
-- **R005**: While the weighted sum is shown, the colours and the legend follow a multiplier as it is moved, a button included, and the value read out for the mesh pointed at is its weighted sum under the multipliers as they then are.
+- **R005**: While the weighted sum is shown, the colours and the legend follow a multiplier as it is moved, a button included, and the value read out for the mesh pointed at (R008) is its weighted sum under the multipliers as they then are.
   - The scale is fitted anew to the weighted sums at each change, as it is fitted to any values shown, so the colours tell where a mesh stands among the file's meshes whatever the multipliers are.
   - A weighted sum is read out in the form the files write their values in (A005), to ten significant figures with no zeros after the last of them, and a published value as the file writes it, as before.
-  - The readout keeps its three lines and says nothing while the pointer is off the map, as it is while a slider is dragged, so a mesh's new sum is read once the pointer is back on the mesh.
+  - Nothing is read out while the pointer is off the map, as it is while a slider is dragged, so a mesh's new sum is read once the pointer is back on the mesh.
 - **R006**: While the published total or one indicator is shown, the sliders, the fields, and the buttons cannot be used and look so. The multipliers keep their values, and the weighted sum has them when it is chosen again.
 - **R007**: The sliders and the buttons are in the panel on the left, under what it had before them, and the map is as wide as it was before them.
-  - What keeps its height comes over what does not: the legend, the pull-down, the slider for the opacity, the readout, and the two buttons, and under them the list of sliders, which is as long as the file has indicators.
+  - What keeps its height comes over what does not: the legend, the pull-down, the slider for the opacity, and the two buttons, and under them the list of sliders, which is as long as the file has indicators and is the one thing in the panel whose height the file sets.
   - The list takes the room that is left and scrolls by itself where it is higher than that room, and what is over it stays in view meanwhile.
   - The panel keeps its size whatever the file holds, however many indicators and however long their names.
-- **R008** (constraint): The tool still reads the file and writes nothing. The multipliers are not kept from one run to the next, and no weighted sum leaves the tool.
-- **R009** (constraint): Nothing that comes from the data is committed, as [`CLAUDE.md`](../../CLAUDE.md#keeping-the-data-out-of-the-repository) spells out, so the tests run on synthetic data and the phase's evidence holds no picture and no value.
+- **R008**: The code of the mesh pointed at, the name of its municipality, and the value shown are read out beside the pointer, on the map, and no longer in the panel.
+  - Each is read out in full however long it is, on as many lines as it takes, and neither the panel nor the map's rectangle changes with it.
+- **R009** (constraint): The tool still reads the file and writes nothing. The multipliers are not kept from one run to the next, and no weighted sum leaves the tool.
+- **R010** (constraint): Nothing that comes from the data is committed, as [`CLAUDE.md`](../../CLAUDE.md#keeping-the-data-out-of-the-repository) spells out, so the tests run on synthetic data and the phase's evidence holds no picture and no value.
   - A test that needs a real file takes it from outside the repository, runs only when asked for, and holds no value: what it expects, and how far two sums may differ, is read from the file.
 
 ### Out of scope
@@ -35,7 +37,7 @@ The map follows a multiplier while it is being moved, and with every multiplier 
 - Several files at once, which is a later phase of the roadmap.
 - A multiplier below 0, which would turn an indicator's sign over rather than say how many times its average weight the user gives it.
 - Hiding the panel to give the map the whole window.
-- In the readout, the published total beside the weighted sum, and what each indicator adds to the sum.
+- In what is read out for a mesh, the published total beside the weighted sum, and what each indicator adds to the sum.
 - A mesh's value kept on screen while the pointer is on the panel, such as by holding the last mesh pointed at or by pinning one with a click.
 - Setting one indicator's multiplier back by itself, other than by typing 1.
 
@@ -48,11 +50,14 @@ The map follows a multiplier while it is being moved, and with every multiplier 
 - **A003**: egui's slider does what R003 asks without code of the tool's own for the scale: a logarithmic range that starts at zero, with the smallest value above zero set, a step, a number field that takes typed input, and clamping to the range. Source: [`slider.rs` of egui 0.36.2](https://github.com/emilk/egui/blob/0.36.2/crates/egui/src/widgets/slider.rs), read 2026-10-10. Not tried in a window.
   - Risk: the slider does not behave so once drawn, noticed by a test of R003 that cannot be made to pass on egui's slider alone.
   - Risk: with the scale starting so little under 0.1, the handle for 0.1 is drawn about a fiftieth of the slider's length from the handle for 0, by the arithmetic of that source, which is too little to see, noticed by a slider at 0 that cannot be told from one at 0.1 at a glance.
-- **A004**: Two lines for each indicator, its name over its slider and field, fit the panel's width, and about eleven indicators are in view at once in the window as it opens. Source: an estimate from egui's default sizes, not drawn.
+- **A004**: Two lines for each indicator, its name over its slider and field, fit the panel's width, and about thirteen indicators are in view at once in the window as it opens. Source: an estimate from egui's default sizes, not drawn.
   - Risk: far fewer are in view, noticed by a list that shows only a few indicators in the window as it opens.
   - Risk: a name's line or a slider with its field does not fit the panel as wide as it is, noticed by a line that is cut off or a panel that has to be widened to hold it.
 - **A005**: The files write each value with at most ten significant figures, with no zeros after the last of them and with no exponent. Source: a trial script over the files of Aichi, Tokyo, and the Chukyo metropolitan area, run 2026-10-10.
   - Risk: a file writes its values with more figures, so its published values and its weighted sums are read out in two forms, noticed by the test on real files finding a value of more than ten figures.
+- **A006**: egui draws beside the pointer something the tool lays out, with no delay, and a test that drives the window can read its text. Source: [`tooltip.rs`](https://github.com/emilk/egui/blob/0.36.2/crates/egui/src/containers/tooltip.rs) and [`response.rs`](https://github.com/emilk/egui/blob/0.36.2/crates/egui/src/response.rs) of egui 0.36.2, which have a tooltip that is always open and one placed at the pointer, read 2026-10-10. Not tried in a window, and that a test can read it is unverified.
+  - Risk: a test cannot find what is read out, noticed by a check of R008 that ends up done by hand.
+  - Risk: what is read out lags behind the pointer or flickers as it passes from mesh to mesh, noticed by looking at the tool.
 
 ## Decisions
 
@@ -68,7 +73,9 @@ The map follows a multiplier while it is being moved, and with every multiplier 
 - The multipliers are not saved, because the tool writes nothing ([architecture](../ARCHITECTURE.md#invariants)), and the maintainer agreed to start from 1 on every run (said 2026-10-10).
 - The sliders go into the panel on the left, two lines an indicator in a list that scrolls, rather than into a second panel on the right with every indicator in view, or a window floating over the map, because the maintainer wants the map as large as it can be (said 2026-10-10), and a floating window covers part of the map while a slider is moved.
 - A weighted sum is read out to ten significant figures rather than with every figure the arithmetic leaves, or as a whole number, because that is the form the files write their values in (A005), which the maintainer asked the sum to be held to (said 2026-10-10), so the sum and the published total are read in one form.
-- The list of sliders is the last thing in the panel rather than between the slider for the opacity and the readout, because the maintainer wants what varies in length under what does not, as far as that can be (said 2026-10-10).
+- The list of sliders is the last thing in the panel, and the one thing in it that varies in height, because the maintainer wants what varies in length under what does not, as far as that can be (said 2026-10-10).
+- What the file says of the mesh pointed at is read out beside the pointer rather than in the panel, whether left where it was, moved under the list, or cut to a line each, because a long name makes a readout in the panel higher and moves what is under it, a line cut short could not be read in full by pointing at it, since the pointer would leave the mesh to do so, and the maintainer prefers it beside the pointer, as nearer to how the platform behaves (said 2026-10-10).
+  - It takes the place of the panel's readout rather than standing beside it, because the two would say the same thing at the same time.
 - While the weighted sum is not shown the sliders are disabled, rather than left as they are or made to switch the map to the weighted sum when moved, because a control that changes nothing on the map should look so, and a switch would replace what the user chose to look at.
 - That the map follows a slider smoothly is checked by eye rather than by a test that times the work, because nothing gives such a test a limit to hold the time to, and the time differs between machines.
 
@@ -80,17 +87,19 @@ None.
 
 - **For each real file, the weighted sum the tool holds for every mesh with every multiplier at 1 is the sum of that mesh's indicator rows as a second reading of the file finds them, one that shares no code with the tool's own reading. The second reading finds each file's `QOL` rows to be those sums in every mesh or in none; where it is every mesh, the weighted sum is the published total as well, and at least one file is such a file. No value of a file is written with more than ten significant figures.** — verifies R001, R002, A001, A005.
   - Check: an automated test that reads the real files, run on the maintainer's machine when asked for, over the files of Aichi, Tokyo, and the Chukyo metropolitan area. The evidence is the run and which files' totals it found to be the sum, with no value.
-- **With a synthetic file open, the list has the weighted sum first and the tool shows it; moving one indicator's slider, typing into its field, and pressing each button recolour the meshes and change the legend to those of the weighted sums the new multipliers give, and a mesh pointed at afterwards reads out its weighted sum under them to ten significant figures, on one line, whatever figures the arithmetic leaves; the test works each out from how the file was made.** — verifies R001, R002, R003, R004, R005, A003.
+- **With a synthetic file open, the list has the weighted sum first and the tool shows it; moving one indicator's slider, typing into its field, and pressing each button recolour the meshes and change the legend to those of the weighted sums the new multipliers give, and a mesh pointed at afterwards has its weighted sum under them read out to ten significant figures, whatever figures the arithmetic leaves; the test works each out from how the file was made.** — verifies R001, R002, R003, R004, R005, A003.
   - Check: an automated test that drives the window, passing on macOS.
 - **A slider goes from 0 at its left end through 1 close to its middle to 10 at its right end, stops at tenths, and draws its handle for 0.1 to the right of where it draws it for 0; a number typed beyond the range becomes the nearest end.** — verifies R003, A003.
   - Check: an automated test that drives the window, passing on macOS.
 - **With the published total or an indicator chosen, the sliders, the fields, and the buttons take no input and the map does not change; with the weighted sum chosen again, the map is as the multipliers set before left it.** — verifies R006.
   - Check: an automated test that drives the window, passing on macOS.
-- **The map's rectangle is the one the tool gave it before the phase, with a file of a few indicators and with one of many more indicators than the list has room for, whose names are far longer than the panel is wide; the last of them can be scrolled to and moved, and the legend, the pull-down, the buttons, and the readout stay where they were.** — verifies R007, A004.
+- **The map's rectangle is the one the tool gave it before the phase, with a file of a few indicators and with one of many more indicators than the list has room for, whose names are far longer than the panel is wide; the last of them can be scrolled to and moved, and the legend, the pull-down, and the buttons stay where they were.** — verifies R007, A004.
   - Check: an automated test that drives the window with generated text, passing on macOS, and the rectangle it finds set against the one the tool draws at the commit the phase started from.
-- **With the Chukyo metropolitan area's file open, the map follows a slider while it is dragged, without stutter and without trailing behind it, about eleven indicators are in view in the window as it opens, and a slider at 0 is told from one at 0.1 at a glance.** — verifies R003, R005, A002, A004.
+- **Pointing at a mesh reads out its code, its municipality, and the value shown beside the pointer and nowhere in the panel; a name and a value far longer than the panel is wide are read out in full, with the panel and the map's rectangle as they are without them; and nothing is read out with the pointer off the meshes, on the panel, or on an open pull-down that lies over a mesh.** — verifies R008, A006.
+  - Check: an automated test that drives the window with generated text, passing on macOS.
+- **With the Chukyo metropolitan area's file open, the map follows a slider while it is dragged, without stutter and without trailing behind it, about thirteen indicators are in view in the window as it opens, a slider at 0 is told from one at 0.1 at a glance, and what is read out beside the pointer keeps up with it from mesh to mesh.** — verifies R003, R005, R008, A002, A004, A006.
   - Check: the maintainer looks at the tool.
-- **The tool still leaves no file behind, and no commit of the phase carries a picture or a value from a real file.** — verifies R008, R009.
+- **The tool still leaves no file behind, and no commit of the phase carries a picture or a value from a real file.** — verifies R009, R010.
   - Check: the code read for what it writes, and the check before each push that `CLAUDE.md` asks for.
 
 ## Open questions
