@@ -16,9 +16,9 @@ The map follows a multiplier while it is being moved, and with every multiplier 
   - The slider is logarithmic: 1 is at its middle, 10 at its right end, 0.1 beside its left end, and 0 at that end.
   - A number can be typed into the field, and one outside the range becomes the nearest end.
 - **R004**: One button sets every multiplier to 1, and another sets every multiplier to 0.
-- **R005**: While the weighted sum is shown, the colours, the legend, and the value read out for the mesh pointed at follow a multiplier as it is moved, a button included.
+- **R005**: While the weighted sum is shown, the colours and the legend follow a multiplier as it is moved, a button included, and the value read out for the mesh pointed at is its weighted sum under the multipliers as they then are.
   - The scale is fitted anew to the weighted sums at each change, as it is fitted to any values shown, so the colours tell where a mesh stands among the file's meshes whatever the multipliers are.
-  - The readout keeps its three lines, and its value is the weighted sum of the mesh pointed at.
+  - The readout keeps its three lines and says nothing while the pointer is off the map, as it is while a slider is dragged, so a mesh's new sum is read once the pointer is back on the mesh.
 - **R006**: While the published total or one indicator is shown, the sliders, the fields, and the buttons cannot be used and look so. The multipliers keep their values, and the weighted sum has them when it is chosen again.
 - **R007**: The sliders and the buttons are in the panel on the left, between the slider for the opacity and the readout, and the map is as wide as it was before them.
   - The list of sliders scrolls by itself where it is higher than its room, and the legend, the pull-down, the buttons, and the readout stay in view meanwhile.
@@ -34,6 +34,7 @@ The map follows a multiplier while it is being moved, and with every multiplier 
 - A multiplier below 0, which would turn an indicator's sign over rather than say how many times its average weight the user gives it.
 - Hiding the panel to give the map the whole window.
 - In the readout, the published total beside the weighted sum, and what each indicator adds to the sum.
+- A mesh's value kept on screen while the pointer is on the panel, such as by holding the last mesh pointed at or by pinning one with a click.
 - Setting one indicator's multiplier back by itself, other than by typing 1.
 
 ## Assumptions & Risks
@@ -70,7 +71,7 @@ None.
 
 - **For each real file, the weighted sum the tool holds for every mesh with every multiplier at 1 is the sum of that mesh's indicator rows as a second reading of the file finds them, one that shares no code with the tool's own reading. The second reading finds each file's `QOL` rows to be those sums in every mesh or in none; where it is every mesh, the weighted sum is the published total as well, and at least one file is such a file.** — verifies R001, R002, A001.
   - Check: an automated test that reads the real files, run on the maintainer's machine when asked for, over the files of Aichi, Tokyo, and the Chukyo metropolitan area. The evidence is the run and which files' totals it found to be the sum, with no value.
-- **With a synthetic file open, the list has the weighted sum first and the tool shows it; moving one indicator's slider, typing into its field, and pressing each button recolour the meshes and change the legend and the value read out to those of the weighted sums the new multipliers give, which the test works out from how the file was made.** — verifies R001, R002, R003, R004, R005, A003.
+- **With a synthetic file open, the list has the weighted sum first and the tool shows it; moving one indicator's slider, typing into its field, and pressing each button recolour the meshes and change the legend to those of the weighted sums the new multipliers give, and a mesh pointed at afterwards reads out its weighted sum under them; the test works each out from how the file was made.** — verifies R001, R002, R003, R004, R005, A003.
   - Check: an automated test that drives the window, passing on macOS.
 - **A slider goes from 0 at its left end through 1 at its middle to 10 at its right end, stops at tenths, and a number typed beyond the range becomes the nearest end.** — verifies R003, A003.
   - Check: an automated test that drives the window, passing on macOS.
