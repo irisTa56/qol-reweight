@@ -55,7 +55,7 @@ The map follows a multiplier while it is being moved, and with every multiplier 
   - So the colours depend only on the ratios between the multipliers, and the legend's ends say how large the sums are.
 - A multiplier runs from 0 to 10 on a logarithmic slider with 1 at its middle, rather than from 0 to 3 on a linear one, or from 0 to 10 as a logarithm of the multiplier plus 1, because the colours depend on ratios, so equal ratios should be equal distances, and the maintainer asked for a logarithmic 0 to 10 (said 2026-10-10).
   - Zero is at the slider's left end though no logarithm puts it there, because a multiplier of 0 leaves an indicator out, which the user must be able to say.
-- Two buttons, every multiplier to 1 and every multiplier to 0, rather than the first alone, because the maintainer asked for the second (said 2026-10-10): from 0, the user raises only the indicators they care about.
+- Two buttons, every multiplier to 1 and every multiplier to 0, rather than the first alone, because the maintainer asked for the second (said 2026-10-10).
 - The multipliers are not saved, because the tool writes nothing ([architecture](../ARCHITECTURE.md#invariants)), and the maintainer agreed to start from 1 on every run (said 2026-10-10).
 - The sliders go into the panel on the left, two lines an indicator in a list that scrolls, rather than into a second panel on the right with every indicator in view, or a window floating over the map, because the maintainer wants the map as large as it can be (said 2026-10-10), and a floating window covers part of the map while a slider is moved.
 - While the weighted sum is not shown the sliders are disabled, rather than left as they are or made to switch the map to the weighted sum when moved, because a control that changes nothing on the map should look so, and a switch would replace what the user chose to look at.
@@ -67,7 +67,7 @@ None.
 
 ## Done when
 
-- **For each real file, the weighted sum the tool holds for every mesh with every multiplier at 1 is the sum of that mesh's indicator rows as a second reading of the file finds them, one that shares no code with the tool's own reading. Where that second reading finds the file's `QOL` rows to be those sums, the weighted sum is the published total as well, and at least one file is such a file.** — verifies R001, R002, A001.
+- **For each real file, the weighted sum the tool holds for every mesh with every multiplier at 1 is the sum of that mesh's indicator rows as a second reading of the file finds them, one that shares no code with the tool's own reading. The second reading finds each file's `QOL` rows to be those sums in every mesh or in none; where it is every mesh, the weighted sum is the published total as well, and at least one file is such a file.** — verifies R001, R002, A001.
   - Check: an automated test that reads the real files, run on the maintainer's machine when asked for, over the files of Aichi, Tokyo, and the Chukyo metropolitan area. The evidence is the run and which files' totals it found to be the sum, with no value.
 - **With a synthetic file open, the list has the weighted sum first and the tool shows it; moving one indicator's slider, typing into its field, and pressing each button recolour the meshes and change the legend and the value read out to those of the weighted sums the new multipliers give, which the test works out from how the file was made.** — verifies R001, R002, R003, R004, R005, A003.
   - Check: an automated test that drives the window, passing on macOS.
