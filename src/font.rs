@@ -59,8 +59,8 @@ impl JapaneseFont {
 
     /// The font as egui takes it in, to go before egui's own fonts or after
     /// them. Before them it draws every character it has and they draw the
-    /// rest, so that a line of text sits on one baseline, which a line two
-    /// fonts drew between them would not.
+    /// rest, so that the Latin letters and the digits of a line are in the
+    /// typeface of its Japanese text, and not in another beside it.
     pub(crate) fn into_insert(self, priority: FontPriority) -> FontInsert {
         let data = FontData {
             index: self.face,
