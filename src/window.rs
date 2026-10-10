@@ -3,8 +3,8 @@
 //! sources.
 
 use eframe::egui::{
-    CentralPanel, ComboBox, Context, Frame, Margin, Panel, PopupAnchor, Slider, Tooltip, Ui,
-    ViewportBuilder,
+    CentralPanel, ComboBox, Context, Frame, Label, Margin, Panel, PopupAnchor, ScrollArea, Slider,
+    Tooltip, Ui, ViewportBuilder,
 };
 use eframe::epaint::text::FontPriority;
 use eframe::{App, NativeOptions};
@@ -37,6 +37,16 @@ const SHOWN_LABEL: &str = asset::text!("shown-label.txt");
 
 /// What the screen calls the weighted sum among what the colours can show.
 const WEIGHTED_SUM_LABEL: &str = asset::text!("weighted-sum-label.txt");
+
+/// What the screen puts over the multipliers, and on the buttons that set
+/// every one of them to 1 and to 0.
+const MULTIPLIERS_LABEL: &str = asset::text!("multipliers-label.txt");
+const ALL_ONES_LABEL: &str = asset::text!("all-ones-label.txt");
+const ALL_ZEROS_LABEL: &str = asset::text!("all-zeros-label.txt");
+
+/// Where a multiplier's slider starts its logarithmic scale: a little under
+/// the least multiplier above zero, so that the left end is zero's alone.
+const SCALE_START: f64 = 0.09;
 
 /// What the screen puts over the slider that sets how much of the base map
 /// the meshes cover.
@@ -75,7 +85,9 @@ enum Shown {
 
 pub(crate) struct Window {
     dataset: Dataset,
-    /// Each mesh's weighted sum, with every multiplier at 1.
+    /// The multiplier of each indicator of the dataset: 1, until it is set.
+    multipliers: Multipliers,
+    /// Each mesh's weighted sum under those multipliers.
     sums: Vec<f64>,
     /// What the colours show: the weighted sum, until something else is
     /// chosen.
@@ -123,11 +135,13 @@ impl Window {
         memory
             .set_zoom(view.zoom())
             .expect("the opening zoom level is one the map has");
-        let sums = Multipliers::ones_for(&dataset).weighted_sums(&dataset);
+        let multipliers = Multipliers::ones_for(&dataset);
+        let sums = multipliers.weighted_sums(&dataset);
         let opacity = OPENING_OPACITY;
         let layer = MeshLayer::showing(dataset.meshes(), &sums, opacity);
         Self {
             dataset,
+            multipliers,
             sums,
             shown: Shown::WeightedSum,
             centre: view.centre(),
@@ -148,7 +162,11 @@ impl Window {
         Panel::left("shown")
             .resizable(false)
             .default_size(CHOICES_WIDTH)
-            .show(ui, |ui| self.choose_what_is_shown(ui));
+            .show(ui, |ui| {
+                self.choose_what_is_shown(ui);
+                ui.add_space(CHOICES_SPACE);
+                self.set_the_multipliers(ui);
+            });
         CentralPanel::default().frame(Frame::NONE).show(ui, |ui| {
             let tiles = self.tiles.as_mut().map(|tiles| tiles as &mut dyn Tiles);
             let layer = &self.layer;
@@ -240,6 +258,48 @@ impl Window {
         }
     }
 
+    /// The two buttons, and under them each indicator's name over a slider
+    /// with a number field, in a list that takes the room that is left and
+    /// scrolls by itself. A multiplier set colours the meshes anew where the
+    /// weighted sum is shown, and none can be set where it is not.
+    fn set_the_multipliers(&mut self, ui: &mut Ui) {
+        let before = self.multipliers.clone();
+        let (dataset, multipliers) = (&self.dataset, &mut self.multipliers);
+        ui.add_enabled_ui(self.shown == Shown::WeightedSum, |ui| {
+            ui.strong(MULTIPLIERS_LABEL);
+            ui.horizontal(|ui| {
+                if ui.button(ALL_ONES_LABEL).clicked() {
+                    *multipliers = Multipliers::ones_for(dataset);
+                }
+                if ui.button(ALL_ZEROS_LABEL).clicked() {
+                    *multipliers = Multipliers::zeros_for(dataset);
+                }
+            });
+            ScrollArea::vertical().show(ui, |ui| {
+                // The slider and its field share the line.
+                let field = ui.spacing().interact_size.x + ui.spacing().item_spacing.x;
+                ui.spacing_mut().slider_width = ui.available_width() - field;
+                for (at, indicator) in dataset.indicators().iter().enumerate() {
+                    // A name too long for its line is cut short.
+                    ui.add(Label::new(indicator.name()).truncate());
+                    let mut multiplier = multipliers.each()[at];
+                    ui.add(
+                        Slider::new(&mut multiplier, Multipliers::RANGE)
+                            .logarithmic(true)
+                            .smallest_positive(SCALE_START)
+                            .step_by(Multipliers::STEP)
+                            .max_decimals(1),
+                    );
+                    multipliers.set(at, multiplier);
+                }
+            });
+        });
+        if self.multipliers != before {
+            self.sums = self.multipliers.weighted_sums(&self.dataset);
+            self.layer = MeshLayer::showing(self.dataset.meshes(), self.values(), self.opacity);
+        }
+    }
+
     /// Each statement after a label that says what it is the source of.
     fn state_the_sources(ui: &mut Ui) {
         ui.horizontal_wrapped(|ui| {
@@ -265,7 +325,7 @@ impl App for Window {
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
     use eframe::egui::accesskit::Role;
-    use eframe::egui::{FontFamily, FontId, OutputCommand, Pos2, Rect, Shape};
+    use eframe::egui::{FontFamily, FontId, Key, OutputCommand, Pos2, Rect, Shape};
     use eframe::epaint::Vertex;
     use egui_kittest::Harness;
     use egui_kittest::kittest::{NodeT as _, Queryable as _};
@@ -538,6 +598,276 @@ mod tests {
         window.get_by_label("0.3");
     }
 
+    /// Where the slider of the indicator at `at` among the file's is: the
+    /// panel's first slider is the opacity's.
+    fn multiplier_slider(window: &Harness<'_, Option<Window>>, at: usize) -> Rect {
+        let slider = window.query_all_by_role(Role::Slider).nth(at + 1);
+        slider.expect("the indicator has a slider").rect()
+    }
+
+    /// The multiplier the number field of the indicator at `at` shows.
+    fn multiplier(window: &Harness<'_, Option<Window>>, at: usize) -> f64 {
+        let field = window.query_all_by_role(Role::SpinButton).nth(at);
+        let shown = field.expect("the indicator has a field");
+        let shown = shown.accesskit_node().value().expect("the field's number");
+        shown.parse().expect("a number")
+    }
+
+    /// Presses and lets go on the slider of the indicator at `at`, `along`
+    /// of the way from its left end to its right.
+    fn slide_multiplier_to(window: &mut Harness<'_, Option<Window>>, at: usize, along: f32) {
+        let slider = multiplier_slider(window, at);
+        press_along(window, slider, along);
+    }
+
+    /// Types `number` into the number field of the indicator at `at`.
+    fn type_multiplier(window: &mut Harness<'_, Option<Window>>, at: usize, number: &str) {
+        let field = |window: &Harness<'_, Option<Window>>| {
+            let field = window.query_all_by_role(Role::SpinButton).nth(at);
+            field.expect("the indicator has a field").rect()
+        };
+        window.hover_at(field(window).center());
+        window.run();
+        let click = field(window).center();
+        window.drag_at(click);
+        window.drop_at(click);
+        window.run();
+        let editing = window.query_all_by_role(Role::SpinButton).nth(at);
+        editing.expect("the field is there").type_text(number);
+        window.run();
+        window.key_press(Key::Enter);
+        window.run();
+    }
+
+    /// Where the handle of the slider of the indicator at `at` is drawn:
+    /// the one narrow rectangle within the slider.
+    fn handle(window: &Harness<'_, Option<Window>>, at: usize) -> Rect {
+        let slider = multiplier_slider(window, at);
+        let handles: Vec<_> = window
+            .output()
+            .shapes
+            .iter()
+            .filter_map(|clipped| match &clipped.shape {
+                Shape::Rect(drawn) => Some(drawn.rect),
+                _ => None,
+            })
+            .filter(|drawn| slider.expand(1.0).contains_rect(*drawn))
+            .filter(|drawn| drawn.width() < slider.width() / 4.0)
+            .collect();
+        let [handle] = handles.as_slice() else {
+            panic!("the slider draws {} handles", handles.len());
+        };
+        *handle
+    }
+
+    /// The sums of [`window_of_sums`] are 0.8, 0.3 and -0.8. A multiplier
+    /// set by a slider, by a number typed, and by each button colours the
+    /// meshes anew and changes the legend, and a mesh pointed at afterwards
+    /// has its sum under the new multipliers read out to ten figures.
+    #[test]
+    fn setting_a_multiplier_colours_the_meshes_by_the_new_weighted_sums() {
+        let mut window = window_of_sums();
+        assert_eq!([multiplier(&window, 0), multiplier(&window, 1)], [1.0; 2]);
+        let (_, at_first) = meshes_drawn(&window);
+
+        // Ten times the first indicator: 1.7, 2.1 and -4.4.
+        slide_multiplier_to(&mut window, 0, 1.0);
+        assert_eq!(multiplier(&window, 0), 10.0);
+        let (_, by_slider) = meshes_drawn(&window);
+        assert_ne!(by_slider, at_first);
+        window.get_by_label("+4.4");
+        point_at(&mut window, 1);
+        window.get_by_label("2.1");
+
+        // The first at 1 again and eleven tenths of the second: 0.87, 0.31
+        // and -0.84, the second of which adding leaves a little over.
+        type_multiplier(&mut window, 0, "1");
+        type_multiplier(&mut window, 1, "1.1");
+        assert_eq!([multiplier(&window, 0), multiplier(&window, 1)], [1.0, 1.1]);
+        let added = (0.2_f64 + 0.1 * 1.1).to_string();
+        assert_ne!(added, "0.31");
+        assert_ne!(meshes_drawn(&window).1, by_slider);
+        window.get_by_label("+0.87");
+        point_at(&mut window, 1);
+        window.get_by_label("0.31");
+        assert!(window.query_by_label(&added).is_none());
+
+        window.get_by_label(ALL_ZEROS_LABEL).click();
+        window.run();
+        assert_eq!([multiplier(&window, 0), multiplier(&window, 1)], [0.0; 2]);
+        assert_eq!(ends(&window), ["neither", "neither"]);
+        window.get_by_label("+0");
+        point_at(&mut window, 1);
+        window.get_by_label(MESHES[1]);
+        assert!(window.query_by_label("0.31").is_none());
+
+        window.get_by_label(ALL_ONES_LABEL).click();
+        window.run();
+        assert_eq!([multiplier(&window, 0), multiplier(&window, 1)], [1.0; 2]);
+        assert_eq!(meshes_drawn(&window).1, at_first);
+        window.get_by_label("+0.8");
+        point_at(&mut window, 1);
+        window.get_by_label("0.3");
+    }
+
+    /// A slider is 0 at its left end, 1 close to its middle, and 10 at its
+    /// right end, and stops at tenths between. Its handle for a tenth is to
+    /// the right of where it is for 0. A number typed beyond the range
+    /// becomes the nearest end.
+    #[test]
+    fn a_multipliers_slider_runs_from_0_through_1_in_its_middle_to_10() {
+        let mut window = window_of_sums();
+        slide_multiplier_to(&mut window, 0, 0.0);
+        assert_eq!(multiplier(&window, 0), 0.0);
+        let at_zero = handle(&window, 0);
+        slide_multiplier_to(&mut window, 0, 1.0);
+        assert_eq!(multiplier(&window, 0), 10.0);
+        type_multiplier(&mut window, 0, "1");
+        let (slider, at_one) = (multiplier_slider(&window, 0), handle(&window, 0));
+        let off_the_middle = (at_one.center().x - slider.center().x).abs();
+        assert!(
+            off_the_middle < slider.width() / 20.0,
+            "{at_one:?} {slider:?}"
+        );
+
+        for along in [0.1, 0.2, 0.3, 0.4, 0.6, 0.7, 0.8, 0.9] {
+            slide_multiplier_to(&mut window, 0, along);
+            let tenths = multiplier(&window, 0) * 10.0;
+            assert!((tenths - tenths.round()).abs() < 1e-9, "{along}: {tenths}");
+            assert!(0.0 < tenths && tenths < 100.0, "{along}: {tenths}");
+        }
+
+        type_multiplier(&mut window, 0, "0.1");
+        assert_eq!(multiplier(&window, 0), 0.1);
+        let at_a_tenth = handle(&window, 0);
+        assert!(
+            at_zero.left() < at_a_tenth.left(),
+            "{at_zero:?} {at_a_tenth:?}"
+        );
+
+        type_multiplier(&mut window, 0, "25");
+        assert_eq!(multiplier(&window, 0), 10.0);
+        type_multiplier(&mut window, 0, "-3");
+        assert_eq!(multiplier(&window, 0), 0.0);
+        // The other indicator's multiplier is as it was.
+        assert_eq!(multiplier(&window, 1), 1.0);
+    }
+
+    /// With the total chosen, the sliders, the fields, and the buttons take
+    /// nothing and the map stays as it is. The multipliers keep what they
+    /// had, and the weighted sum has them when it is chosen again.
+    #[test]
+    fn the_multipliers_cannot_be_set_while_the_weighted_sum_is_not_shown() {
+        let mut window = window_of_sums();
+        slide_multiplier_to(&mut window, 0, 1.0);
+        choose(&mut window, "Total");
+        let (_, total) = meshes_drawn(&window);
+
+        let disabled = |window: &Harness<'_, Option<Window>>| {
+            let sliders = window.query_all_by_role(Role::Slider).skip(1);
+            let fields = window.query_all_by_role(Role::SpinButton);
+            let buttons = [ALL_ONES_LABEL, ALL_ZEROS_LABEL].map(|label| window.get_by_label(label));
+            sliders
+                .chain(fields)
+                .chain(buttons)
+                .map(|control| control.accesskit_node().is_disabled())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(disabled(&window), [true; 6]);
+
+        slide_multiplier_to(&mut window, 1, 0.0);
+        type_multiplier(&mut window, 1, "5");
+        for label in [ALL_ONES_LABEL, ALL_ZEROS_LABEL] {
+            window.get_by_label(label).click();
+            window.run();
+        }
+        assert_eq!(
+            [multiplier(&window, 0), multiplier(&window, 1)],
+            [10.0, 1.0]
+        );
+        assert_eq!(meshes_drawn(&window).1, total);
+
+        choose(&mut window, WEIGHTED_SUM_LABEL);
+        assert_eq!(disabled(&window), [false; 6]);
+        window.get_by_label("+4.4");
+        point_at(&mut window, 1);
+        window.get_by_label("2.1");
+    }
+
+    /// Where the tool drew the map in the window these tests open, at the
+    /// commit phase 02 started from: read off a run of that commit's tests.
+    const MAP_BEFORE: Rect = Rect::from_min_max(
+        eframe::egui::pos2(248.0, 8.0),
+        eframe::egui::pos2(792.0, 514.0),
+    );
+
+    /// A file of two indicators, and one of many more than the list has room
+    /// for, whose names are far longer than the panel is wide: the map is
+    /// where it was before the panel had the multipliers. The last
+    /// indicator's slider is scrolled to and moved, and the legend, the
+    /// pull-down, and the buttons stay where they were meanwhile.
+    #[test]
+    fn the_multipliers_leave_the_map_where_it_was_and_scroll_by_themselves() {
+        assert_eq!(meshes_drawn(&window()).0, MAP_BEFORE);
+
+        let same: &[f64] = &[0.25, 0.25, 0.25];
+        let long = " with a name that goes on".repeat(5);
+        let many: Vec<(String, String)> = (0..40)
+            .map(|at| (format!("X{at:02}"), format!("Indicator {at}{long}")))
+            .collect();
+        let mut file: Vec<(&str, &str, &[f64])> = many
+            .iter()
+            .map(|(code, name)| (code.as_str(), name.as_str(), same))
+            .collect();
+        file.push(("Y00", "The last", &[3.0, 0.0, -3.0]));
+        file.push(("QOL", "Total", &[2.0, 0.5, -1.0]));
+        let mut window = window_on(dataset_of(&MESHES, &file));
+        let (map, at_first) = meshes_drawn(&window);
+        assert_eq!(map, MAP_BEFORE);
+
+        let above = |window: &Harness<'_, Option<Window>>| {
+            let buttons = [ALL_ONES_LABEL, ALL_ZEROS_LABEL].map(|label| window.get_by_label(label));
+            let mut above = vec![
+                window.get_by_label("0").rect(),
+                window.get_by_role(Role::ComboBox).rect(),
+                opacity_slider(window),
+            ];
+            above.extend(buttons.map(|button| button.rect()));
+            above
+        };
+        let before = above(&window);
+        let last = many.len();
+        // A name too long for its line is cut short and takes the one line.
+        let line = |name: &str| {
+            let named = window.query_all_by_label(name);
+            let mut labels = named.filter(|named| named.accesskit_node().role() == Role::Label);
+            labels.next().expect("the list names the indicator").rect()
+        };
+        let (long, short) = (line(&many[0].1), line("The last"));
+        assert_eq!(long.height(), short.height());
+        assert!(long.right() <= map.left(), "{long:?} beside {map:?}");
+        assert!(
+            multiplier_slider(&window, last).top() > map.bottom(),
+            "the last slider is in view without scrolling"
+        );
+
+        let slider = window.query_all_by_role(Role::Slider).nth(last + 1);
+        slider
+            .expect("the last indicator has a slider")
+            .scroll_to_me();
+        window.run();
+        let slider = multiplier_slider(&window, last);
+        assert!(slider.bottom() <= map.bottom(), "{slider:?} in {map:?}");
+        assert_eq!(above(&window), before);
+
+        slide_multiplier_to(&mut window, last, 1.0);
+        assert_eq!(multiplier(&window, last), 10.0);
+        let (map, moved) = meshes_drawn(&window);
+        assert_eq!(map, MAP_BEFORE);
+        assert_ne!(moved, at_first);
+        assert_eq!(above(&window), before);
+    }
+
     /// The totals of [`FILE`] fall from above zero to below it, which no
     /// indicator of the file does, and its weighted sums rise.
     #[test]
@@ -559,13 +889,13 @@ mod tests {
         open_the_choices(window);
         let choice = window
             .query_all_by_label(name)
-            .find(|named| named.accesskit_node().role() != Role::ComboBox)
+            .find(|named| named.accesskit_node().role() == Role::Button)
             .expect("the pull-down has the choice");
         choice.scroll_to_me();
         window.run();
         window
             .query_all_by_label(name)
-            .find(|named| named.accesskit_node().role() != Role::ComboBox)
+            .find(|named| named.accesskit_node().role() == Role::Button)
             .expect("the pull-down has the choice")
             .click();
         window.run();
@@ -587,7 +917,7 @@ mod tests {
         let mut choices: Vec<_> = offered
             .into_iter()
             .flat_map(|name| window.query_all_by_label(name))
-            .filter(|named| named.accesskit_node().role() != Role::ComboBox)
+            .filter(|named| named.accesskit_node().role() == Role::Button)
             .map(|choice| {
                 (
                     choice.rect().top(),
@@ -662,10 +992,22 @@ mod tests {
         assert_eq!(room(&window), room(&short));
     }
 
-    /// Presses and lets go on the slider, `along` of the way from its left
-    /// end to its right.
+    /// Where the slider for the opacity is: the first of the panel's.
+    fn opacity_slider(window: &Harness<'_, Option<Window>>) -> Rect {
+        let first = window.query_all_by_role(Role::Slider).next();
+        first.expect("the panel has the slider").rect()
+    }
+
+    /// Presses and lets go on the slider for the opacity, `along` of the way
+    /// from its left end to its right.
     fn slide_to(window: &mut Harness<'_, Option<Window>>, along: f32) {
-        let slider = window.get_by_role(Role::Slider).rect();
+        let slider = opacity_slider(window);
+        press_along(window, slider, along);
+    }
+
+    /// Presses and lets go `along` of the way from the left end of `slider`
+    /// to its right.
+    fn press_along(window: &mut Harness<'_, Option<Window>>, slider: Rect, along: f32) {
         let at = slider.left_center() + eframe::egui::vec2(slider.width() * along, 0.0);
         window.drag_at(at);
         window.run();
@@ -699,7 +1041,7 @@ mod tests {
     fn the_slider_sets_how_much_of_the_base_map_the_meshes_cover() {
         let mut window = window();
         let label = window.get_by_label(OPACITY_LABEL).rect();
-        let slider = window.get_by_role(Role::Slider).rect();
+        let slider = opacity_slider(&window);
         assert!(label.bottom() <= slider.top(), "{label:?} {slider:?}");
         assert_eq!(covered(&window), [OPENING_OPACITY; 2]);
 
@@ -1107,6 +1449,9 @@ mod tests {
         let stated = [
             SHOWN_LABEL,
             WEIGHTED_SUM_LABEL,
+            MULTIPLIERS_LABEL,
+            ALL_ONES_LABEL,
+            ALL_ZEROS_LABEL,
             OPACITY_LABEL,
             CODE_LABEL,
             MUNICIPALITY_LABEL,
@@ -1223,7 +1568,7 @@ mod tests {
             for step in 0..2 {
                 let found = window
                     .query_all_by_label(last)
-                    .find(|named| named.accesskit_node().role() != Role::ComboBox);
+                    .find(|named| named.accesskit_node().role() == Role::Button);
                 let Some(found) = found else {
                     panic!("{name}: the open pull-down lacks the last indicator");
                 };

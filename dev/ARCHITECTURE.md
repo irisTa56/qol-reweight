@@ -29,7 +29,7 @@ Where any of the three fails it prints why and exits without a window.
 
 ### [`src/multipliers.rs`](../src/multipliers.rs)
 
-`Multipliers` holds a multiplier for each indicator of a dataset, and gives each mesh's weighted sum under them.
+`Multipliers` holds a multiplier for each indicator of a dataset, a tenth from 0 to 10, and gives each mesh's weighted sum under them.
 
 ### [`src/scale.rs`](../src/scale.rs) and [`src/paint.rs`](../src/paint.rs)
 
@@ -54,7 +54,7 @@ What the window shows of the data.
 
 ### [`src/window.rs`](../src/window.rs)
 
-`Window` holds the dataset, what is chosen on screen, and the map's state, and lays out each frame: the statements of the sources at the bottom, the legend, the pull-down, and the slider in a panel on the left, the map with the meshes in the rest, and the readout beside the pointer while it is on a mesh.
+`Window` holds the dataset, what is chosen on screen, and the map's state, and lays out each frame: the statements of the sources at the bottom, the legend, the pull-down, the slider for the opacity, and the multipliers' buttons and sliders, in a list that scrolls, in a panel on the left, the map with the meshes in the rest, and the readout beside the pointer while it is on a mesh.
 Its tests drive it without showing it.
 
 ### [`tests/starts.rs`](../tests/starts.rs)

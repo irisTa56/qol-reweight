@@ -49,6 +49,8 @@ The first is e-Stat's, from its [boundary data](https://www.e-stat.go.jp/gis/sta
 | what the colours show | `色で表す値` |
 | weighted sum | `重み付き合計` |
 | multiplier, of an indicator | `倍率` |
+| every multiplier to 1, as a button says it | `すべて 1` |
+| every multiplier to 0, as a button says it | `すべて 0` |
 | opacity, of the meshes | `不透明度` |
 | mesh code, as the screen labels it | `メッシュコード` |
 | value, of a mesh | `値` |
