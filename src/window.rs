@@ -158,10 +158,9 @@ impl Window {
                 // it is, which keeps the readout off the panel while half
                 // the map has room for its labels and a mesh's code.
                 let room = map.rect.width() / 2.0 - READOUT_GAP - READOUT_FRAME;
-                let width = READOUT_WIDTH.min(room);
+                let width = READOUT_WIDTH.min(room).max(0.0);
                 Tooltip::always_open(context, map.layer_id, map.id, PopupAnchor::Pointer)
                     .gap(READOUT_GAP)
-                    .width(width)
                     .show(|ui| {
                         // As wide for every mesh, so it does not change
                         // sides or wrap anew from one mesh to the next.
@@ -858,6 +857,18 @@ mod tests {
         point_at(&mut window, 0);
         point_at(&mut window, 2);
         assert_eq!(window.get_by_label(long).rect(), by_itself);
+    }
+
+    /// A window so narrow that half the map has no room for a readout at
+    /// all: the mesh is read out all the same.
+    #[test]
+    fn a_window_too_narrow_for_the_readout_still_reads_a_mesh_out() {
+        let mut window = window();
+        window.set_size(eframe::egui::vec2(300.0, 600.0));
+        // The statements of the sources wrap anew, and the map with them.
+        window.run_steps(5);
+        point_at(&mut window, 2);
+        window.get_by_label(MESHES[2]);
     }
 
     /// A reach too large and one too small for the legend to write in the
