@@ -46,6 +46,7 @@ The map follows a multiplier while it is being moved, and with every multiplier 
   - Risk: the slider does not behave so once drawn, noticed by a test of R003 that cannot be made to pass on egui's slider alone.
 - **A004**: Two lines for each indicator, its name over its slider and field, fit the panel's width, and about eleven indicators are in view at once in the window as it opens. Source: an estimate from egui's default sizes, not drawn.
   - Risk: far fewer are in view, noticed by a list that shows only a few indicators in the window as it opens.
+  - Risk: a name's line or a slider with its field does not fit the panel as wide as it is, noticed by a line that is cut off or a panel that has to be widened to hold it.
 
 ## Decisions
 
@@ -75,8 +76,8 @@ None.
   - Check: an automated test that drives the window, passing on macOS.
 - **With the published total or an indicator chosen, the sliders, the fields, and the buttons take no input and the map does not change; with the weighted sum chosen again, the map is as the multipliers set before left it.** — verifies R006.
   - Check: an automated test that drives the window, passing on macOS.
-- **The map's rectangle is the same with a file of a few indicators and with one of many more indicators than the list has room for, whose names are far longer than the panel is wide; the last of them can be scrolled to and moved, and the legend, the pull-down, the buttons, and the readout stay where they were.** — verifies R007, A004.
-  - Check: an automated test that drives the window with generated text, passing on macOS.
+- **The map's rectangle is the one the tool gave it before the phase, with a file of a few indicators and with one of many more indicators than the list has room for, whose names are far longer than the panel is wide; the last of them can be scrolled to and moved, and the legend, the pull-down, the buttons, and the readout stay where they were.** — verifies R007, A004.
+  - Check: an automated test that drives the window with generated text, passing on macOS, and the rectangle it finds set against the one the tool draws at the commit the phase started from.
 - **With the Chukyo metropolitan area's file open, the map follows a slider while it is dragged, without stutter and without trailing behind it, and about eleven indicators are in view in the window as it opens.** — verifies R005, A002, A004.
   - Check: the maintainer looks at the tool.
 - **The tool still leaves no file behind, and no commit of the phase carries a picture or a value from a real file.** — verifies R008, R009.
