@@ -18,7 +18,7 @@ The map follows a multiplier while it is being moved, and with every multiplier 
 - **R004**: One button sets every multiplier to 1, and another sets every multiplier to 0.
 - **R005**: While the weighted sum is shown, the colours and the legend follow a multiplier as it is moved, a button included, and the value read out for the mesh pointed at is its weighted sum under the multipliers as they then are.
   - The scale is fitted anew to the weighted sums at each change, as it is fitted to any values shown, so the colours tell where a mesh stands among the file's meshes whatever the multipliers are.
-  - A weighted sum is read out as a whole number, and a published value as the file writes it, as before.
+  - A weighted sum is read out in the form the files write their values in (A005), to ten significant figures with no zeros after the last of them, and a published value as the file writes it, as before.
   - The readout keeps its three lines and says nothing while the pointer is off the map, as it is while a slider is dragged, so a mesh's new sum is read once the pointer is back on the mesh.
 - **R006**: While the published total or one indicator is shown, the sliders, the fields, and the buttons cannot be used and look so. The multipliers keep their values, and the weighted sum has them when it is chosen again.
 - **R007**: The sliders and the buttons are in the panel on the left, under what it had before them, and the map is as wide as it was before them.
@@ -50,6 +50,8 @@ The map follows a multiplier while it is being moved, and with every multiplier 
 - **A004**: Two lines for each indicator, its name over its slider and field, fit the panel's width, and about eleven indicators are in view at once in the window as it opens. Source: an estimate from egui's default sizes, not drawn.
   - Risk: far fewer are in view, noticed by a list that shows only a few indicators in the window as it opens.
   - Risk: a name's line or a slider with its field does not fit the panel as wide as it is, noticed by a line that is cut off or a panel that has to be widened to hold it.
+- **A005**: The files write each value with at most ten significant figures, with no zeros after the last of them and with no exponent. Source: a trial script over the files of Aichi, Tokyo, and the Chukyo metropolitan area, run 2026-10-10.
+  - Risk: a file writes its values with more figures, so its published values and its weighted sums are read out in two forms, noticed by the test on real files finding a value of more than ten figures.
 
 ## Decisions
 
@@ -63,7 +65,7 @@ The map follows a multiplier while it is being moved, and with every multiplier 
 - Two buttons, every multiplier to 1 and every multiplier to 0, rather than the first alone, because the maintainer asked for the second (said 2026-10-10).
 - The multipliers are not saved, because the tool writes nothing ([architecture](../ARCHITECTURE.md#invariants)), and the maintainer agreed to start from 1 on every run (said 2026-10-10).
 - The sliders go into the panel on the left, two lines an indicator in a list that scrolls, rather than into a second panel on the right with every indicator in view, or a window floating over the map, because the maintainer wants the map as large as it can be (said 2026-10-10), and a floating window covers part of the map while a slider is moved.
-- A weighted sum is read out as a whole number rather than with every figure the arithmetic leaves, or to as many figures as the file writes its values with, because the values are yen a year ([roadmap](../ROADMAP.md#scope)), and the parts of a yen in a sum under the user's own multipliers tell nothing about how places compare.
+- A weighted sum is read out to ten significant figures rather than with every figure the arithmetic leaves, or as a whole number, because that is the form the files write their values in (A005), which the maintainer asked the sum to be held to (said 2026-10-10), so the sum and the published total are read in one form.
 - The list of sliders is the last thing in the panel rather than between the slider for the opacity and the readout, because the maintainer wants what varies in length under what does not, as far as that can be (said 2026-10-10).
 - While the weighted sum is not shown the sliders are disabled, rather than left as they are or made to switch the map to the weighted sum when moved, because a control that changes nothing on the map should look so, and a switch would replace what the user chose to look at.
 - That the map follows a slider smoothly is checked by eye rather than by a test that times the work, because nothing gives such a test a limit to hold the time to, and the time differs between machines.
@@ -74,9 +76,9 @@ None.
 
 ## Done when
 
-- **For each real file, the weighted sum the tool holds for every mesh with every multiplier at 1 is the sum of that mesh's indicator rows as a second reading of the file finds them, one that shares no code with the tool's own reading. The second reading finds each file's `QOL` rows to be those sums in every mesh or in none; where it is every mesh, the weighted sum is the published total as well, and at least one file is such a file.** — verifies R001, R002, A001.
+- **For each real file, the weighted sum the tool holds for every mesh with every multiplier at 1 is the sum of that mesh's indicator rows as a second reading of the file finds them, one that shares no code with the tool's own reading. The second reading finds each file's `QOL` rows to be those sums in every mesh or in none; where it is every mesh, the weighted sum is the published total as well, and at least one file is such a file. No value of a file is written with more than ten significant figures.** — verifies R001, R002, A001, A005.
   - Check: an automated test that reads the real files, run on the maintainer's machine when asked for, over the files of Aichi, Tokyo, and the Chukyo metropolitan area. The evidence is the run and which files' totals it found to be the sum, with no value.
-- **With a synthetic file open, the list has the weighted sum first and the tool shows it; moving one indicator's slider, typing into its field, and pressing each button recolour the meshes and change the legend to those of the weighted sums the new multipliers give, and a mesh pointed at afterwards reads out its weighted sum under them as a whole number, on one line, whatever figures the arithmetic leaves; the test works each out from how the file was made.** — verifies R001, R002, R003, R004, R005, A003.
+- **With a synthetic file open, the list has the weighted sum first and the tool shows it; moving one indicator's slider, typing into its field, and pressing each button recolour the meshes and change the legend to those of the weighted sums the new multipliers give, and a mesh pointed at afterwards reads out its weighted sum under them to ten significant figures, on one line, whatever figures the arithmetic leaves; the test works each out from how the file was made.** — verifies R001, R002, R003, R004, R005, A003.
   - Check: an automated test that drives the window, passing on macOS.
 - **A slider goes from 0 at its left end through 1 at its middle to 10 at its right end, stops at tenths, and a number typed beyond the range becomes the nearest end.** — verifies R003, A003.
   - Check: an automated test that drives the window, passing on macOS.
