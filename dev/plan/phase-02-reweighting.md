@@ -20,8 +20,9 @@ The map follows a multiplier while it is being moved, and with every multiplier 
   - The scale is fitted anew to the weighted sums at each change, as it is fitted to any values shown, so the colours tell where a mesh stands among the file's meshes whatever the multipliers are.
   - The readout keeps its three lines and says nothing while the pointer is off the map, as it is while a slider is dragged, so a mesh's new sum is read once the pointer is back on the mesh.
 - **R006**: While the published total or one indicator is shown, the sliders, the fields, and the buttons cannot be used and look so. The multipliers keep their values, and the weighted sum has them when it is chosen again.
-- **R007**: The sliders and the buttons are in the panel on the left, between the slider for the opacity and the readout, and the map is as wide as it was before them.
-  - The list of sliders scrolls by itself where it is higher than its room, and the legend, the pull-down, the buttons, and the readout stay in view meanwhile.
+- **R007**: The sliders and the buttons are in the panel on the left, under what it had before them, and the map is as wide as it was before them.
+  - What keeps its height comes over what does not: the legend, the pull-down, the slider for the opacity, the readout, and the two buttons, and under them the list of sliders, which is as long as the file has indicators.
+  - The list takes the room that is left and scrolls by itself where it is higher than that room, and what is over it stays in view meanwhile.
   - The panel keeps its size whatever the file holds, however many indicators and however long their names.
 - **R008** (constraint): The tool still reads the file and writes nothing. The multipliers are not kept from one run to the next, and no weighted sum leaves the tool.
 - **R009** (constraint): Nothing that comes from the data is committed, as [`CLAUDE.md`](../../CLAUDE.md#keeping-the-data-out-of-the-repository) spells out, so the tests run on synthetic data and the phase's evidence holds no picture and no value.
@@ -53,13 +54,15 @@ The map follows a multiplier while it is being moved, and with every multiplier 
 
 - The weighted sum is a choice of its own in the list rather than taking the published total's place, because the published total then stays on screen to compare with, and a file whose total is not the sum (A001) still shows what it publishes.
   - The tool opens on the weighted sum rather than on the published total, because that sum is what the tool is for, and opened on the total, moving a multiplier would change nothing on the map.
-- The scale is fitted anew at each change of a multiplier rather than held where every multiplier at 1 puts it, or fitted when the slider is let go, because the roadmap's purpose is how the same places look to the user, which is a comparison between places: a held scale leaves most meshes at one end's colour or near the neutral one once the multipliers are far from 1, and fitting on release changes every colour at once after the drag.
+- The scale is fitted to the weighted sums as the multipliers then stand rather than held where every multiplier at 1 puts it, because the roadmap's purpose is how the same places look to the user, which is a comparison between places, and a held scale leaves most meshes at one end's colour or near the neutral one once the multipliers are far from 1.
   - So the colours depend only on the ratios between the multipliers, and the legend's ends say how large the sums are.
+- The map is coloured anew at each change of a multiplier, while a slider is still held, rather than when the slider is let go, because of everything the design covers the maintainer weighs most how the map follows a multiplier while it is being moved ([0002], under what the maintainer said).
 - A multiplier runs from 0 to 10 on a logarithmic slider with 1 at its middle, rather than from 0 to 3 on a linear one, or from 0 to 10 as a logarithm of the multiplier plus 1, because the colours depend on ratios, so equal ratios should be equal distances, and the maintainer asked for a logarithmic 0 to 10 (said 2026-10-10).
   - Zero is at the slider's left end though no logarithm puts it there, because a multiplier of 0 leaves an indicator out, which the user must be able to say.
 - Two buttons, every multiplier to 1 and every multiplier to 0, rather than the first alone, because the maintainer asked for the second (said 2026-10-10).
 - The multipliers are not saved, because the tool writes nothing ([architecture](../ARCHITECTURE.md#invariants)), and the maintainer agreed to start from 1 on every run (said 2026-10-10).
 - The sliders go into the panel on the left, two lines an indicator in a list that scrolls, rather than into a second panel on the right with every indicator in view, or a window floating over the map, because the maintainer wants the map as large as it can be (said 2026-10-10), and a floating window covers part of the map while a slider is moved.
+- The list of sliders is the last thing in the panel rather than between the slider for the opacity and the readout, because the maintainer wants what varies in length under what does not, as far as that can be (said 2026-10-10).
 - While the weighted sum is not shown the sliders are disabled, rather than left as they are or made to switch the map to the weighted sum when moved, because a control that changes nothing on the map should look so, and a switch would replace what the user chose to look at.
 - That the map follows a slider smoothly is checked by eye rather than by a test that times the work, because nothing gives such a test a limit to hold the time to, and the time differs between machines.
 
