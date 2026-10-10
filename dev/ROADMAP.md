@@ -34,7 +34,7 @@ QOL Reweight lets them say how many times that average they value each indicator
 - **Several files at once**: the map covers more than one file, such as two neighbouring prefectures.
 - **Totals that are not the sum**: a file whose published total is not the sum of its indicators is handled in a way its user can see.
 
-Published values on a local map comes first and Reweighting second, because the first settles the path from the file to the map against a picture the platform already shows, and the second then adds only what is this tool's own.
+Published values on a local map comes first and Reweighting second, because the first settles the path from the file to the map, and the second then adds only what is this tool's own.
 The order of the other two is decided when Reweighting ends.
 
 [0001]: decisions/0001-csv-kept-on-disk-as-data-source.md
