@@ -54,5 +54,7 @@ The tests run on made-up data.
 Two more tests read real files and check what the tool holds, adds up, and draws against a second reading of each; they run only when asked for, on every CSV file in the folder a variable names:
 
 ```sh
-QOL_REWEIGHT_REAL_FILES=path/to/folder cargo test a_real_file -- --ignored
+QOL_REWEIGHT_REAL_FILES=path/to/folder cargo test a_real_file -- --ignored --show-output
 ```
+
+With `--show-output` the run also says, for each file, whether its total is the sum of its indicators in every mesh or in none.
