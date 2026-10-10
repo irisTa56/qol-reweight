@@ -1,4 +1,5 @@
 [tools]
+cargo-deny = "latest"
 lychee = "latest"
 rumdl = "latest"
 # rustup installs the toolchain and keeps it outside mise's own directory.
@@ -80,6 +81,29 @@ run = "cargo clippy --locked --all-targets -- -D warnings"
 [tasks."qa:rust:test"]
 description = "Run Rust tests"
 run = "cargo test --locked"
+
+# Fails on a crate the RustSec advisory database names, within what cargo-deny
+# checks by default, which is neither every kind of advisory nor every entry
+# of `Cargo.lock`:
+# https://embarkstudios.github.io/cargo-deny/checks/advisories/cfg.html
+#
+# Here, and not in CI alone, so that the commit that brings such a crate in
+# stops, before anything is built on it. An advisory issued against a crate
+# already in use stops every commit and every CI run from then on, whatever
+# they change, until the crate is replaced or a `deny.toml` ignores the advisory.
+#
+# In two steps so that it runs without a network, as the rest of `qa:**` does.
+# The first may fail: it fetches the database, for 20 seconds at most since a
+# network that answers nothing would otherwise hold the commit, and the crates.
+# The second reads only what is already under `~/.cargo`; `--offline` is the
+# only switch cargo-deny 0.20 has for that. `timeout` is GNU coreutils', which
+# macOS has only once it is installed.
+[tasks."qa:rust:deny"]
+description = "Check the dependencies against the RustSec advisories"
+run = [
+  "{ timeout 20 cargo deny fetch db && cargo fetch --locked; } || echo 'warning: the advisory database or the crates were not updated; checking the copies already here' >&2",
+  "cargo deny --locked --offline check advisories",
+]
 
 # Not in `qa:**`: a full-repo external link check is too slow and
 # network-bound for pre-commit; `link-check:staged` requests only the links of

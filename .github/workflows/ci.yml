@@ -16,10 +16,12 @@ name: CI
 # `ubuntu-latest` runner image; the mise binary, which `mise-action` resolves at
 # run time since no step sets its `version` input; the TruffleHog image, which
 # its action pulls at `latest`; the gitleaks binary, which `GITLEAKS_VERSION:
-# latest` below resolves at run time; and every tool mise.toml tracks at
-# `latest`, which each run installs afresh (see `cache: false` below). GitHub
-# disables a `schedule` trigger after 60 days with no repository activity, so
-# this canary goes quiet on a dormant repository.
+# latest` below resolves at run time; every tool mise.toml tracks at `latest`,
+# which each run installs afresh (see `cache: false` below); and the RustSec
+# advisory database, which `qa:rust:deny` fetches on each run, so that an
+# advisory issued against a crate already in use shows in a week with no
+# commit. GitHub disables a `schedule` trigger after 60 days with no repository
+# activity, so this canary goes quiet on a dormant repository.
 
 on:
   pull_request:
@@ -43,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
+      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
         with:
           # mise resolves a `latest` tool to a version already installed, and the
           # action's cache key hashes the config rather than the date, so a
@@ -84,7 +86,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0 # the action walks from the base commit to the head
-      - uses: trufflesecurity/trufflehog@4dd8831c5f12599465d4d45c3c447b4018a34c85 # v3.97.9
+      - uses: trufflesecurity/trufflehog@b2b0a92070f206ab7b5a1105d82a7f2f48d92341 # v3.99.0
         with:
           extra_args: --results=verified,unknown --fail-on-scan-errors
 
@@ -92,7 +94,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
+      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
         with:
           cache: false # as in `markdown-lint`
       - run: mise run qa:links:offline
@@ -102,7 +104,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
+      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
         with:
           cache: false # as in `markdown-lint`
       # Keeps the dependencies' build between runs, which is most of this job's
@@ -125,7 +127,7 @@ jobs:
     if: github.event_name != 'schedule'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
+      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
         with:
           cache: false # as in `markdown-lint`
       - run: mise run shared-tasks:check
