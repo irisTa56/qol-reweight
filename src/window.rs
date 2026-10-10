@@ -57,7 +57,7 @@ const READOUT_GAP: f32 = 12.0;
 
 /// The space around the statements of the sources, in points: as much above
 /// the first and below the last as there is between the two.
-const SOURCES_MARGIN: Margin = Margin::symmetric(8, 6);
+const SOURCES_MARGIN: Margin = Margin::symmetric(8, 10);
 
 pub(crate) struct Window {
     dataset: Dataset,
