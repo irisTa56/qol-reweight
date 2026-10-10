@@ -859,6 +859,23 @@ mod tests {
         assert_eq!(window.get_by_label(long).rect(), by_itself);
     }
 
+    /// A window in which half the map is narrower than the readout is where
+    /// it has the room: the readout is narrower too, and stays on the map.
+    #[test]
+    fn a_readout_wider_than_half_the_map_is_narrowed_to_stay_on_the_map() {
+        let mut window = window();
+        window.set_size(eframe::egui::vec2(640.0, 600.0));
+        // The statements of the sources wrap anew, and the map with them.
+        window.run_steps(5);
+        point_at(&mut window, 2);
+        let (map, _) = meshes_drawn(&window);
+        assert!(map.width() / 2.0 < READOUT_WIDTH, "{map:?}");
+        for said in [CODE_LABEL, MESHES[2]] {
+            let said = window.get_by_label(said).rect();
+            assert!(map.contains_rect(said), "{said:?} in {map:?}");
+        }
+    }
+
     /// A window so narrow that half the map has no room for a readout at
     /// all: the mesh is read out all the same.
     #[test]
