@@ -39,7 +39,9 @@ env:
   # below), so a tool added to mise.toml for another purpose costs no job here
   # anything. `mise run` would otherwise install what is missing before it
   # runs a task. With this off, a task whose tool the job left out fails on
-  # the missing command, in that job's log.
+  # the missing command, in that job's log, unless the runner image has the
+  # command itself: it ships a Rust toolchain of its own, so a job that runs
+  # cargo without `rust` among its tools runs the image's, not mise.toml's.
   MISE_TASK_RUN_AUTO_INSTALL: "false"
 
 concurrency:
