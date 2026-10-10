@@ -49,3 +49,10 @@ Where that font is not installed, as on Windows and Linux, the tool says so and 
 ## Development
 
 Development documents, starting with the [roadmap](dev/ROADMAP.md) and the [architecture overview](dev/ARCHITECTURE.md), live under [`dev/`](dev/).
+
+The tests run on made-up data.
+One more test reads real files and checks what the tool holds and draws against a second reading of each; it runs only when asked for, on every CSV file in the folder a variable names:
+
+```sh
+QOL_REWEIGHT_REAL_FILES=path/to/folder cargo test a_real_file -- --ignored
+```

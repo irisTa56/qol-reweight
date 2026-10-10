@@ -78,7 +78,7 @@ Starts the built tool as a user would, for the starts that end without a window.
 ## Cross-cutting concerns
 
 - **Errors**: each module that can fail has its own error type, derived with `thiserror`, and `main` prints it. Nothing is recovered from: a file that cannot be read in full is not shown in part.
-- **Testing**: unit tests sit in each module's file, on synthetic data that [`src/test_support.rs`](../src/test_support.rs) makes. The tests that drive the window need the font, so they run on macOS only; CI runs on Linux, where the start-up test for a system without the font runs instead.
+- **Testing**: unit tests sit in each module's file, on synthetic data that [`src/test_support.rs`](../src/test_support.rs) makes. The tests that drive the window need the font, so they run on macOS only; CI runs on Linux, where the start-up test for a system without the font runs instead. One test, in `src/window.rs`, reads real files from a folder outside the repository and checks the tool against a second reading of each; it runs only when asked for, as the [README](../README.md#development) says.
 - **Text on screen**: every Japanese text is a file under `assets/`, and [`GLOSSARY.md`](GLOSSARY.md) pairs each English name in the code with its Japanese term.
 
 [0001]: decisions/0001-csv-kept-on-disk-as-data-source.md
