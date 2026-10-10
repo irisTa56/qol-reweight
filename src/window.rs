@@ -49,8 +49,9 @@ const CHOICES_HEIGHT: f32 = 500.0;
 const CHOICES_SPACE: f32 = 8.0;
 
 /// How wide the readout is, in points, where the map has the room: its
-/// labels, and eight characters of a municipality's name on a line.
-const READOUT_WIDTH: f32 = 220.0;
+/// labels, and on a line ten characters of a municipality's name, or a
+/// value of sixteen.
+const READOUT_WIDTH: f32 = 240.0;
 
 /// How far from the pointer the readout is, in points.
 const READOUT_GAP: f32 = 12.0;
