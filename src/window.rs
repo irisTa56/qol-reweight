@@ -151,13 +151,19 @@ impl Window {
             if let Some(pointed) = pointed {
                 let (context, map) = (ui.ctx().clone(), map.response);
                 // No wider than fits beside the pointer wherever on the map
-                // it is, so the readout stays off the panel.
+                // it is, which keeps the readout off the panel while half
+                // the map has room for its labels and a mesh's code.
                 let room = map.rect.width() / 2.0 - READOUT_GAP - READOUT_FRAME;
                 let width = ui.spacing().tooltip_width.min(room);
                 Tooltip::always_open(context, map.layer_id, map.id, PopupAnchor::Pointer)
                     .gap(READOUT_GAP)
                     .width(width)
-                    .show(|ui| ui.add(self.readout(pointed)));
+                    .show(|ui| {
+                        // The tooltip keeps the width of what it last said,
+                        // so each mesh is given the whole room anew.
+                        ui.set_max_width(width);
+                        ui.add(self.readout(pointed))
+                    });
             }
         });
     }
@@ -811,11 +817,43 @@ mod tests {
             let said = window.get_by_label(said).rect();
             assert!(map.contains_rect(said), "{said:?} in {map:?}");
         }
+        // A line cut short would be as high as the code's one line.
+        let line = window.get_by_label(MESHES[2]).rect().height();
+        for said in [&city, &value] {
+            let said = window.get_by_label(said).rect();
+            assert!(said.height() > 1.5 * line, "{said:?} on a line of {line}");
+        }
         for label in [CODE_LABEL, MUNICIPALITY_LABEL, VALUE_LABEL] {
             let label = window.get_by_label(label).rect();
             let said = window.get_by_label(MESHES[2]).rect();
             assert!(label.right() < said.left(), "{label:?} {said:?}");
         }
+    }
+
+    /// The pointer goes from a mesh with a short name straight to one with a
+    /// long name, which is read out in the room it has when it is pointed at
+    /// from off the meshes.
+    #[test]
+    fn a_long_name_after_a_short_one_is_read_out_as_it_is_by_itself() {
+        let long = "A municipality of a middling name";
+        let mut file = String::from(
+            "KeyCode,PrefectureCode,CityCode,Prefecture,City,IndicatorCode,Indicator,Value\n",
+        );
+        for (code, city) in MESHES.iter().zip(["Ab", "Ab", long]) {
+            file.push_str(&format!(
+                "{code},00,00000,a prefecture,{city},QOL,Total,1\n"
+            ));
+        }
+        let read = || Dataset::read(file.as_bytes()).expect("a file made to be read");
+
+        let mut window = window_on(read());
+        point_at(&mut window, 2);
+        let by_itself = window.get_by_label(long).rect();
+
+        let mut window = window_on(read());
+        point_at(&mut window, 0);
+        point_at(&mut window, 2);
+        assert_eq!(window.get_by_label(long).rect(), by_itself);
     }
 
     /// A reach too large and one too small for the legend to write in the
