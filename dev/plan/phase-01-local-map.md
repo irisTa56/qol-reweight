@@ -123,18 +123,31 @@ The path from the file to the map is settled without the platform's map: the too
 
 ## Done when
 
-- **For each of the three files, the tool holds the meshes, the choices, and every value as a second reading of the file finds them, one that shares no code with the tool's own reading, draws every mesh once, and offers that file's indicators, the total first.** — verifies R001, R002, A001.
+- **The tool reads each of the three files as the file has it.** — verifies R001, R002, A001.
+  - The tool holds the meshes, the choices, and every value the file has.
+  - It draws every mesh once.
+  - It offers that file's indicators, the total first.
   - Check: an automated test that reads the real files, run on the maintainer's machine when asked for.
+    - It sets what the tool holds against a second reading of the file, one that shares no code with the tool's own reading.
     - The evidence is the run, with no value.
   - Evidence: `a_real_file_is_offered_and_drawn_as_it_reads` in `src/window.rs`, run on macOS, 2026-10-10, on the commit that adds this line, over the files of Aichi, Tokyo, and the Chukyo metropolitan area: it passes.
     - Its second reading uses the CSV reader alone and none of the tool's `src/dataset/`.
-- **With the Chukyo metropolitan area's file open, the base map names places in Japanese under the meshes, the meshes lie where the base map draws land, with none out at sea and no steady offset along the coast, and panning and zooming stay smooth.** — verifies R001, R005, A002, A003, A005, A006.
-  - Check: the maintainer looks at the tool.
+- **To the eye, the meshes are in place over the base map and the map moves smoothly.** — verifies R001, R005, A002, A003, A005, A006.
+  - The base map names places in Japanese under the meshes.
+  - The meshes lie where the base map draws land, with none out at sea and no steady offset along the coast.
+  - Panning and zooming stay smooth.
+  - Check: the maintainer looks at the tool with the Chukyo metropolitan area's file open.
   - Evidence: the maintainer opened the Chukyo metropolitan area's file on 2026-10-10 and found all three to hold, with no picture kept.
-- **Mesh codes turn into the squares the standard defines, files that differ in indicators and in the byte order mark load, and zero gets the neutral colour with the two ends at plus and minus a high percentile of the absolute values shown.** — verifies R001, R002, R003, A001.
+- **Each step from a file to the colours of its meshes does what the plan states.** — verifies R001, R002, R003, A001.
+  - Mesh codes turn into the squares the standard defines.
+  - Files that differ in indicators and in the byte order mark load.
+  - Zero gets the neutral colour, with the two ends at plus and minus a high percentile of the absolute values shown.
   - Check: automated tests on synthetic data, passing in CI.
   - Evidence: [CI run 38026118139](https://github.com/irisTa56/qol-reweight/actions/runs/38026118139), on `main` at `1c556b1`, 2026-10-10: its `rust-check` job passes the tests of `src/mesh.rs`, `src/dataset/file.rs`, and `src/scale.rs` among its 61 unit tests.
-- **Choosing another indicator recolours the map and changes the legend, pointing at a mesh shows its code, its municipality, and its value, and the base map shows through the meshes more or less as the user sets it.** — verifies R002, R003, R004, R005, A007.
+- **The controls on screen change what the map shows.** — verifies R002, R003, R004, R005, A007.
+  - Choosing another indicator recolours the map and changes the legend.
+  - Pointing at a mesh shows its code, its municipality, and its value.
+  - The base map shows through the meshes more or less as the user sets it.
   - Check: an automated test that drives the window with a synthetic file whose values are known from how it was made, passing on macOS.
   - Evidence: `mise run qa:rust:test` on macOS, 2026-10-10, on the commit that adds this line: 86 unit tests and 5 start-up tests pass.
     - In `src/window.rs`:
@@ -145,8 +158,8 @@ The path from the file to the map is settled without the platform's map: the too
   - Check: an automated test that reads the window's text with a synthetic file open, passing on macOS.
   - Evidence: the same run on macOS: `the_sources_are_stated` and `the_base_maps_source_links_to_the_list_of_tiles` in `src/window.rs`.
     - The window draws the map and the statements in one function, so no frame has one without the others.
-- **Started with no path, with a path that does not exist, and with a file that is not Urban QOL data, the tool prints which file it expects and where it comes from, and exits without a map.** — verifies R007.
-  - Check: an automated test for the three starts, passing in CI.
+- **Started without a file it can read as Urban QOL data, the tool prints which file it expects and where it comes from, and exits without a map.** — verifies R007.
+  - Check: an automated test of such starts, passing in CI.
   - Evidence: [CI run 38026118139](https://github.com/irisTa56/qol-reweight/actions/runs/38026118139), on `main` at `1c556b1`, 2026-10-10.
     - In `tests/starts.rs`:
       - `started_without_a_path`
@@ -162,7 +175,11 @@ The path from the file to the map is settled without the platform's map: the too
   - Check: an automated test that draws a synthetic file with a tile server that cannot be reached, passing on macOS, and each place the code names the platform's host read to be text the tool shows, not an address it requests.
   - Evidence: the same run on macOS: `without_the_base_map_the_meshes_are_drawn_all_the_same` in `src/window.rs`, whose tile server hangs up on every call.
     - A search of `src` and `tests` for the platform's host finds it twice: in the text `src/main.rs` prints for a start without a file, and in the test of that text in `tests/starts.rs`.
-- **The tool leaves no file behind that holds anything from the CSV, and the repository holds no data: the tests that run on synthetic data make their input in code, the test on real files takes them from outside the repository, and no commit of the phase carries a picture or a value from a real file.** — verifies R009, R010.
+- **Nothing from the data is written by the tool or kept in the repository.** — verifies R009, R010.
+  - The tool leaves no file behind that holds anything from the CSV.
+  - The tests that run on synthetic data make their input in code.
+  - The test on real files takes them from outside the repository.
+  - No commit of the phase carries a picture or a value from a real file.
   - Check: the code read for what it writes, and the check before each push that `CLAUDE.md` asks for.
   - Evidence:
     - A search of `src` for a call that creates or writes a file finds none outside a test that writes CSV into memory.
