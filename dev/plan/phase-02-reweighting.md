@@ -116,7 +116,6 @@ None.
   - Evidence: `the_multipliers_cannot_be_set_while_the_weighted_sum_is_not_shown` in `src/window.rs`, run on macOS, 2026-10-11, on the commit that adds this line, which also has the test choose an indicator after the total: it passes.
 - **The map's rectangle is the one the tool gave it before the phase, whatever the file holds; the last slider of a list longer than its room can be scrolled to and moved, and the legend, the pull-down, and the buttons stay where they were.** — verifies R007, A004.
   - Check: an automated test that drives the window with generated text, passing on macOS.
-    - It opens a file of a few indicators and one of many more indicators than the list has room for, whose names are far longer than the panel is wide.
     - The rectangle it finds is set against the one the tool draws at the commit the phase started from.
   - Evidence: the same run: `the_multipliers_leave_the_map_where_it_was_and_scroll_by_themselves` in `src/window.rs`, with a file of two indicators and with one of forty-one.
     - The rectangle it holds the map to is the one a run of the tests at `dde0ac2`, before the phase, found the map to have in the same window.
@@ -129,7 +128,7 @@ None.
       - `pointing_away_from_the_meshes_reads_out_nothing`
       - `pointing_at_the_panel_over_a_mesh_reads_out_nothing`
       - `pointing_at_a_choice_over_a_mesh_reads_out_nothing`
-- **The map follows a slider while it is dragged, without stutter and without trailing behind it, about thirteen indicators are in view in the window as it opens, a slider at 0 is told from one at 0.1 at a glance, and what is read out beside the pointer keeps up with it from mesh to mesh.** — verifies R003, R005, R008, A002, A004, A006.
+- **The map follows a slider while it is dragged, with neither sign A002 names, about thirteen indicators are in view in the window as it opens, a slider at 0 is told from one at 0.1 at a glance, and what is read out beside the pointer keeps up with it from mesh to mesh.** — verifies R003, R005, R008, A002, A004, A006.
   - Check: the maintainer looks at the tool with the Chukyo metropolitan area's file open.
   - Evidence: the maintainer opened the Chukyo metropolitan area's file in a release build on 2026-10-11, with no picture kept, and found the map to follow a slider while it is dragged, sixteen indicators to be in view in the window as it opens, where A004 estimated about thirteen, and what is read out to keep up with the pointer.
     - A slider at 0 could be told from one at 0.1 on the scale the plan then had, which the maintainer found unnatural next to 0; the scale was changed to the one R003 now states, the maintainer chose it looking at the tool the same day, and on it too found a slider at 0 to be told from one at 0.1 at a glance.
