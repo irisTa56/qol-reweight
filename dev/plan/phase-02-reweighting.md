@@ -135,9 +135,10 @@ None.
     - The rectangle it holds the map to is the one a run of the tests at `dde0ac2`, before the phase, found the map to have in the same window.
 - **What the file says of a mesh is read out beside the pointer, in full, and only while a mesh is pointed at.** — verifies R008, A006.
   - Pointing at a mesh reads out its code, its municipality, and the value shown beside the pointer and nowhere in the panel.
-  - A name and a value far longer than the panel is wide are read out in full, with the panel and the map's rectangle as they are without them.
+  - A long name and a long value are read out in full, with the panel and the map's rectangle as they are without them.
   - Nothing is read out with the pointer off the meshes, on the panel, or on an open pull-down that lies over a mesh.
   - Check: an automated test that drives the window with generated text, passing on macOS.
+    - The name and the value it generates are far longer than the panel is wide.
   - Evidence: the same run.
     - In `src/window.rs`:
       - `pointing_at_a_mesh_reads_out_its_code_its_municipality_and_the_value_shown`, which finds each text once in the window, near the pointer
