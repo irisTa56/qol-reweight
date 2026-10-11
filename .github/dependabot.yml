@@ -31,8 +31,7 @@ updates:
     schedule:
       interval: "weekly"
     # Without this, a version update covers only the crates Cargo.toml names,
-    # and most of Cargo.lock is crates those bring in. Nothing else moves them:
-    # a build keeps the version the lock file holds.
+    # and most of Cargo.lock is crates those bring in.
     allow:
       - dependency-type: "all"
     groups:
