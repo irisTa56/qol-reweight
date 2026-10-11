@@ -126,10 +126,11 @@ None.
   - Check: an automated test that drives the window, passing on macOS.
   - Evidence: `the_multipliers_cannot_be_set_while_the_weighted_sum_is_not_shown` in `src/window.rs`, run on macOS, 2026-10-11, on the commit that adds this line, which also has the test choose an indicator after the total: it passes.
 - **The panel holds the multipliers without moving the map or what is over their list.** — verifies R007, A004.
-  - The map's rectangle is the one the tool gave it before the phase, however many indicators the file has and however long their names are.
+  - The map's rectangle is the one the tool gave it before the phase.
   - The last slider of a list longer than its room can be scrolled to and moved.
   - The legend, the pull-down, and the buttons stay where they were.
   - Check: an automated test that drives the window with generated text, passing on macOS.
+    - The names it generates are far longer than the panel is wide.
     - The rectangle it finds is set against the one the tool draws at the commit the phase started from.
   - Evidence: the same run: `the_multipliers_leave_the_map_where_it_was_and_scroll_by_themselves` in `src/window.rs`, with a file of two indicators and with one of forty-one.
     - The rectangle it holds the map to is the one a run of the tests at `dde0ac2`, before the phase, found the map to have in the same window.
