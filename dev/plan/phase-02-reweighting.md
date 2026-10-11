@@ -134,7 +134,7 @@ None.
     - The rectangle it finds is set against the one the tool draws at the commit the phase started from.
   - Evidence: the same run: `the_multipliers_leave_the_map_where_it_was_and_scroll_by_themselves` in `src/window.rs`, with a file of two indicators and with one of forty-one.
     - The rectangle it holds the map to is the one a run of the tests at `dde0ac2`, before the phase, found the map to have in the same window.
-- **The readout beside the pointer is right.** — verifies R008, A006.
+- **The mesh pointed at is read out in full beside the pointer, and nothing else is.** — verifies R008, A006.
   - Pointing at a mesh reads out its code, its municipality, and the value shown beside the pointer and nowhere in the panel.
   - A long name and a long value are read out in full, with the panel and the map's rectangle as they are without them.
   - Nothing is read out with the pointer off the meshes, on the panel, or on an open pull-down that lies over a mesh.
