@@ -58,8 +58,7 @@ The map follows a multiplier while it is being moved, and with every multiplier 
   - Risk: a name's line or a slider with its field does not fit the panel as wide as it is, noticed by a line that is cut off or a panel that has to be widened to hold it.
 - **A005**: The files write each value with at most ten significant figures, with no zeros after the last of them and with no exponent. Source: a trial script over the files of Aichi, Tokyo, and the Chukyo metropolitan area, run 2026-10-10.
   - Risk: a file writes its values with more figures, so its published values and its weighted sums are read out in two forms, noticed by the test on real files finding a value of more than ten figures.
-- **A006**: egui draws beside the pointer something the tool lays out, with no delay, and a test that drives the window can read its text. Source: [`tooltip.rs`](https://github.com/emilk/egui/blob/0.36.2/crates/egui/src/containers/tooltip.rs) and [`response.rs`](https://github.com/emilk/egui/blob/0.36.2/crates/egui/src/response.rs) of egui 0.36.2, which have a tooltip that is always open and one placed at the pointer, read 2026-10-10.
-  - Not tried in a window, and that a test can read it is unverified.
+- **A006**: egui draws beside the pointer something the tool lays out, with no delay, and a test that drives the window can read its text. Source: [`tooltip.rs`](https://github.com/emilk/egui/blob/0.36.2/crates/egui/src/containers/tooltip.rs) and [`response.rs`](https://github.com/emilk/egui/blob/0.36.2/crates/egui/src/response.rs) of egui 0.36.2, which have a tooltip that is always open and one placed at the pointer, read 2026-10-10. Not tried in a window, and that a test can read it is unverified.
   - Risk: a test cannot find what is read out, noticed by a check of R008 that ends up done by hand.
   - Risk: what is read out lags behind the pointer or flickers as it passes from mesh to mesh, noticed by looking at the tool.
 
@@ -91,17 +90,13 @@ None.
 
 ## Done when
 
-- **For each real file, the weighted sum the tool holds for every mesh with every multiplier at 1 is the sum of that mesh's indicator rows as a second reading of the file finds them, one that shares no code with the tool's own reading.** — verifies R001, R002, A001, A005.
-  - The second reading finds each file's `QOL` rows to be those sums in every mesh or in none; where it is every mesh, the weighted sum is the published total as well, and at least one file is such a file.
-  - No value of a file is written with more than ten significant figures.
+- **For each real file, the weighted sum the tool holds for every mesh with every multiplier at 1 is the sum of that mesh's indicator rows as a second reading of the file finds them, one that shares no code with the tool's own reading. The second reading finds each file's `QOL` rows to be those sums in every mesh or in none; where it is every mesh, the weighted sum is the published total as well, and at least one file is such a file. No value of a file is written with more than ten significant figures.** — verifies R001, R002, A001, A005.
   - Check: an automated test that reads the real files, run on the maintainer's machine when asked for, over the files of Aichi, Tokyo, and the Chukyo metropolitan area.
     - The evidence is the run and which files' totals it found to be the sum, with no value.
   - Evidence: `QOL_REWEIGHT_REAL_FILES=<folder> cargo test a_real_file -- --ignored --show-output` on macOS, 2026-10-11, on `main` at `042eb98`, over the files of Aichi, Tokyo, and the Chukyo metropolitan area: `a_real_files_weighted_sums_at_1_are_the_sums_of_its_indicator_rows` in `src/multipliers.rs` passes, with `a_real_file_is_offered_and_drawn_as_it_reads` in `src/window.rs`.
     - It reports the total to be the sum of the indicators in every mesh of Aichi's file and of the Chukyo metropolitan area's, and in no mesh of Tokyo's.
     - Its second reading uses the CSV reader alone and none of the tool's `src/dataset/`, and how far two sums may differ it works out from the figures each file writes.
-- **With a synthetic file open, the list has the weighted sum first, and the tool opens showing it with every multiplier at 1.** — verifies R001, R002, R003, R004, R005, A003.
-  - Moving one indicator's slider, typing into its field, and pressing each button recolour the meshes and change the legend to those of the weighted sums the new multipliers give, and a mesh pointed at afterwards has its weighted sum under them read out to ten significant figures, whatever figures the arithmetic leaves.
-  - The test works each out from how the file was made.
+- **With a synthetic file open, the list has the weighted sum first, and the tool opens showing it with every multiplier at 1; moving one indicator's slider, typing into its field, and pressing each button recolour the meshes and change the legend to those of the weighted sums the new multipliers give, and a mesh pointed at afterwards has its weighted sum under them read out to ten significant figures, whatever figures the arithmetic leaves; the test works each out from how the file was made.** — verifies R001, R002, R003, R004, R005, A003.
   - Check: an automated test that drives the window, passing on macOS.
   - Evidence: `mise run qa:rust:test` on macOS, 2026-10-11, on `main` at `042eb98`: 104 unit tests and 5 start-up tests pass.
     - In `src/window.rs`:
@@ -110,22 +105,17 @@ None.
       - `setting_a_multiplier_colours_the_meshes_by_the_new_weighted_sums`, which sets a multiplier by a slider, by a number typed, and by each button
       - `a_weighted_sum_is_read_out_to_ten_figures`
       - `the_map_follows_a_slider_while_it_is_held`
-- **A slider goes from 0 at its left end to 10 at its right end, stops at tenths, and draws its handle for 0.1 to the right of where it draws it for 0, further from it than its handle for 0.2 is from that for 0.1.** — verifies R003, A003.
-  - A number typed beyond the range becomes the nearest end.
+- **A slider goes from 0 at its left end to 10 at its right end, stops at tenths, and draws its handle for 0.1 to the right of where it draws it for 0, further from it than its handle for 0.2 is from that for 0.1; a number typed beyond the range becomes the nearest end.** — verifies R003, A003.
   - Check: an automated test that drives the window, passing on macOS.
   - Evidence: the same run: `a_multipliers_slider_runs_from_0_to_10_by_tenths` in `src/window.rs`.
-- **With the published total or an indicator chosen, the sliders, the fields, and the buttons take no input and the map does not change.** — verifies R006.
-  - With the weighted sum chosen again, the map is as the multipliers set before left it.
+- **With the published total or an indicator chosen, the sliders, the fields, and the buttons take no input and the map does not change; with the weighted sum chosen again, the map is as the multipliers set before left it.** — verifies R006.
   - Check: an automated test that drives the window, passing on macOS.
   - Evidence: `the_multipliers_cannot_be_set_while_the_weighted_sum_is_not_shown` in `src/window.rs`, run on macOS, 2026-10-11, on the commit that adds this line, which also has the test choose an indicator after the total: it passes.
-- **The map's rectangle is the one the tool gave it before the phase, with a file of a few indicators and with one of many more indicators than the list has room for, whose names are far longer than the panel is wide.** — verifies R007, A004.
-  - The last of them can be scrolled to and moved, and the legend, the pull-down, and the buttons stay where they were.
+- **The map's rectangle is the one the tool gave it before the phase, with a file of a few indicators and with one of many more indicators than the list has room for, whose names are far longer than the panel is wide; the last of them can be scrolled to and moved, and the legend, the pull-down, and the buttons stay where they were.** — verifies R007, A004.
   - Check: an automated test that drives the window with generated text, passing on macOS, and the rectangle it finds set against the one the tool draws at the commit the phase started from.
   - Evidence: the same run: `the_multipliers_leave_the_map_where_it_was_and_scroll_by_themselves` in `src/window.rs`, with a file of two indicators and with one of forty-one.
     - The rectangle it holds the map to is the one a run of the tests at `dde0ac2`, before the phase, found the map to have in the same window.
-- **Pointing at a mesh reads out its code, its municipality, and the value shown beside the pointer and nowhere in the panel.** — verifies R008, A006.
-  - A name and a value far longer than the panel is wide are read out in full, with the panel and the map's rectangle as they are without them.
-  - Nothing is read out with the pointer off the meshes, on the panel, or on an open pull-down that lies over a mesh.
+- **Pointing at a mesh reads out its code, its municipality, and the value shown beside the pointer and nowhere in the panel; a name and a value far longer than the panel is wide are read out in full, with the panel and the map's rectangle as they are without them; and nothing is read out with the pointer off the meshes, on the panel, or on an open pull-down that lies over a mesh.** — verifies R008, A006.
   - Check: an automated test that drives the window with generated text, passing on macOS.
   - Evidence: the same run.
     - In `src/window.rs`:
