@@ -66,7 +66,7 @@ The map follows a multiplier while it is being moved, and with every multiplier 
 - The scale is fitted to the weighted sums as the multipliers then stand rather than held where every multiplier at 1 puts it, because the roadmap's purpose is how the same places look to the user, which is a comparison between places, and a held scale leaves most meshes at one end's colour or near the neutral one once the multipliers are far from 1.
   - So the colours depend on the ratios between the multipliers, but for the rounding of the scale's ends to two figures, and the legend's ends say how large the sums are.
 - The map is coloured anew at each change of a multiplier, while a slider is still held, rather than when the slider is let go, because of everything the design covers the maintainer weighs most how the map follows a multiplier while it is being moved ([0002], under what the maintainer said).
-- A multiplier runs from 0 to 10 on a slider over the logarithm of the multiplier plus 1, rather than on a logarithmic slider with 1 at its middle, or from 0 to 3 on a linear one, because the maintainer, having used both in the tool, found the logarithmic one unnatural next to 0, where the step from 0.1 to 0.2 was far longer than the step from 0 to 0.1 (said 2026-10-11), and the logarithm of the multiplier plus 1 has a place for 0 of itself.
+- A multiplier runs from 0 to 10 on a slider over the logarithm of the multiplier plus 1, rather than on a logarithmic slider with 1 at its middle, or from 0 to 3 on a linear one, because the maintainer, having used the logarithmic one in the tool, its scale starting at about 0.09 and then at 0.05, found it unnatural next to 0, where the step from 0.1 to 0.2 was far longer than the step from 0 to 0.1 (said 2026-10-11), and the logarithm of the multiplier plus 1 has a place for 0 of itself.
   - 1 is then about three tenths of the way along the slider rather than at its middle, which the maintainer did not find unnatural, the most a multiplier can be being as large as 10 (said 2026-10-11).
   - Equal ratios are then not equal distances, which the decision this one replaces held to: a logarithmic slider from 0 to 10 with 1 at or close to its middle, its scale starting at about 0.09 so that 0 had the left end to itself (2026-10-10). On such a slider any start of the scale puts either 0.1 against 0 or 1 away from the middle.
 - Two buttons, every multiplier to 1 and every multiplier to 0, rather than the first alone, because the maintainer asked for the second (said 2026-10-10).
@@ -77,6 +77,7 @@ The map follows a multiplier while it is being moved, and with every multiplier 
 - What the file says of the mesh pointed at is read out beside the pointer rather than in the panel, whether left where it was, moved under the list, or cut to a line each, because a long name makes a readout in the panel higher and moves what is under it, a line cut short could not be read in full by pointing at it, since the pointer would leave the mesh to do so, and the maintainer prefers it beside the pointer, as nearer to how the platform behaves (said 2026-10-10).
   - It takes the place of the panel's readout rather than standing beside it, because the two would say the same thing at the same time.
 - While the weighted sum is not shown the sliders are disabled, rather than left as they are or made to switch the map to the weighted sum when moved, because a control that changes nothing on the map should look so, and a switch would replace what the user chose to look at.
+- What the screen calls the weighted sum, the multipliers over their list, and the two buttons, in Japanese, the maintainer chose as the pull request that adds each was shown (2026-10-10 and 2026-10-11), and [`GLOSSARY.md`](../GLOSSARY.md) pairs each with its English name.
 - That the map follows a slider smoothly is checked by eye rather than by a test that times the work, because nothing gives such a test a limit to hold the time to, and the time differs between machines.
 
 ## Dependencies
@@ -104,6 +105,6 @@ None.
 
 ## Open questions
 
-- What the screen calls the weighted sum, the list of multipliers, and the two buttons, in Japanese. The maintainer chooses each when the pull request that adds it is shown.
+None.
 
 [0002]: ../decisions/0002-native-rust-app-on-egui-and-walkers.md
