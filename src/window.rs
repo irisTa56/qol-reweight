@@ -59,7 +59,8 @@ const CHOICES_HEIGHT: f32 = 500.0;
 const CHOICES_SPACE: f32 = 8.0;
 
 /// How wide the readout is, in points: its labels, and on a line ten
-/// characters of a municipality's name, or a value of sixteen.
+/// characters of a municipality's name, or fourteen digits of a value with
+/// its sign and its point.
 const READOUT_WIDTH: f32 = 240.0;
 
 /// How far from the pointer the readout is, in points.
@@ -1312,7 +1313,7 @@ mod tests {
     #[test]
     fn a_long_name_and_a_long_value_are_read_out_in_full_and_move_nothing() {
         let city = ["A municipality whose name goes on"; 6].join(" and ");
-        // As many figures as a value has at most.
+        // A third, written with every figure it has.
         let value = (1.0_f64 / 3.0).to_string();
         let mut file = String::from(
             "KeyCode,PrefectureCode,CityCode,Prefecture,City,IndicatorCode,Indicator,Value\n",
