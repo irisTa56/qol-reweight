@@ -79,6 +79,7 @@ Starts the built tool as a user would, for the starts that end without a window.
 - Over the base map, the meshes lie on the land it draws, and it names places in Japanese under them. No test holds this.
 - Panning and zooming stay smooth with a metropolitan area's file open. No test holds this either.
 - With such a file open, the map follows a multiplier's slider while it is dragged, without stutter and without trailing behind it, and what is read out beside the pointer keeps up with it from mesh to mesh. No test holds how smoothly.
+- In the window as it opens, the list of multipliers has room for about sixteen indicators. No test holds this.
 - Started without a path, or with a file it cannot read, the tool prints which file it expects and where to download it, and exits with a failure.
 - The [README](../README.md) says how to get a file and start the tool, that only macOS is checked, and what happens without the font.
 

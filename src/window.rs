@@ -769,16 +769,13 @@ mod tests {
         assert_eq!(multiplier(&window, 1), 1.0);
     }
 
-    /// With the total chosen, the sliders, the fields, and the buttons take
+    /// With the total or an indicator chosen, the sliders, the fields, and the buttons take
     /// nothing and the map stays as it is. The multipliers keep what they
     /// had, and the weighted sum has them when it is chosen again.
     #[test]
     fn the_multipliers_cannot_be_set_while_the_weighted_sum_is_not_shown() {
         let mut window = window_of_sums();
         slide_multiplier_to(&mut window, 0, 1.0);
-        choose(&mut window, "Total");
-        let (_, total) = meshes_drawn(&window);
-
         let disabled = |window: &Harness<'_, Option<Window>>| {
             let sliders = window.query_all_by_role(Role::Slider).skip(1);
             let fields = window.query_all_by_role(Role::SpinButton);
@@ -789,19 +786,24 @@ mod tests {
                 .map(|control| control.accesskit_node().is_disabled())
                 .collect::<Vec<_>>()
         };
-        assert_eq!(disabled(&window), [true; 6]);
+        for published in ["Total", "Floods"] {
+            choose(&mut window, published);
+            let (_, shown) = meshes_drawn(&window);
+            assert_eq!(disabled(&window), [true; 6], "{published}");
 
-        slide_multiplier_to(&mut window, 1, 0.0);
-        type_multiplier(&mut window, 1, "5");
-        for label in [ALL_ONES_LABEL, ALL_ZEROS_LABEL] {
-            window.get_by_label(label).click();
-            window.run();
+            slide_multiplier_to(&mut window, 1, 0.0);
+            type_multiplier(&mut window, 1, "5");
+            for label in [ALL_ONES_LABEL, ALL_ZEROS_LABEL] {
+                window.get_by_label(label).click();
+                window.run();
+            }
+            assert_eq!(
+                [multiplier(&window, 0), multiplier(&window, 1)],
+                [10.0, 1.0],
+                "{published}"
+            );
+            assert_eq!(meshes_drawn(&window).1, shown, "{published}");
         }
-        assert_eq!(
-            [multiplier(&window, 0), multiplier(&window, 1)],
-            [10.0, 1.0]
-        );
-        assert_eq!(meshes_drawn(&window).1, total);
 
         choose(&mut window, WEIGHTED_SUM_LABEL);
         assert_eq!(disabled(&window), [false; 6]);
