@@ -139,7 +139,7 @@ None.
   - A long name and a long value are read out in full, with the panel and the map's rectangle as they are without them.
   - Nothing is read out with the pointer off the meshes, on the panel, or on an open pull-down that lies over a mesh.
   - Check: an automated test that drives the window with generated text, passing on macOS.
-    - The name it uses is far longer than the panel is wide, and the value has as many figures as a value has at most.
+    - The name it uses is far longer than the panel is wide, and the value is a third written with every figure it has.
   - Evidence: the same run.
     - In `src/window.rs`:
       - `pointing_at_a_mesh_reads_out_its_code_its_municipality_and_the_value_shown`, which finds each text once in the window, near the pointer
