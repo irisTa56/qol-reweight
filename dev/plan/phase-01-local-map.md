@@ -11,7 +11,8 @@ The path from the file to the map is settled without the platform's map: the too
 ## Requirements & Constraints
 
 - **R001**: Started with the path of one of the platform's CSV files, the tool opens a window with a map on which every mesh of the file is a filled square, at the place its mesh code names, coloured by a published value.
-- **R002**: The user chooses on screen what the colour shows, from a list: the published total, which is the file's `QOL` row, or any one indicator. The list is made from the indicators found in the opened file.
+- **R002**: The user chooses on screen what the colour shows, from a list: the published total, which is the file's `QOL` row, or any one indicator.
+  - The list is made from the indicators found in the opened file.
 - **R003**: The colours run between two hues through a neutral colour at zero, and a legend on screen says which colour stands for which value.
   - The two ends stand for plus and minus one value, a high percentile of the absolute values being shown and not their largest, so that a few extreme meshes do not leave the rest near the neutral colour.
   - That value is worked out when what is shown is chosen, and is written nowhere in the code.
@@ -23,15 +24,18 @@ The path from the file to the map is settled without the platform's map: the too
   - Where the tool cannot load a font that renders those statements, it says so and shows no map.
 - **R007**: Started without a path, or with a file it cannot read as Urban QOL data, the tool says which file it expects and where its user downloads it, and shows no map.
   - The README says the same, and how to start the tool.
-- **R008** (constraint): The tool sends the platform no request ([0001]). The base map's tiles are its only use of the network, and the meshes are drawn without it.
+- **R008** (constraint): The tool sends the platform no request ([0001]).
+  - The base map's tiles are its only use of the network, and the meshes are drawn without it.
 - **R009** (constraint): The tool reads the file and writes nothing that comes from it.
 - **R010** (constraint): Nothing that comes from the data is committed, as [`CLAUDE.md`](../../CLAUDE.md#keeping-the-data-out-of-the-repository) spells out, so the tests run on synthetic data and the phase's evidence holds no picture and no value.
   - A test that needs a real file takes it from outside the repository, runs only when asked for, and holds no value: what it expects is read from the file.
-- **R011** (constraint): The tool is checked on macOS only, and reads the font for Japanese text from there. On Windows and Linux it is not checked, and where it finds no such font it shows no map, as R006 says; the README says so.
+- **R011** (constraint): The tool is checked on macOS only, and reads the font for Japanese text from there.
+  - On Windows and Linux it is not checked, and where it finds no such font it shows no map, as R006 says; the README says so.
 
 ### Out of scope
 
-- Multipliers, several files at once, and a file whose `QOL` row is not what its indicator rows add up to: each is a later phase of the roadmap. Such a file's `QOL` row is shown here as published, like any other.
+- Multipliers, several files at once, and a file whose `QOL` row is not what its indicator rows add up to: each is a later phase of the roadmap.
+  - Such a file's `QOL` row is shown here as published, like any other.
 - Running in a browser, a base map of vector tiles, and a base map that works without the network.
 - A colour range the user sets.
 - Running the tests that drive the window in CI, which would take a macOS runner.
@@ -56,19 +60,24 @@ The path from the file to the map is settled without the platform's map: the too
 - **A002**: `KeyCode` is a half grid square code: nine digits whose ninth is 1 to 4 for the south-west, south-east, north-west, and north-east quarter of a 1 km mesh, each 15″ of latitude by 22.5″ of longitude. Source: [地域メッシュ統計の特質・沿革](https://www.stat.go.jp/data/mesh/pdf/gaiyo1.pdf), pp. 8–12 and 19, checked 2026-10-05; every code in the three files has nine digits and ends in 1 to 4.
   - e-Stat's boundary data agrees: for every mesh in its files of the first-level squares the three files cover, the square these rules give is the square the file holds, to within the rounding of the arithmetic, and every mesh of the three files is in them (a trial script, run 2026-10-10).
     - The data is on its [list of boundary files](https://www.e-stat.go.jp/gis/statmap-search?page=1&type=2&aggregateUnitForBoundary=H&coordsys=1&format=shape), which offers the 500 m meshes, its fourth-level meshes, as Shapefiles in latitude and longitude on the world geodetic system, one for each first-level square, dated 2010-12-08 (checked 2026-10-09).
-    - Each record is one rectangle with a nine-digit `KEY_CODE`, as the definition document on that page says, and the files name their geodetic system as JGD2000. A file does not hold every mesh of its first-level square: some of those opened hold fewer.
+    - Each record is one rectangle with a nine-digit `KEY_CODE`, as the definition document on that page says, and the files name their geodetic system as JGD2000.
+    - A file does not hold every mesh of its first-level square: some of those opened hold fewer.
     - Its content may be used under [e-Stat's terms](https://www.e-stat.go.jp/terms-of-use), which follow the government's standard terms of use 2.0 and are compatible with CC BY 4.0; the [terms of its GIS](https://www.e-stat.go.jp/gis-terms) refer to them for what the system provides (checked 2026-10-09).
   - The codes of the three files are those of the 2020 census's statistics on 500 m meshes, quarters included: nearly every mesh of each file has a row in the census's table of population, and many times as many lack one once the quarters of each 1 km mesh are renumbered, east for west, north for south, or both (a trial script, run 2026-10-10).
-    - The table is e-Stat's table of population and households, `T001141`, of the 2020 census on its fourth-level meshes, in its JGD2011 edition, on its [list of statistics](https://www.e-stat.go.jp/gis/statmap-search?page=1&type=1&toukeiCode=00200521&toukeiYear=2020&aggregateUnit=H), dated 2025-10-09, one file for each first-level square (checked 2026-10-10). A file has a row with a nine-digit `KEY_CODE` for a part of its square's meshes, taken here to be those where the census counted someone.
+    - The table is e-Stat's table of population and households, `T001141`, of the 2020 census on its fourth-level meshes, in its JGD2011 edition, on its [list of statistics](https://www.e-stat.go.jp/gis/statmap-search?page=1&type=1&toukeiCode=00200521&toukeiYear=2020&aggregateUnit=H), dated 2025-10-09, one file for each first-level square (checked 2026-10-10).
+      - A file has a row with a nine-digit `KEY_CODE` for a part of its square's meshes, taken here to be those where the census counted someone.
     - A few meshes of each file have no row as they are. Why was not looked into.
     - e-Stat's terms, above, cover it.
   - Risk: the codes of a file follow other rules, so its squares land in the wrong place, noticed by meshes drawn off the land, which shows a gross error and not a wrong order of the quarters, and by running the two trials on that file.
 - **A003**: The mesh codes are on the world geodetic system the base map uses, as the [2020 census mesh statistics](https://www.stat.go.jp/data/mesh/index.html) are. Source: the trial against the census's table under A002, in which many times as many meshes of each file lack a row once every mesh is moved by as far as the older Japanese datum lies from the world geodetic system, in either direction (run 2026-10-10).
-  - Those statistics are compiled in two such systems, JGD2000 and JGD2011, and nothing read says which the data uses. The two differ by far less than a mesh: JGD2011 revised JGD2000 for the ground the 2011 earthquake moved, and the origin of latitude and longitude, in Tokyo, moved by about 27 cm ([GSI](https://www.gsi.go.jp/sokuchikijun/jgd2000-2011.html), checked 2026-10-09).
+  - Those statistics are compiled in two such systems, JGD2000 and JGD2011, and nothing read says which the data uses.
+    - The two differ by far less than a mesh: JGD2011 revised JGD2000 for the ground the 2011 earthquake moved, and the origin of latitude and longitude, in Tokyo, moved by about 27 cm ([GSI](https://www.gsi.go.jp/sokuchikijun/jgd2000-2011.html), checked 2026-10-09).
   - Risk: every mesh is displaced, as it would be were the codes on the older Japanese datum, which lies about 450 m from the world geodetic system near Tokyo ([GSI](https://www.gsi.go.jp/LAW/G2000-g2000-h3.htm), checked 2026-10-05), noticed by one steady offset of the meshes against the coast the base map draws.
   - Risk: a file of another region is on another system than these three, noticed by running the same trial on that file.
-- **A004**: Withdrawn 2026-10-09, when the phase stopped comparing against the platform's map (see Decisions). It read: the platform draws each file's meshes on a map, where its user chooses the total or one indicator, which is the picture the phase compares against. Source: [the platform's search result for the catalogue](https://data-platform.mlit.go.jp/#/searchlink/df633780-e1bd-436d-b6f6-13885a70c254), on whose map the maintainer saw the meshes coloured, and the colours change on choosing the total or an indicator in the legend, for Aichi (checked 2026-10-05) and for Tokyo and the Chukyo metropolitan area (checked 2026-10-06).
-- **A005**: An application may load GSI tiles as they are needed without applying, on stating the source as 「国土地理院」 or 「地理院タイル」 with a link to the tile list. Source: [地理院タイル一覧](https://maps.gsi.go.jp/development/ichiran.html), checked 2026-10-05. The page says nothing of how many requests are allowed.
+- **A004**: Withdrawn 2026-10-09, when the phase stopped comparing against the platform's map (see Decisions).
+  - It read: the platform draws each file's meshes on a map, where its user chooses the total or one indicator, which is the picture the phase compares against. Source: [the platform's search result for the catalogue](https://data-platform.mlit.go.jp/#/searchlink/df633780-e1bd-436d-b6f6-13885a70c254), on whose map the maintainer saw the meshes coloured, and the colours change on choosing the total or an indicator in the legend, for Aichi (checked 2026-10-05) and for Tokyo and the Chukyo metropolitan area (checked 2026-10-06).
+- **A005**: An application may load GSI tiles as they are needed without applying, on stating the source as 「国土地理院」 or 「地理院タイル」 with a link to the tile list. Source: [地理院タイル一覧](https://maps.gsi.go.jp/development/ichiran.html), checked 2026-10-05.
+  - The page says nothing of how many requests are allowed.
   - The pale map's tiles at zoom level 8 and below ask for a credit to their shoreline data as well, in the notes of their own entries on that page.
   - Risk: tiles are refused, noticed by a base map that stays blank, at a zoom level it has tiles for, while the network is up.
 - **A006**: A file's meshes can all be drawn again on every frame. Source: the measurement in [0002], on synthetic data.
@@ -92,7 +101,8 @@ The path from the file to the map is settled without the platform's map: the too
   - Those tests run on macOS on the maintainer's machine rather than in CI, because CI runs on Linux, where the tool shows no map for want of the font (R011), and the maintainer starts with CI as it is (said 2026-10-06).
 - The path from the file to the map is settled without the platform's map rather than by eye against it, because the eye had no way to the platform that can be repeated: it refused a browser driven by a program (HTTP 403, tried 2026-10-05, and again 2026-10-09 with two browsers), and no picture of real data can be kept to compare against (the maintainer, 2026-10-09).
   - The tool's reading of a real file is checked by a test against a second reading of that file, which runs on the maintainer's machine when asked for rather than in CI, because the repository holds no real file.
-  - Where a mesh lies rests on A002 and A003, each checked once against public reference data rather than by a test kept with the code, because what was checked is the standard's rules and the geodetic system of the data, which no change to the tool can alter (the maintainer, 2026-10-10). The tool's own arithmetic is held to those rules by tests in CI.
+  - Where a mesh lies rests on A002 and A003, each checked once against public reference data rather than by a test kept with the code, because what was checked is the standard's rules and the geodetic system of the data, which no change to the tool can alter (the maintainer, 2026-10-10).
+    - The tool's own arithmetic is held to those rules by tests in CI.
   - What is left to the eye is what only an eye judges, on the tool alone: that the base map names places in Japanese, that the meshes lie where the base map draws land, which no program checks, and that panning and zooming stay smooth.
 - The tool is checked on macOS only rather than made to show Japanese text everywhere, because it is a personal tool on a macOS machine, and a font shipped with it would be a file to add and a licence to check.
   - Without the font it shows no map rather than a map whose source statements cannot be read, because the roadmap makes stating the data's source a condition of showing the data.
@@ -114,8 +124,10 @@ The path from the file to the map is settled without the platform's map: the too
 ## Done when
 
 - **For each of the three files, the tool holds the meshes, the choices, and every value as a second reading of the file finds them, one that shares no code with the tool's own reading, draws every mesh once, and offers that file's indicators, the total first.** — verifies R001, R002, A001.
-  - Check: an automated test that reads the real files, run on the maintainer's machine when asked for. The evidence is the run, with no value.
-  - Evidence: `a_real_file_is_offered_and_drawn_as_it_reads` in `src/window.rs`, run on macOS, 2026-10-10, on the commit that adds this line, over the files of Aichi, Tokyo, and the Chukyo metropolitan area: it passes. Its second reading uses the CSV reader alone and none of the tool's `src/dataset/`.
+  - Check: an automated test that reads the real files, run on the maintainer's machine when asked for.
+    - The evidence is the run, with no value.
+  - Evidence: `a_real_file_is_offered_and_drawn_as_it_reads` in `src/window.rs`, run on macOS, 2026-10-10, on the commit that adds this line, over the files of Aichi, Tokyo, and the Chukyo metropolitan area: it passes.
+    - Its second reading uses the CSV reader alone and none of the tool's `src/dataset/`.
 - **With the Chukyo metropolitan area's file open, the base map names places in Japanese under the meshes, the meshes lie where the base map draws land, with none out at sea and no steady offset along the coast, and panning and zooming stay smooth.** — verifies R001, R005, A002, A003, A005, A006.
   - Check: the maintainer looks at the tool.
   - Evidence: the maintainer opened the Chukyo metropolitan area's file on 2026-10-10 and found all three to hold, with no picture kept.
@@ -124,13 +136,22 @@ The path from the file to the map is settled without the platform's map: the too
   - Evidence: [CI run 38026118139](https://github.com/irisTa56/qol-reweight/actions/runs/38026118139), on `main` at `1c556b1`, 2026-10-10: its `rust-check` job passes the tests of `src/mesh.rs`, `src/dataset/file.rs`, and `src/scale.rs` among its 61 unit tests.
 - **Choosing another indicator recolours the map and changes the legend, pointing at a mesh shows its code, its municipality, and its value, and the base map shows through the meshes more or less as the user sets it.** — verifies R002, R003, R004, R005, A007.
   - Check: an automated test that drives the window with a synthetic file whose values are known from how it was made, passing on macOS.
-  - Evidence: `mise run qa:rust:test` on macOS, 2026-10-10, on the commit that adds this line: 86 unit tests and 5 start-up tests pass. In `src/window.rs`: `choosing_an_indicator_colours_the_meshes_by_it_and_changes_the_legend`, `pointing_at_a_mesh_reads_out_its_code_its_municipality_and_the_value_shown`, and `the_slider_sets_how_much_of_the_base_map_the_meshes_cover`.
+  - Evidence: `mise run qa:rust:test` on macOS, 2026-10-10, on the commit that adds this line: 86 unit tests and 5 start-up tests pass.
+    - In `src/window.rs`:
+      - `choosing_an_indicator_colours_the_meshes_by_it_and_changes_the_legend`
+      - `pointing_at_a_mesh_reads_out_its_code_its_municipality_and_the_value_shown`
+      - `the_slider_sets_how_much_of_the_base_map_the_meshes_cover`
 - **The data's source, the base map's source with its link, and the credit to the shoreline data are on screen whenever the map is.** — verifies R006.
   - Check: an automated test that reads the window's text with a synthetic file open, passing on macOS.
-  - Evidence: the same run on macOS: `the_sources_are_stated` and `the_base_maps_source_links_to_the_list_of_tiles` in `src/window.rs`. The window draws the map and the statements in one function, so no frame has one without the others.
+  - Evidence: the same run on macOS: `the_sources_are_stated` and `the_base_maps_source_links_to_the_list_of_tiles` in `src/window.rs`.
+    - The window draws the map and the statements in one function, so no frame has one without the others.
 - **Started with no path, with a path that does not exist, and with a file that is not Urban QOL data, the tool prints which file it expects and where it comes from, and exits without a map.** — verifies R007.
   - Check: an automated test for the three starts, passing in CI.
-  - Evidence: [CI run 38026118139](https://github.com/irisTa56/qol-reweight/actions/runs/38026118139), on `main` at `1c556b1`, 2026-10-10: `started_without_a_path`, `started_with_a_path_that_does_not_exist`, and `started_with_a_file_that_is_not_urban_qol_data` in `tests/starts.rs`.
+  - Evidence: [CI run 38026118139](https://github.com/irisTa56/qol-reweight/actions/runs/38026118139), on `main` at `1c556b1`, 2026-10-10.
+    - In `tests/starts.rs`:
+      - `started_without_a_path`
+      - `started_with_a_path_that_does_not_exist`
+      - `started_with_a_file_that_is_not_urban_qol_data`
 - **Started where the font cannot be loaded, the tool says so and exits without a map.** — verifies R006, R011.
   - Check: an automated test, passing in CI.
   - Evidence: [CI run 38026118139](https://github.com/irisTa56/qol-reweight/actions/runs/38026118139), on `main` at `1c556b1`, 2026-10-10: `started_without_the_font` in `tests/starts.rs`, which runs where the font is not installed, as on CI's Linux.
@@ -139,10 +160,15 @@ The path from the file to the map is settled without the platform's map: the too
   - Evidence: [`README.md`](../../README.md), under Data, Running the tool, and Without the font.
 - **With the network off, the meshes are drawn over a blank base map, and the tool makes no request to the platform.** — verifies R008.
   - Check: an automated test that draws a synthetic file with a tile server that cannot be reached, passing on macOS, and each place the code names the platform's host read to be text the tool shows, not an address it requests.
-  - Evidence: the same run on macOS: `without_the_base_map_the_meshes_are_drawn_all_the_same` in `src/window.rs`, whose tile server hangs up on every call. A search of `src` and `tests` for the platform's host finds it twice: in the text `src/main.rs` prints for a start without a file, and in the test of that text in `tests/starts.rs`.
+  - Evidence: the same run on macOS: `without_the_base_map_the_meshes_are_drawn_all_the_same` in `src/window.rs`, whose tile server hangs up on every call.
+    - A search of `src` and `tests` for the platform's host finds it twice: in the text `src/main.rs` prints for a start without a file, and in the test of that text in `tests/starts.rs`.
 - **The tool leaves no file behind that holds anything from the CSV, and the repository holds no data: the tests that run on synthetic data make their input in code, the test on real files takes them from outside the repository, and no commit of the phase carries a picture or a value from a real file.** — verifies R009, R010.
   - Check: the code read for what it writes, and the check before each push that `CLAUDE.md` asks for.
-  - Evidence: a search of `src` for a call that creates or writes a file finds none outside a test that writes CSV into memory; `Cargo.toml` leaves out eframe's `persistence` feature, so no state of the window is saved; and the tiles are fetched with walkers' default options, which name no cache directory. Every input of a test on synthetic data is made in `src/test_support.rs` or in the test itself, the test on real files reads them from the folder it is given, and each push of the phase was preceded by the check `CLAUDE.md` asks for.
+  - Evidence:
+    - A search of `src` for a call that creates or writes a file finds none outside a test that writes CSV into memory.
+    - `Cargo.toml` leaves out eframe's `persistence` feature, so no state of the window is saved.
+    - The tiles are fetched with walkers' default options, which name no cache directory.
+    - Every input of a test on synthetic data is made in `src/test_support.rs` or in the test itself, the test on real files reads them from the folder it is given, and each push of the phase was preceded by the check `CLAUDE.md` asks for.
 
 ## Open questions
 
