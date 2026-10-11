@@ -158,7 +158,7 @@ The path from the file to the map is settled without the platform's map: the too
   - Check: an automated test that reads the window's text with a synthetic file open, passing on macOS.
   - Evidence: the same run on macOS: `the_sources_are_stated` and `the_base_maps_source_links_to_the_list_of_tiles` in `src/window.rs`.
     - The window draws the map and the statements in one function, so no frame has one without the others.
-- **Started without a file it can read, the tool prints which file it expects and where it comes from, and exits without a map.** — verifies R007.
+- **Started without a file it can read as Urban QOL data, the tool prints which file it expects and where it comes from, and exits without a map.** — verifies R007.
   - Check: an automated test of such starts, passing in CI.
   - Evidence: [CI run 38026118139](https://github.com/irisTa56/qol-reweight/actions/runs/38026118139), on `main` at `1c556b1`, 2026-10-10.
     - In `tests/starts.rs`:
