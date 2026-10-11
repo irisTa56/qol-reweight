@@ -171,9 +171,7 @@ The path from the file to the map is settled without the platform's map: the too
 - **The README says how to get the file and start the tool, that only macOS is checked, and what happens without the font.** — verifies R007, R011.
   - Check: the README read.
   - Evidence: [`README.md`](../../README.md), under Data, Running the tool, and Without the font.
-- **The meshes are drawn with neither the network nor the platform.** — verifies R008.
-  - With the network off, the meshes are drawn over a blank base map.
-  - The tool makes no request to the platform.
+- **With the network off, the meshes are drawn over a blank base map, and the tool makes no request to the platform.** — verifies R008.
   - Check: an automated test that draws a synthetic file with a tile server that cannot be reached, passing on macOS, and each place the code names the platform's host read to be text the tool shows, not an address it requests.
   - Evidence: the same run on macOS: `without_the_base_map_the_meshes_are_drawn_all_the_same` in `src/window.rs`, whose tile server hangs up on every call.
     - A search of `src` and `tests` for the platform's host finds it twice: in the text `src/main.rs` prints for a start without a file, and in the test of that text in `tests/starts.rs`.

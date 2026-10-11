@@ -155,9 +155,7 @@ None.
   - Check: the maintainer looks at the tool with the Chukyo metropolitan area's file open.
   - Evidence: the maintainer opened the Chukyo metropolitan area's file in a release build on 2026-10-11, with no picture kept, and found the map to follow a slider while it is dragged, sixteen indicators to be in view in the window as it opens, where A004 estimated about thirteen, and what is read out to keep up with the pointer.
     - A slider at 0 could be told from one at 0.1 on the scale the plan then had, which the maintainer found unnatural next to 0; the scale was changed to the one R003 now states, the maintainer chose it looking at the tool the same day, and on it too found a slider at 0 to be told from one at 0.1 at a glance.
-- **Still nothing from the data is written by the tool or kept in the repository.** — verifies R009, R010.
-  - The tool still leaves no file behind.
-  - No commit of the phase carries a picture or a value from a real file.
+- **The tool still leaves no file behind, and no commit of the phase carries a picture or a value from a real file.** — verifies R009, R010.
   - Check: the code read for what it writes, and the check before each push that `CLAUDE.md` asks for.
   - Evidence:
     - A search of `src` for a call that creates or writes a file finds none outside a test that writes CSV into memory.
