@@ -260,44 +260,62 @@ impl Window {
     /// weighted sum is shown, and none can be set where it is not.
     fn set_the_multipliers(&mut self, ui: &mut Ui) {
         let before = self.multipliers.clone();
-        let (dataset, multipliers) = (&self.dataset, &mut self.multipliers);
-        ui.add_enabled_ui(self.shown == Shown::WeightedSum, |ui| {
-            ui.strong(MULTIPLIERS_LABEL);
-            ui.horizontal(|ui| {
-                if ui.button(ALL_ONES_LABEL).clicked() {
-                    *multipliers = Multipliers::ones_for(dataset);
-                }
-                if ui.button(ALL_ZEROS_LABEL).clicked() {
-                    *multipliers = Multipliers::zeros_for(dataset);
-                }
-            });
-            ui.add_space(CHOICES_SPACE);
-            ScrollArea::vertical().show(ui, |ui| {
-                // The slider and its field share the line.
-                let field = ui.spacing().interact_size.x + ui.spacing().item_spacing.x;
-                ui.spacing_mut().slider_width = ui.available_width() - field;
-                for (at, indicator) in dataset.indicators().iter().enumerate() {
-                    // A name too long for its line is cut short.
-                    ui.add(Label::new(indicator.name()).truncate());
-                    // The slider runs over the multiplier plus 1, from 1 to
-                    // 11, whose logarithm has a place for a multiplier of 0.
-                    let (least, most) = Multipliers::RANGE.into_inner();
-                    let mut shifted = multipliers.each()[at] + 1.0;
-                    ui.add(
-                        Slider::new(&mut shifted, least + 1.0..=most + 1.0)
-                            .logarithmic(true)
-                            .step_by(Multipliers::STEP)
-                            .custom_formatter(|shifted, _| format!("{:.1}", shifted - 1.0))
-                            .custom_parser(|typed| Some(typed.parse::<f64>().ok()? + 1.0)),
-                    );
-                    multipliers.set(at, shifted - 1.0);
-                }
-            });
-        });
+        let settable = self.shown == Shown::WeightedSum;
+        ui.add_enabled_ui(settable, |ui| self.set_every_multiplier(ui));
+        ui.add_space(CHOICES_SPACE);
+        ScrollArea::vertical().show(ui, |ui| self.set_each_multiplier(ui, settable));
         if self.multipliers != before {
             self.sums = self.multipliers.weighted_sums(&self.dataset);
             self.layer = MeshLayer::showing(self.dataset.meshes(), self.values(), self.opacity);
         }
+    }
+
+    /// The multipliers' heading, and the buttons that set every one of them
+    /// to 1 and to 0.
+    fn set_every_multiplier(&mut self, ui: &mut Ui) {
+        ui.strong(MULTIPLIERS_LABEL);
+        ui.horizontal(|ui| {
+            if ui.button(ALL_ONES_LABEL).clicked() {
+                self.multipliers = Multipliers::ones_for(&self.dataset);
+            }
+            if ui.button(ALL_ZEROS_LABEL).clicked() {
+                self.multipliers = Multipliers::zeros_for(&self.dataset);
+            }
+        });
+    }
+
+    /// Each indicator's name over its slider. Where the multipliers are not
+    /// `settable` the sliders take nothing, and the list still scrolls.
+    fn set_each_multiplier(&mut self, ui: &mut Ui, settable: bool) {
+        if !settable {
+            ui.disable();
+        }
+        // The slider and its field share the line.
+        let field = ui.spacing().interact_size.x + ui.spacing().item_spacing.x;
+        ui.spacing_mut().slider_width = ui.available_width() - field;
+        for at in 0..self.dataset.indicators().len() {
+            // A name too long for its line is cut short.
+            ui.add(Label::new(self.dataset.indicators()[at].name()).truncate());
+            let multiplier = Self::slide(ui, self.multipliers.each()[at]);
+            self.multipliers.set(at, multiplier);
+        }
+    }
+
+    /// A slider with a number field, set at `multiplier`, and the multiplier
+    /// it is moved to. The slider runs over the multiplier plus 1, from 1 to
+    /// 11, whose logarithm has a place for a multiplier of 0, and the field
+    /// writes and reads the multiplier itself.
+    fn slide(ui: &mut Ui, multiplier: f64) -> f64 {
+        let (least, most) = Multipliers::RANGE.into_inner();
+        let mut shifted = multiplier + 1.0;
+        ui.add(
+            Slider::new(&mut shifted, least + 1.0..=most + 1.0)
+                .logarithmic(true)
+                .step_by(Multipliers::STEP)
+                .custom_formatter(|shifted, _| format!("{:.1}", shifted - 1.0))
+                .custom_parser(|typed| Some(typed.trim().parse::<f64>().ok()? + 1.0)),
+        );
+        shifted - 1.0
     }
 
     /// Each statement after a label that says what it is the source of.
@@ -864,6 +882,62 @@ mod tests {
         assert_eq!(map, MAP_BEFORE);
         assert_ne!(moved, at_first);
         assert_eq!(above(&window), before);
+    }
+
+    /// The meshes are coloured anew while a slider is still held, before
+    /// it is let go.
+    #[test]
+    fn the_map_follows_a_slider_while_it_is_held() {
+        let mut window = window_of_sums();
+        let (_, at_first) = meshes_drawn(&window);
+        let slider = multiplier_slider(&window, 0);
+        window.drag_at(slider.right_center());
+        window.run();
+        assert_ne!(meshes_drawn(&window).1, at_first);
+        window.get_by_label("+4.4");
+        window.drop_at(slider.right_center());
+        window.run();
+        window.get_by_label("+4.4");
+    }
+
+    /// A number typed with a space about it is taken as the number.
+    #[test]
+    fn a_number_typed_with_a_space_about_it_sets_the_multiplier() {
+        let mut window = window_of_sums();
+        type_multiplier(&mut window, 0, " 5 ");
+        assert_eq!(multiplier(&window, 0), 5.0);
+    }
+
+    /// With the total chosen the list of multipliers still scrolls, so a
+    /// multiplier far down it can be looked at.
+    #[test]
+    fn the_list_of_multipliers_scrolls_while_the_weighted_sum_is_not_shown() {
+        let same: &[f64] = &[0.25, 0.25, 0.25];
+        let many: Vec<(String, String)> = (0..40)
+            .map(|at| (format!("X{at:02}"), format!("Indicator {at}")))
+            .collect();
+        let mut file: Vec<(&str, &str, &[f64])> = many
+            .iter()
+            .map(|(code, name)| (code.as_str(), name.as_str(), same))
+            .collect();
+        file.push(("QOL", "Total", &[2.0, 0.5, -1.0]));
+        let mut window = window_on(dataset_of(&MESHES, &file));
+        choose(&mut window, "Total");
+
+        let before = multiplier_slider(&window, 3);
+        window.hover_at(before.center());
+        window.run();
+        for _ in 0..5 {
+            window.event(eframe::egui::Event::MouseWheel {
+                unit: eframe::egui::MouseWheelUnit::Point,
+                delta: eframe::egui::vec2(0.0, -40.0),
+                phase: eframe::egui::TouchPhase::Move,
+                modifiers: eframe::egui::Modifiers::NONE,
+            });
+            window.run();
+        }
+        let after = multiplier_slider(&window, 3);
+        assert!(after.top() < before.top() - 100.0, "{before:?} {after:?}");
     }
 
     /// The totals of [`FILE`] fall from above zero to below it, which no
