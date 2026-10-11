@@ -3,8 +3,7 @@
 QOL Reweight shows the Urban QOL data on a map of 500 m meshes, on its user's own machine.
 Its user says how much they value each indicator, as a multiple of what the adults living in the area value it on average, and each mesh is coloured by the sum of its published indicator values, each times that multiplier.
 
-So far the tool shows that sum with every multiplier at 1, which is the sum of the published indicator values, and the published values as they are, the total or one indicator at a time.
-Setting the multipliers is not built yet, and the [roadmap](dev/ROADMAP.md) says what is planned.
+The tool reads one file at a time, and the [roadmap](dev/ROADMAP.md) says what else is planned.
 
 ## Data
 
@@ -28,10 +27,11 @@ The tool is checked on macOS only.
    cargo run --release -- path/to/QOL_23_Aichi.csv
    ```
 
-A window opens with the file's meshes on a map, each coloured by the sum of its published indicator values.
+A window opens with the file's meshes on a map, each coloured by the sum of its published indicator values, each times its multiplier, which is 1 until it is set.
 
 - The pull-down beside the map chooses what the colours show, that sum, the published total, or one indicator of the file, and the legend over it says which colour stands for which value.
 - The slider under the pull-down sets how much of the base map the meshes cover.
+- Under it, each indicator has a slider with a number field that sets its multiplier, from 0 to 10 by tenths, and two buttons set every multiplier to 1 or to 0. The map follows a multiplier as it is moved. They can be used while the colours show the sum.
 - Pointing at a mesh shows its mesh code, the name of its municipality, and its value.
 - Dragging the map or scrolling over it pans it, and pinching on a trackpad, or scrolling with the command or control key held, zooms it.
 

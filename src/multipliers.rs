@@ -2,21 +2,54 @@
 //! user gives each indicator, and the weighted sums they make of a file's
 //! values.
 
+use std::ops::RangeInclusive;
+
 use crate::dataset::Dataset;
 
 /// A multiplier for each indicator of a file, in the order the file's
 /// dataset has them.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Multipliers {
     each: Vec<f64>,
 }
 
 impl Multipliers {
+    /// From leaving an indicator out to ten times its weight in the
+    /// published data.
+    pub(crate) const RANGE: RangeInclusive<f64> = 0.0..=10.0;
+
+    /// How far one multiplier is from the next: a tenth.
+    pub(crate) const STEP: f64 = 0.1;
+
     /// Every indicator of `dataset` at 1, its weight in the published data.
     pub(crate) fn ones_for(dataset: &Dataset) -> Self {
+        Self::all_at(1.0, dataset)
+    }
+
+    /// Every indicator of `dataset` at 0, which leaves each of them out.
+    pub(crate) fn zeros_for(dataset: &Dataset) -> Self {
+        Self::all_at(0.0, dataset)
+    }
+
+    fn all_at(multiplier: f64, dataset: &Dataset) -> Self {
         Self {
-            each: vec![1.0; dataset.indicators().len()],
+            each: vec![multiplier; dataset.indicators().len()],
         }
+    }
+
+    /// The multiplier of each indicator, in the order of the indicators.
+    pub(crate) fn each(&self) -> &[f64] {
+        &self.each
+    }
+
+    /// Gives the indicator at `indicator` the multiplier nearest to
+    /// `multiplier` that there is: a tenth, within the range.
+    pub(crate) fn set(&mut self, indicator: usize, multiplier: f64) {
+        let (least, most) = Self::RANGE.into_inner();
+        let tenths = (multiplier.clamp(least, most) / Self::STEP).round();
+        // Tenths divided by ten, which writes 0.3 where three steps of a
+        // tenth would leave a little more.
+        self.each[indicator] = tenths / (1.0 / Self::STEP);
     }
 
     /// The weighted sum of each mesh of `dataset`, in the order of its
@@ -73,6 +106,42 @@ mod tests {
             each: vec![2.0, 0.5],
         };
         assert_eq!(multipliers.weighted_sums(&dataset), [0.75, -1.0]);
+    }
+
+    #[test]
+    fn a_multiplier_is_held_to_a_tenth_within_the_range() {
+        let dataset = dataset_of(
+            &MESHES,
+            &[
+                ("A01", "Stations", &[0.25, -1.5]),
+                ("B02", "Floods", &[0.5, 4.0]),
+                ("QOL", "Total", &[0.75, 2.5]),
+            ],
+        );
+        let mut multipliers = Multipliers::ones_for(&dataset);
+        let mut set = |multiplier| {
+            multipliers.set(1, multiplier);
+            multipliers.each().to_vec()
+        };
+        assert_eq!(set(0.1 + 0.2), [1.0, 0.3]);
+        assert_eq!(set(2.34), [1.0, 2.3]);
+        assert_eq!(set(0.04), [1.0, 0.0]);
+        assert_eq!(set(0.06), [1.0, 0.1]);
+        assert_eq!(set(25.0), [1.0, 10.0]);
+        assert_eq!(set(-3.0), [1.0, 0.0]);
+    }
+
+    #[test]
+    fn every_multiplier_at_0_leaves_every_indicator_out() {
+        let dataset = dataset_of(
+            &MESHES,
+            &[
+                ("A01", "Stations", &[0.25, -1.5]),
+                ("QOL", "Total", &[0.75, 2.5]),
+            ],
+        );
+        let sums = Multipliers::zeros_for(&dataset).weighted_sums(&dataset);
+        assert_eq!(sums, [0.0, 0.0]);
     }
 
     #[test]
