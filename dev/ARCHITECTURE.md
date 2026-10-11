@@ -80,7 +80,7 @@ Starts the built tool as a user would, for the starts that end without a window.
 - Panning and zooming stay smooth with a metropolitan area's file open. No test holds this either.
 - With such a file open, the map follows a multiplier's slider while it is dragged, without stutter and without trailing behind it, and what is read out beside the pointer keeps up with it from mesh to mesh. No test holds how smoothly.
 - In the window as it opens, the list of multipliers has room for about sixteen indicators. No test holds this.
-- A slider at 0 is told from one at 0.1 at a glance. A test holds the order of the two handles and that the step between them is the longest, and none how far apart a glance needs them.
+- A slider at 0 is told from one at 0.1 at a glance. A test holds the order of the two handles and that the step between them is longer than the next, from 0.1 to 0.2, and none how far apart a glance needs them.
 - Started without a path, or with a file it cannot read, the tool prints which file it expects and where to download it, and exits with a failure.
 - The [README](../README.md) says how to get a file and start the tool, that only macOS is checked, and what happens without the font.
 
