@@ -134,7 +134,7 @@ None.
     - The rectangle it finds is set against the one the tool draws at the commit the phase started from.
   - Evidence: the same run: `the_multipliers_leave_the_map_where_it_was_and_scroll_by_themselves` in `src/window.rs`, with a file of two indicators and with one of forty-one.
     - The rectangle it holds the map to is the one a run of the tests at `dde0ac2`, before the phase, found the map to have in the same window.
-- **What the file says of a mesh is read out beside the pointer, in full, and only while a mesh is pointed at.** — verifies R008, A006.
+- **The readout beside the pointer is right.** — verifies R008, A006.
   - Pointing at a mesh reads out its code, its municipality, and the value shown beside the pointer and nowhere in the panel.
   - A long name and a long value are read out in full, with the panel and the map's rectangle as they are without them.
   - Nothing is read out with the pointer off the meshes, on the panel, or on an open pull-down that lies over a mesh.
@@ -147,7 +147,7 @@ None.
       - `pointing_away_from_the_meshes_reads_out_nothing`
       - `pointing_at_the_panel_over_a_mesh_reads_out_nothing`
       - `pointing_at_a_choice_over_a_mesh_reads_out_nothing`
-- **To the eye, the map and the readout keep up, and the sliders are in view and can be told apart.** — verifies R003, R005, R008, A002, A004, A006.
+- **To the eye, the tool keeps up and the sliders can be read.** — verifies R003, R005, R008, A002, A004, A006.
   - The map follows a slider while it is dragged, without stutter and without trailing behind it.
   - About thirteen indicators are in view in the window as it opens.
   - A slider at 0 is told from one at 0.1 at a glance.

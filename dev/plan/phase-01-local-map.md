@@ -132,7 +132,7 @@ The path from the file to the map is settled without the platform's map: the too
     - The evidence is the run, with no value.
   - Evidence: `a_real_file_is_offered_and_drawn_as_it_reads` in `src/window.rs`, run on macOS, 2026-10-10, on the commit that adds this line, over the files of Aichi, Tokyo, and the Chukyo metropolitan area: it passes.
     - Its second reading uses the CSV reader alone and none of the tool's `src/dataset/`.
-- **To the eye, the meshes are in place over the base map and the map moves smoothly.** — verifies R001, R005, A002, A003, A005, A006.
+- **The map is right to the eye.** — verifies R001, R005, A002, A003, A005, A006.
   - The base map names places in Japanese under the meshes.
   - The meshes lie where the base map draws land, with none out at sea and no steady offset along the coast.
   - Panning and zooming stay smooth.
