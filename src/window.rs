@@ -1305,9 +1305,10 @@ mod tests {
         assert!(!reads_out(&window, 2));
     }
 
-    /// A municipality's name and a value both far longer than the panel is
-    /// wide: each is read out in full beside the pointer, and the panel and
-    /// the map are where they are with nothing read out.
+    /// A municipality's name far longer than the panel is wide, and a value
+    /// of eighteen characters, too long for one line of the readout: each is
+    /// read out in full beside the pointer, and the panel and the map are
+    /// where they are with nothing read out.
     #[test]
     fn a_long_name_and_a_long_value_are_read_out_in_full_and_move_nothing() {
         let city = ["A municipality whose name goes on"; 6].join(" and ");
