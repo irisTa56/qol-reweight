@@ -730,9 +730,9 @@ mod tests {
 
     /// A slider is 0 at its left end and 10 at its right end, and stops at
     /// tenths between. Its handle for a tenth is to the right of where it
-    /// is for 0, and no nearer to it than its handle for two tenths is to
-    /// that for one. A number typed beyond the range becomes the nearest
-    /// end.
+    /// is for 0, and further from it than its handle for two tenths is from
+    /// that for one, as a slider with every tenth as far apart would not
+    /// have it. A number typed beyond the range becomes the nearest end.
     #[test]
     fn a_multipliers_slider_runs_from_0_to_10_by_tenths() {
         let mut window = window_of_sums();
@@ -757,7 +757,7 @@ mod tests {
         let first_step = at_a_tenth.left() - at_zero.left();
         let second_step = at_two_tenths.left() - at_a_tenth.left();
         assert!(
-            0.0 < second_step && second_step <= first_step,
+            0.0 < second_step && second_step < first_step,
             "{at_zero:?} {at_a_tenth:?} {at_two_tenths:?}"
         );
 
