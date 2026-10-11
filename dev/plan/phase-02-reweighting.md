@@ -119,8 +119,9 @@ None.
     - The rectangle it finds is set against the one the tool draws at the commit the phase started from.
   - Evidence: the same run: `the_multipliers_leave_the_map_where_it_was_and_scroll_by_themselves` in `src/window.rs`, with a file of two indicators and with one of forty-one.
     - The rectangle it holds the map to is the one a run of the tests at `dde0ac2`, before the phase, found the map to have in the same window.
-- **Pointing at a mesh reads out what R008 lists beside the pointer and nowhere in the panel; a long name and a long value are read out in full and change nothing, as R008 says; and nothing is read out with the pointer off the meshes, on the panel, or on an open pull-down that lies over a mesh.** — verifies R008, A006.
+- **Pointing at a mesh reads out what R008 lists beside the pointer and nowhere in the panel; and a long name and a long value are read out in full and change nothing, as R008 says.** — verifies R008, A006.
   - Check: an automated test that drives the window with generated text, a name and a value far longer than the panel is wide, passing on macOS.
+    - Beyond what R008 states, it finds nothing read out with the pointer off the meshes, on the panel, or on an open pull-down that lies over a mesh.
   - Evidence: the same run.
     - In `src/window.rs`:
       - `pointing_at_a_mesh_reads_out_its_code_its_municipality_and_the_value_shown`, which finds each text once in the window, near the pointer
