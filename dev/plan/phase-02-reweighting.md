@@ -93,7 +93,7 @@ None.
 - **For each real file, the weighted sums at 1 and the file's own figures are as the plan states.** — verifies R001, R002, A001, A005.
   - The weighted sum the tool holds for every mesh with every multiplier at 1 is the sum of that mesh's indicator rows.
   - The file's `QOL` rows are those sums in every mesh or in none.
-  - Where it is every mesh, the weighted sum is the published total as well, and at least one file is such a file.
+    - Where it is every mesh, the weighted sum is the published total as well, and at least one file is such a file.
   - No value of a file is written with more than ten significant figures.
   - Check: an automated test that reads the real files, run on the maintainer's machine when asked for, over the files of Aichi, Tokyo, and the Chukyo metropolitan area.
     - It takes the indicator rows and the `QOL` rows from a second reading of the file, one that shares no code with the tool's own reading.
@@ -155,7 +155,9 @@ None.
   - Check: the maintainer looks at the tool with the Chukyo metropolitan area's file open.
   - Evidence: the maintainer opened the Chukyo metropolitan area's file in a release build on 2026-10-11, with no picture kept, and found the map to follow a slider while it is dragged, sixteen indicators to be in view in the window as it opens, where A004 estimated about thirteen, and what is read out to keep up with the pointer.
     - A slider at 0 could be told from one at 0.1 on the scale the plan then had, which the maintainer found unnatural next to 0; the scale was changed to the one R003 now states, the maintainer chose it looking at the tool the same day, and on it too found a slider at 0 to be told from one at 0.1 at a glance.
-- **The tool still leaves no file behind, and no commit of the phase carries a picture or a value from a real file.** — verifies R009, R010.
+- **Still nothing from the data is written by the tool or kept in the repository.** — verifies R009, R010.
+  - The tool still leaves no file behind.
+  - No commit of the phase carries a picture or a value from a real file.
   - Check: the code read for what it writes, and the check before each push that `CLAUDE.md` asks for.
   - Evidence:
     - A search of `src` for a call that creates or writes a file finds none outside a test that writes CSV into memory.
