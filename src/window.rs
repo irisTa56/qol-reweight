@@ -44,10 +44,6 @@ const MULTIPLIERS_LABEL: &str = asset::text!("multipliers-label.txt");
 const ALL_ONES_LABEL: &str = asset::text!("all-ones-label.txt");
 const ALL_ZEROS_LABEL: &str = asset::text!("all-zeros-label.txt");
 
-/// Where a multiplier's slider starts its logarithmic scale: a little under
-/// the least multiplier above zero, so that the left end is zero's alone.
-const SCALE_START: f64 = 0.09;
-
 /// What the screen puts over the slider that sets how much of the base map
 /// the meshes cover.
 const OPACITY_LABEL: &str = asset::text!("opacity-label.txt");
@@ -275,6 +271,7 @@ impl Window {
                     *multipliers = Multipliers::zeros_for(dataset);
                 }
             });
+            ui.add_space(CHOICES_SPACE);
             ScrollArea::vertical().show(ui, |ui| {
                 // The slider and its field share the line.
                 let field = ui.spacing().interact_size.x + ui.spacing().item_spacing.x;
@@ -282,15 +279,18 @@ impl Window {
                 for (at, indicator) in dataset.indicators().iter().enumerate() {
                     // A name too long for its line is cut short.
                     ui.add(Label::new(indicator.name()).truncate());
-                    let mut multiplier = multipliers.each()[at];
+                    // The slider runs over the multiplier plus 1, from 1 to
+                    // 11, whose logarithm has a place for a multiplier of 0.
+                    let (least, most) = Multipliers::RANGE.into_inner();
+                    let mut shifted = multipliers.each()[at] + 1.0;
                     ui.add(
-                        Slider::new(&mut multiplier, Multipliers::RANGE)
+                        Slider::new(&mut shifted, least + 1.0..=most + 1.0)
                             .logarithmic(true)
-                            .smallest_positive(SCALE_START)
                             .step_by(Multipliers::STEP)
-                            .max_decimals(1),
+                            .custom_formatter(|shifted, _| format!("{:.1}", shifted - 1.0))
+                            .custom_parser(|typed| Some(typed.parse::<f64>().ok()? + 1.0)),
                     );
-                    multipliers.set(at, multiplier);
+                    multipliers.set(at, shifted - 1.0);
                 }
             });
         });
@@ -710,25 +710,19 @@ mod tests {
         window.get_by_label("0.3");
     }
 
-    /// A slider is 0 at its left end, 1 close to its middle, and 10 at its
-    /// right end, and stops at tenths between. Its handle for a tenth is to
-    /// the right of where it is for 0. A number typed beyond the range
-    /// becomes the nearest end.
+    /// A slider is 0 at its left end and 10 at its right end, and stops at
+    /// tenths between. Its handle for a tenth is to the right of where it
+    /// is for 0, and no nearer to it than its handle for two tenths is to
+    /// that for one. A number typed beyond the range becomes the nearest
+    /// end.
     #[test]
-    fn a_multipliers_slider_runs_from_0_through_1_in_its_middle_to_10() {
+    fn a_multipliers_slider_runs_from_0_to_10_by_tenths() {
         let mut window = window_of_sums();
         slide_multiplier_to(&mut window, 0, 0.0);
         assert_eq!(multiplier(&window, 0), 0.0);
         let at_zero = handle(&window, 0);
         slide_multiplier_to(&mut window, 0, 1.0);
         assert_eq!(multiplier(&window, 0), 10.0);
-        type_multiplier(&mut window, 0, "1");
-        let (slider, at_one) = (multiplier_slider(&window, 0), handle(&window, 0));
-        let off_the_middle = (at_one.center().x - slider.center().x).abs();
-        assert!(
-            off_the_middle < slider.width() / 20.0,
-            "{at_one:?} {slider:?}"
-        );
 
         for along in [0.1, 0.2, 0.3, 0.4, 0.6, 0.7, 0.8, 0.9] {
             slide_multiplier_to(&mut window, 0, along);
@@ -740,9 +734,13 @@ mod tests {
         type_multiplier(&mut window, 0, "0.1");
         assert_eq!(multiplier(&window, 0), 0.1);
         let at_a_tenth = handle(&window, 0);
+        type_multiplier(&mut window, 0, "0.2");
+        let at_two_tenths = handle(&window, 0);
+        let first_step = at_a_tenth.left() - at_zero.left();
+        let second_step = at_two_tenths.left() - at_a_tenth.left();
         assert!(
-            at_zero.left() < at_a_tenth.left(),
-            "{at_zero:?} {at_a_tenth:?}"
+            0.0 < second_step && second_step <= first_step,
+            "{at_zero:?} {at_a_tenth:?} {at_two_tenths:?}"
         );
 
         type_multiplier(&mut window, 0, "25");
