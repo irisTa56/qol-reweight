@@ -1,6 +1,6 @@
 # Phase 02: Reweighting
 
-- Status: In progress
+- Status: Closed 2026-10-11
 - Roadmap: [Reweighting](../ROADMAP.md#phases)
 
 ## Goal
@@ -88,20 +88,28 @@ None.
 
 - **For each real file, the weighted sum the tool holds for every mesh with every multiplier at 1 is the sum of that mesh's indicator rows as a second reading of the file finds them, one that shares no code with the tool's own reading. The second reading finds each file's `QOL` rows to be those sums in every mesh or in none; where it is every mesh, the weighted sum is the published total as well, and at least one file is such a file. No value of a file is written with more than ten significant figures.** — verifies R001, R002, A001, A005.
   - Check: an automated test that reads the real files, run on the maintainer's machine when asked for, over the files of Aichi, Tokyo, and the Chukyo metropolitan area. The evidence is the run and which files' totals it found to be the sum, with no value.
+  - Evidence: `QOL_REWEIGHT_REAL_FILES=<folder> cargo test a_real_file -- --ignored --show-output` on macOS, 2026-10-11, on `main` at `042eb98`, over the files of Aichi, Tokyo, and the Chukyo metropolitan area: `a_real_files_weighted_sums_at_1_are_the_sums_of_its_indicator_rows` in `src/multipliers.rs` passes, with `a_real_file_is_offered_and_drawn_as_it_reads` in `src/window.rs`. It reports the total to be the sum of the indicators in every mesh of Aichi's file and of the Chukyo metropolitan area's, and in no mesh of Tokyo's. Its second reading uses the CSV reader alone and none of the tool's `src/dataset/`, and how far two sums may differ it works out from the figures each file writes.
 - **With a synthetic file open, the list has the weighted sum first, and the tool opens showing it with every multiplier at 1; moving one indicator's slider, typing into its field, and pressing each button recolour the meshes and change the legend to those of the weighted sums the new multipliers give, and a mesh pointed at afterwards has its weighted sum under them read out to ten significant figures, whatever figures the arithmetic leaves; the test works each out from how the file was made.** — verifies R001, R002, R003, R004, R005, A003.
   - Check: an automated test that drives the window, passing on macOS.
+  - Evidence: `mise run qa:rust:test` on macOS, 2026-10-11, on `main` at `042eb98`: 104 unit tests and 5 start-up tests pass. In `src/window.rs`: `the_choices_are_the_weighted_sum_the_total_then_the_indicators_of_the_file`, `the_window_opens_on_the_weighted_sum_of_the_indicators`, `setting_a_multiplier_colours_the_meshes_by_the_new_weighted_sums`, which sets a multiplier by a slider, by a number typed, and by each button, `a_weighted_sum_is_read_out_to_ten_figures`, and `the_map_follows_a_slider_while_it_is_held`.
 - **A slider goes from 0 at its left end to 10 at its right end, stops at tenths, and draws its handle for 0.1 to the right of where it draws it for 0, further from it than its handle for 0.2 is from that for 0.1; a number typed beyond the range becomes the nearest end.** — verifies R003, A003.
   - Check: an automated test that drives the window, passing on macOS.
+  - Evidence: the same run: `a_multipliers_slider_runs_from_0_to_10_by_tenths` in `src/window.rs`.
 - **With the published total or an indicator chosen, the sliders, the fields, and the buttons take no input and the map does not change; with the weighted sum chosen again, the map is as the multipliers set before left it.** — verifies R006.
   - Check: an automated test that drives the window, passing on macOS.
+  - Evidence: the same run: `the_multipliers_cannot_be_set_while_the_weighted_sum_is_not_shown` in `src/window.rs`.
 - **The map's rectangle is the one the tool gave it before the phase, with a file of a few indicators and with one of many more indicators than the list has room for, whose names are far longer than the panel is wide; the last of them can be scrolled to and moved, and the legend, the pull-down, and the buttons stay where they were.** — verifies R007, A004.
   - Check: an automated test that drives the window with generated text, passing on macOS, and the rectangle it finds set against the one the tool draws at the commit the phase started from.
+  - Evidence: the same run: `the_multipliers_leave_the_map_where_it_was_and_scroll_by_themselves` in `src/window.rs`, with a file of two indicators and with one of forty-one. The rectangle it holds the map to is the one a run of the tests at `dde0ac2`, before the phase, found the map to have in the same window.
 - **Pointing at a mesh reads out its code, its municipality, and the value shown beside the pointer and nowhere in the panel; a name and a value far longer than the panel is wide are read out in full, with the panel and the map's rectangle as they are without them; and nothing is read out with the pointer off the meshes, on the panel, or on an open pull-down that lies over a mesh.** — verifies R008, A006.
   - Check: an automated test that drives the window with generated text, passing on macOS.
+  - Evidence: the same run. In `src/window.rs`: `pointing_at_a_mesh_reads_out_its_code_its_municipality_and_the_value_shown`, which finds each text once in the window, near the pointer, `a_long_name_and_a_long_value_are_read_out_in_full_and_move_nothing`, `pointing_away_from_the_meshes_reads_out_nothing`, `pointing_at_the_panel_over_a_mesh_reads_out_nothing`, and `pointing_at_a_choice_over_a_mesh_reads_out_nothing`.
 - **With the Chukyo metropolitan area's file open, the map follows a slider while it is dragged, without stutter and without trailing behind it, about thirteen indicators are in view in the window as it opens, a slider at 0 is told from one at 0.1 at a glance, and what is read out beside the pointer keeps up with it from mesh to mesh.** — verifies R003, R005, R008, A002, A004, A006.
   - Check: the maintainer looks at the tool.
+  - Evidence: the maintainer opened the Chukyo metropolitan area's file in a release build on 2026-10-11, with no picture kept, and found the map to follow a slider while it is dragged, sixteen indicators to be in view in the window as it opens, where A004 estimated about thirteen, and what is read out to keep up with the pointer. A slider at 0 could be told from one at 0.1 on the scale the plan then had, which the maintainer found unnatural next to 0; the scale was changed to the one R003 now states, and the maintainer chose it looking at the tool the same day.
 - **The tool still leaves no file behind, and no commit of the phase carries a picture or a value from a real file.** — verifies R009, R010.
   - Check: the code read for what it writes, and the check before each push that `CLAUDE.md` asks for.
+  - Evidence: a search of `src` for a call that creates or writes a file finds none outside a test that writes CSV into memory; the phase changes neither `Cargo.toml` nor `Cargo.lock`, so eframe's `persistence` feature is still left out and no state of the window, the multipliers included, is saved. The tests the phase adds make their input in code, the test on real files reads them from the folder it is given and prints no value, and each push of the phase was preceded by the check `CLAUDE.md` asks for.
 
 ## Open questions
 
