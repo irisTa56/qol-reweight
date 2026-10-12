@@ -9,18 +9,19 @@ publish = false
 [dependencies]
 colorous = "1.0.16"
 csv = "1.4.0"
-# Four of the default features, and not the others, which serve a screen
-# reader, the web, and Wayland:
+# Four of the default features, and not the others: those that serve the
+# web, and `x11` and `wayland`, which a Linux build does without.
+# - `accesskit`: tells a screen reader what the window holds. On Linux its
+#   `accesskit_winit` has winit built for X11 and for Wayland both, one of
+#   which winit needs there.
 # - `default_fonts`: egui's own fonts, which draw what the Japanese font lacks
 # - `links`: opens a link in the browser when it is clicked
 # - `wgpu`: draws the window
-# - `x11`: Linux builds with it or with `wayland` and with neither fails, and
-#   CI builds there, though the tool is checked on macOS only
 eframe = { version = "0.36.2", default-features = false, features = [
+    "accesskit",
     "default_fonts",
     "links",
     "wgpu",
-    "x11",
 ] }
 # What reads the fonts installed on the system, and not `fontconfig`, which
 # reads where Linux says its fonts are: the font looked for is one macOS has.

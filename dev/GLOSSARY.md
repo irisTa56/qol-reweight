@@ -45,6 +45,7 @@ The first is e-Stat's, from its [boundary data](https://www.e-stat.go.jp/gis/sta
 | In the code | Japanese term |
 | --- | --- |
 | base map | `ベースマップ` |
+| map, as a screen reader names it | `地図` |
 | legend | `凡例` |
 | what the colours show | `色で表す値` |
 | weighted sum | `重み付き合計` |

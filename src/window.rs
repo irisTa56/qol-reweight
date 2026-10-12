@@ -4,7 +4,7 @@
 
 use eframe::egui::{
     CentralPanel, ComboBox, Context, Frame, InnerResponse, Label, Margin, Panel, PopupAnchor,
-    Response, ScrollArea, Slider, Tooltip, Ui, ViewportBuilder,
+    Response, ScrollArea, Slider, Tooltip, Ui, ViewportBuilder, WidgetInfo, WidgetType,
 };
 use eframe::epaint::text::FontPriority;
 use eframe::{App, NativeOptions};
@@ -47,6 +47,9 @@ const ALL_ZEROS_LABEL: &str = asset::text!("all-zeros-label.txt");
 /// What the screen puts over the slider that sets how much of the base map
 /// the meshes cover.
 const OPACITY_LABEL: &str = asset::text!("opacity-label.txt");
+
+/// What the map is called to whoever has the screen read out.
+const MAP_LABEL: &str = asset::text!("map-label.txt");
 
 /// How wide the panel with the legend and that pull-down is, in points.
 const CHOICES_WIDTH: f32 = 240.0;
@@ -173,6 +176,8 @@ impl Window {
     /// on, where it is on one.
     fn show_the_map(&mut self, ui: &mut Ui) {
         let map = self.draw_the_map(ui);
+        map.response
+            .widget_info(|| WidgetInfo::labeled(WidgetType::Image, true, MAP_LABEL));
         let pointed = map
             .inner
             .and_then(|pointer| HalfMesh::holding(pointer.y(), pointer.x()))
@@ -443,40 +448,50 @@ mod tests {
         harness
     }
 
-    /// Each drawing of the window's meshes: the rectangle it is clipped to,
-    /// which is the map's, and each corner of each square with its colour.
-    /// A drawing is told by being the very shape the window's layer makes
-    /// where a map in that rectangle places it, as the legend's bar, which
-    /// is triangles too, is not. The layer and the map's memory are read
-    /// after the frame and are what it drew with: the window colours the
-    /// meshes before it draws the map, and the map moves before it draws.
-    fn drawings_of_the_meshes(window: &Harness<'_, Option<Window>>) -> Vec<(Rect, Vec<Vertex>)> {
+    /// Where the map is in the window.
+    fn map_rect(window: &Harness<'_, Option<Window>>) -> Rect {
+        window.get_by_role_and_label(Role::Image, MAP_LABEL).rect()
+    }
+
+    /// Each drawing of the window's meshes, with the map at `map`: the
+    /// rectangle it is clipped to, and each corner of each square with its
+    /// colour. A drawing is told by being the very shape the window's layer
+    /// makes where a map there places it, as the legend's bar, which is
+    /// triangles too, is not. The layer and the map's memory are read after
+    /// the frame and are what it drew with: the window colours the meshes
+    /// before it draws the map, and the map moves before it draws.
+    fn drawings_of_the_meshes(
+        window: &Harness<'_, Option<Window>>,
+        map: Rect,
+    ) -> Vec<(Rect, Vec<Vertex>)> {
         let state = window.state().as_ref().expect("the harness has the window");
+        let projector = Projector::new(map, &state.memory, state.centre);
+        let expected = state.layer.shape(&projector);
         let drawings = window.output().shapes.iter().filter_map(|clipped| {
             let Shape::Mesh(triangles) = &clipped.shape else {
                 return None;
             };
-            let projector = Projector::new(clipped.clip_rect, &state.memory, state.centre);
-            (clipped.shape == state.layer.shape(&projector))
-                .then(|| (clipped.clip_rect, triangles.vertices.clone()))
+            (clipped.shape == expected).then(|| (clipped.clip_rect, triangles.vertices.clone()))
         });
         drawings.collect()
     }
 
-    /// What the window draws of the meshes: the map's rectangle, and each
-    /// corner of each square with its colour.
-    fn meshes_drawn(window: &Harness<'_, Option<Window>>) -> (Rect, Vec<Vertex>) {
-        let drawn = drawings_of_the_meshes(window);
-        let [drawn] = drawn.as_slice() else {
+    /// What the window draws of the meshes: each corner of each square with
+    /// its colour. They are drawn on the map alone, cut off where it ends.
+    fn meshes_drawn(window: &Harness<'_, Option<Window>>) -> Vec<Vertex> {
+        let map = map_rect(window);
+        let drawn = drawings_of_the_meshes(window, map);
+        let [(clip, corners)] = drawn.as_slice() else {
             panic!("the window draws the meshes {} times", drawn.len());
         };
-        drawn.clone()
+        assert!(map.contains_rect(*clip), "{clip:?} in {map:?}");
+        corners.clone()
     }
 
     /// The legend's bar as the window draws it, four corners a rectangle:
     /// the one shape of triangles that is not the meshes.
     fn bar_drawn(window: &Harness<'_, Option<Window>>) -> Vec<Vertex> {
-        let (_, meshes) = meshes_drawn(window);
+        let meshes = meshes_drawn(window);
         let bars: Vec<_> = window
             .output()
             .shapes
@@ -497,7 +512,8 @@ mod tests {
     /// The meshes lie where the view the map opens with puts their extent.
     #[test]
     fn the_map_opens_centred_on_the_meshes() {
-        let (map, corners) = meshes_drawn(&window());
+        let window = window();
+        let (map, corners) = (map_rect(&window), meshes_drawn(&window));
         let places: Vec<_> = corners.iter().map(|corner| corner.pos).collect();
         let squares = Rect::from_points(&places);
 
@@ -574,7 +590,7 @@ mod tests {
         let mut window = window_with(dataset_of(&MESHES, &FILE), |context| {
             Some(HttpTiles::new(TilesAt { port }, context.clone()))
         });
-        let (_, at_first) = meshes_drawn(&window);
+        let at_first = meshes_drawn(&window);
 
         let asked = Instant::now();
         while server.calls.load(Ordering::SeqCst) == 0 {
@@ -591,7 +607,7 @@ mod tests {
             window.step();
         }
 
-        assert_eq!(meshes_drawn(&window).1, at_first);
+        assert_eq!(meshes_drawn(&window), at_first);
         assert_eq!(ends(&window), ["red", "blue"]);
         window.get_by_label(dataset::SOURCE);
         window.get_by_label(basemap::SOURCE);
@@ -600,7 +616,7 @@ mod tests {
     /// Which end of the scale the first mesh and the last are drawn at:
     /// each has the value furthest from zero one way.
     fn ends(window: &Harness<'_, Option<Window>>) -> [&'static str; 2] {
-        let (_, corners) = meshes_drawn(window);
+        let corners = meshes_drawn(window);
         [0, corners.len() - 4].map(|corner| {
             let colour = corners[corner].color;
             if colour.r() > colour.b() + 30 {
@@ -751,12 +767,12 @@ mod tests {
     fn setting_a_multiplier_colours_the_meshes_by_the_new_weighted_sums() {
         let mut window = window_of_sums();
         assert_eq!([multiplier(&window, 0), multiplier(&window, 1)], [1.0; 2]);
-        let (_, at_first) = meshes_drawn(&window);
+        let at_first = meshes_drawn(&window);
 
         // Ten times the first indicator: 1.7, 2.1 and -4.4.
         slide_multiplier_to(&mut window, 0, 1.0);
         assert_eq!(multiplier(&window, 0), 10.0);
-        let (_, by_slider) = meshes_drawn(&window);
+        let by_slider = meshes_drawn(&window);
         assert_ne!(by_slider, at_first);
         window.get_by_label("+4.4");
         point_at(&mut window, 1);
@@ -769,7 +785,7 @@ mod tests {
         assert_eq!([multiplier(&window, 0), multiplier(&window, 1)], [1.0, 1.1]);
         let added = (0.2_f64 + 0.1 * 1.1).to_string();
         assert_ne!(added, "0.31");
-        assert_ne!(meshes_drawn(&window).1, by_slider);
+        assert_ne!(meshes_drawn(&window), by_slider);
         window.get_by_label("+0.87");
         point_at(&mut window, 1);
         window.get_by_label("0.31");
@@ -787,7 +803,7 @@ mod tests {
         window.get_by_label(ALL_ONES_LABEL).click();
         window.run();
         assert_eq!([multiplier(&window, 0), multiplier(&window, 1)], [1.0; 2]);
-        assert_eq!(meshes_drawn(&window).1, at_first);
+        assert_eq!(meshes_drawn(&window), at_first);
         window.get_by_label("+0.8");
         point_at(&mut window, 1);
         window.get_by_label("0.3");
@@ -853,7 +869,7 @@ mod tests {
         };
         for published in ["Total", "Floods"] {
             choose(&mut window, published);
-            let (_, shown) = meshes_drawn(&window);
+            let shown = meshes_drawn(&window);
             assert_eq!(disabled(&window), [true; 6], "{published}");
 
             slide_multiplier_to(&mut window, 1, 0.0);
@@ -867,7 +883,7 @@ mod tests {
                 [10.0, 1.0],
                 "{published}"
             );
-            assert_eq!(meshes_drawn(&window).1, shown, "{published}");
+            assert_eq!(meshes_drawn(&window), shown, "{published}");
         }
 
         choose(&mut window, WEIGHTED_SUM_LABEL);
@@ -891,7 +907,7 @@ mod tests {
     /// pull-down, and the buttons stay where they were meanwhile.
     #[test]
     fn the_multipliers_leave_the_map_where_it_was_and_scroll_by_themselves() {
-        assert_eq!(meshes_drawn(&window()).0, MAP_BEFORE);
+        assert_eq!(map_rect(&window()), MAP_BEFORE);
 
         let same: &[f64] = &[0.25, 0.25, 0.25];
         let long = " with a name that goes on".repeat(5);
@@ -905,7 +921,7 @@ mod tests {
         file.push(("Y00", "The last", &[3.0, 0.0, -3.0]));
         file.push(("QOL", "Total", &[2.0, 0.5, -1.0]));
         let mut window = window_on(dataset_of(&MESHES, &file));
-        let (map, at_first) = meshes_drawn(&window);
+        let (map, at_first) = (map_rect(&window), meshes_drawn(&window));
         assert_eq!(map, MAP_BEFORE);
 
         let above = |window: &Harness<'_, Option<Window>>| {
@@ -945,7 +961,7 @@ mod tests {
 
         slide_multiplier_to(&mut window, last, 1.0);
         assert_eq!(multiplier(&window, last), 10.0);
-        let (map, moved) = meshes_drawn(&window);
+        let (map, moved) = (map_rect(&window), meshes_drawn(&window));
         assert_eq!(map, MAP_BEFORE);
         assert_ne!(moved, at_first);
         assert_eq!(above(&window), before);
@@ -956,11 +972,11 @@ mod tests {
     #[test]
     fn the_map_follows_a_slider_while_it_is_held() {
         let mut window = window_of_sums();
-        let (_, at_first) = meshes_drawn(&window);
+        let at_first = meshes_drawn(&window);
         let slider = multiplier_slider(&window, 0);
         window.drag_at(slider.right_center());
         window.run();
-        assert_ne!(meshes_drawn(&window).1, at_first);
+        assert_ne!(meshes_drawn(&window), at_first);
         window.get_by_label("+4.4");
         window.drop_at(slider.right_center());
         window.run();
@@ -1118,7 +1134,7 @@ mod tests {
 
         let short = window();
         let room = |window: &Harness<'_, Option<Window>>| {
-            let (map, _) = meshes_drawn(window);
+            let map = map_rect(window);
             (window.get_by_role(Role::ComboBox).rect(), map)
         };
         let mut window = window_on(dataset_of(&MESHES, &file));
@@ -1157,7 +1173,7 @@ mod tests {
     /// How much of the base map the first mesh's square covers, and the
     /// legend's bar past its ground, each of 255.
     fn covered(window: &Harness<'_, Option<Window>>) -> [u8; 2] {
-        let (_, corners) = meshes_drawn(window);
+        let corners = meshes_drawn(window);
         let bar = bar_drawn(window)[4].color;
         [corners[0].color.a(), bar.a()]
     }
@@ -1206,7 +1222,7 @@ mod tests {
     /// Moves the pointer to the middle of the square drawn for the mesh at
     /// `at` in [`MESHES`], and says where that is.
     fn point_at(window: &mut Harness<'_, Option<Window>>, at: usize) -> Pos2 {
-        let (_, corners) = meshes_drawn(window);
+        let corners = meshes_drawn(window);
         let places: Vec<_> = corners[4 * at..][..4]
             .iter()
             .map(|corner| corner.pos)
@@ -1288,7 +1304,7 @@ mod tests {
         point_at(&mut window, 2);
         window.get_by_label(MESHES[2]);
 
-        let (map, _) = meshes_drawn(&window);
+        let map = map_rect(&window);
         window.hover_at(map.left_top() + eframe::egui::vec2(5.0, 5.0));
         window.run();
         assert!(!reads_out(&window, 2));
@@ -1301,7 +1317,7 @@ mod tests {
     #[test]
     fn pointing_at_the_panel_over_a_mesh_reads_out_nothing() {
         let mut window = window();
-        let (map, corners) = meshes_drawn(&window);
+        let (map, corners) = (map_rect(&window), meshes_drawn(&window));
         let places: Vec<_> = corners[8..].iter().map(|corner| corner.pos).collect();
         let from = Rect::from_points(&places).center();
         let to = eframe::egui::pos2(map.left() / 2.0, from.y);
@@ -1318,13 +1334,13 @@ mod tests {
         window.drop_at(to);
         window.run_steps(10);
 
-        let (map, corners) = meshes_drawn(&window);
+        let (map, corners) = (map_rect(&window), meshes_drawn(&window));
         let places: Vec<_> = corners[8..].iter().map(|corner| corner.pos).collect();
         let square = Rect::from_points(&places);
         assert!(square.right() < map.left(), "{square:?} beside {map:?}");
         window.hover_at(square.center());
         window.run_steps(3);
-        assert_eq!(meshes_drawn(&window).1, corners, "the map came to rest");
+        assert_eq!(meshes_drawn(&window), corners, "the map came to rest");
         assert!(!reads_out(&window, 2));
     }
 
@@ -1345,7 +1361,7 @@ mod tests {
             .collect();
         file.push(("QOL", "Total", &[2.0, 0.5, -1.0]));
         let mut window = window_on(dataset_of(&MESHES, &file));
-        let (_, corners) = meshes_drawn(&window);
+        let corners = meshes_drawn(&window);
         let places: Vec<_> = corners[8..].iter().map(|corner| corner.pos).collect();
         let mesh = Rect::from_points(&places).center();
 
@@ -1381,7 +1397,7 @@ mod tests {
         let mut window = window_on(dataset);
         choose(&mut window, "Total");
         let room = |window: &Harness<'_, Option<Window>>| {
-            let (map, _) = meshes_drawn(window);
+            let map = map_rect(window);
             (window.get_by_role(Role::ComboBox).rect(), map)
         };
         let without = room(&window);
@@ -1458,12 +1474,12 @@ mod tests {
     /// ordinary values has it.
     #[test]
     fn a_mark_too_long_for_the_legend_leaves_the_map_where_it_is() {
-        let (map, _) = meshes_drawn(&window());
+        let map = map_rect(&window());
         for reach in [1e-300, 1e300] {
             let values: &[f64] = &[-reach, 0.0, reach];
             let mut window = window_on(dataset_of(&MESHES, &[("QOL", "Total", values)]));
             choose(&mut window, "Total");
-            assert_eq!(meshes_drawn(&window).0, map, "a reach of {reach:e}");
+            assert_eq!(map_rect(&window), map, "a reach of {reach:e}");
         }
     }
 
@@ -1664,7 +1680,13 @@ mod tests {
                 shown(&window).as_deref() == Some(WEIGHTED_SUM_LABEL),
                 "{name}: the weighted sum is not shown first"
             );
-            let drawings = drawings_of_the_meshes(&window);
+            let map = window
+                .query_all_by_role_and_label(Role::Image, MAP_LABEL)
+                .next();
+            let Some(map) = map else {
+                panic!("{name}: the window has no map");
+            };
+            let drawings = drawings_of_the_meshes(&window, map.rect());
             let squares = drawings.iter().map(|(_, corners)| corners.len());
             assert!(
                 squares.eq([4 * count]),
