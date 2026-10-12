@@ -383,7 +383,7 @@ impl App for Window {
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
     use eframe::egui::accesskit::Role;
-    use eframe::egui::{FontFamily, FontId, Key, OutputCommand, Pos2, Rect, Shape};
+    use eframe::egui::{Color32, FontFamily, FontId, Key, OutputCommand, Pos2, Rect, Shape};
     use eframe::epaint::Vertex;
     use egui_kittest::Harness;
     use egui_kittest::kittest::{NodeT as _, Queryable as _};
@@ -454,56 +454,59 @@ mod tests {
     }
 
     /// Each drawing of the window's meshes, with the map at `map`: the
-    /// rectangle it is clipped to, and each corner of each square with its
-    /// colour. A drawing is told by being the very shape the window's layer
-    /// makes where a map there places it, as the legend's bar, which is
-    /// triangles too, is not. The layer and the map's memory are read after
-    /// the frame and are what it drew with: the window colours the meshes
-    /// before it draws the map, and the map moves before it draws.
+    /// rectangle it is clipped to, each corner of each square with its
+    /// colour, and whether it is the very shape the window's layer makes
+    /// where a map there places it. A drawing is told by having the layer's
+    /// colours corner for corner, wherever it is, as the legend's bar and
+    /// the shade at the end of a list that scrolls, triangles too, have
+    /// not. The layer and the map's memory are read after the frame and are
+    /// what it drew with: the window colours the meshes before it draws the
+    /// map, and the map moves before it draws.
     fn drawings_of_the_meshes(
         window: &Harness<'_, Option<Window>>,
         map: Rect,
-    ) -> Vec<(Rect, Vec<Vertex>)> {
+    ) -> Vec<(Rect, Vec<Vertex>, bool)> {
         let state = window.state().as_ref().expect("the harness has the window");
         let projector = Projector::new(map, &state.memory, state.centre);
         let expected = state.layer.shape(&projector);
+        let Shape::Mesh(placed) = &expected else {
+            panic!("the layer is not drawn as triangles");
+        };
+        let colours = |corners: &[Vertex]| corners.iter().map(|corner| corner.color).collect();
+        let layers: Vec<Color32> = colours(&placed.vertices);
         let drawings = window.output().shapes.iter().filter_map(|clipped| {
             let Shape::Mesh(triangles) = &clipped.shape else {
                 return None;
             };
-            (clipped.shape == expected).then(|| (clipped.clip_rect, triangles.vertices.clone()))
+            let corners = &triangles.vertices;
+            (colours(corners) == layers).then(|| {
+                (
+                    clipped.clip_rect,
+                    corners.clone(),
+                    clipped.shape == expected,
+                )
+            })
         });
         drawings.collect()
     }
 
     /// What the window draws of the meshes: each corner of each square with
-    /// its colour. They are drawn on the map alone, cut off where it ends.
+    /// its colour. They are drawn once, on the map alone and cut off where
+    /// it ends.
     fn meshes_drawn(window: &Harness<'_, Option<Window>>) -> Vec<Vertex> {
         let map = map_rect(window);
         let drawn = drawings_of_the_meshes(window, map);
-        let [(clip, corners)] = drawn.as_slice() else {
+        let [(clip, corners, in_place)] = drawn.as_slice() else {
             panic!("the window draws the meshes {} times", drawn.len());
         };
+        assert!(in_place, "the meshes are not where the map places them");
         assert!(map.contains_rect(*clip), "{clip:?} in {map:?}");
-        let triangles = triangles_on(window, map);
-        assert_eq!(triangles, 1, "the map has triangles besides the meshes");
         corners.clone()
     }
 
-    /// How many shapes of triangles the window draws on the map at `map`.
-    /// The meshes are one, and a second would be them drawn again somewhere
-    /// else: a tile is triangles too, but no map of these tests is given
-    /// one.
-    fn triangles_on(window: &Harness<'_, Option<Window>>, map: Rect) -> usize {
-        let shapes = window.output().shapes.iter();
-        let on_the_map = shapes.filter(|clipped| {
-            matches!(clipped.shape, Shape::Mesh(_)) && map.contains_rect(clipped.clip_rect)
-        });
-        on_the_map.count()
-    }
-
     /// The legend's bar as the window draws it, four corners a rectangle:
-    /// the one shape of triangles that is not the meshes.
+    /// the one shape of triangles that is not the meshes, in a window whose
+    /// list of multipliers has no need to scroll.
     fn bar_drawn(window: &Harness<'_, Option<Window>>) -> Vec<Vertex> {
         let meshes = meshes_drawn(window);
         let bars: Vec<_> = window
@@ -1702,9 +1705,11 @@ mod tests {
             };
             let map = map.rect();
             let drawings = drawings_of_the_meshes(&window, map);
-            let squares = drawings.iter().map(|(_, corners)| corners.len());
+            let squares = drawings
+                .iter()
+                .map(|(_, corners, in_place)| (corners.len(), *in_place));
             assert!(
-                squares.eq([4 * count]) && triangles_on(&window, map) == 1,
+                squares.eq([(4 * count, true)]),
                 "{name}: not every mesh is drawn once"
             );
 
