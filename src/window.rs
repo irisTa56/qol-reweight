@@ -485,7 +485,21 @@ mod tests {
             panic!("the window draws the meshes {} times", drawn.len());
         };
         assert!(map.contains_rect(*clip), "{clip:?} in {map:?}");
+        let triangles = triangles_on(window, map);
+        assert_eq!(triangles, 1, "the map has triangles besides the meshes");
         corners.clone()
+    }
+
+    /// How many shapes of triangles the window draws on the map at `map`.
+    /// The meshes are one, and a second would be them drawn again somewhere
+    /// else: a tile is triangles too, but no map of these tests is given
+    /// one.
+    fn triangles_on(window: &Harness<'_, Option<Window>>, map: Rect) -> usize {
+        let shapes = window.output().shapes.iter();
+        let on_the_map = shapes.filter(|clipped| {
+            matches!(clipped.shape, Shape::Mesh(_)) && map.contains_rect(clipped.clip_rect)
+        });
+        on_the_map.count()
     }
 
     /// The legend's bar as the window draws it, four corners a rectangle:
@@ -1686,10 +1700,11 @@ mod tests {
             let Some(map) = map else {
                 panic!("{name}: the window has no map");
             };
-            let drawings = drawings_of_the_meshes(&window, map.rect());
+            let map = map.rect();
+            let drawings = drawings_of_the_meshes(&window, map);
             let squares = drawings.iter().map(|(_, corners)| corners.len());
             assert!(
-                squares.eq([4 * count]),
+                squares.eq([4 * count]) && triangles_on(&window, map) == 1,
                 "{name}: not every mesh is drawn once"
             );
 
