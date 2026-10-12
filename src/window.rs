@@ -454,7 +454,7 @@ mod tests {
     }
 
     /// What the window draws of the meshes: each corner of each square with
-    /// its colour.
+    /// its colour. They are drawn on the map alone, cut off where it ends.
     fn meshes_drawn(window: &Harness<'_, Option<Window>>) -> Vec<Vertex> {
         let drawn: Vec<_> = window
             .output()
@@ -463,15 +463,17 @@ mod tests {
             .filter_map(|clipped| match &clipped.shape {
                 // Four corners a mesh: the legend's bar is triangles too.
                 Shape::Mesh(triangles) if triangles.vertices.len() == 4 * MESHES.len() => {
-                    Some(triangles.vertices.clone())
+                    Some((clipped.clip_rect, &triangles.vertices))
                 }
                 _ => None,
             })
             .collect();
-        let [drawn] = drawn.as_slice() else {
+        let [(clip, corners)] = drawn.as_slice() else {
             panic!("the window draws the meshes {} times", drawn.len());
         };
-        drawn.clone()
+        let map = map_rect(window);
+        assert!(map.contains_rect(*clip), "{clip:?} in {map:?}");
+        (*corners).clone()
     }
 
     /// The meshes lie where the view the map opens with puts their extent.
