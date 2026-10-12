@@ -3,8 +3,8 @@
 //! sources.
 
 use eframe::egui::{
-    CentralPanel, ComboBox, Context, Frame, Label, Margin, Panel, PopupAnchor, ScrollArea, Slider,
-    Tooltip, Ui, ViewportBuilder,
+    CentralPanel, ComboBox, Context, Frame, InnerResponse, Label, Margin, Panel, PopupAnchor,
+    Response, ScrollArea, Slider, Tooltip, Ui, ViewportBuilder,
 };
 use eframe::epaint::text::FontPriority;
 use eframe::{App, NativeOptions};
@@ -164,34 +164,49 @@ impl Window {
                 ui.add_space(CHOICES_SPACE);
                 self.set_the_multipliers(ui);
             });
-        CentralPanel::default().frame(Frame::NONE).show(ui, |ui| {
-            let tiles = self.tiles.as_mut().map(|tiles| tiles as &mut dyn Tiles);
-            let layer = &self.layer;
-            let map =
-                Map::new(tiles, &mut self.memory, self.centre).show(ui, |ui, map, projector, _| {
-                    ui.painter().add(layer.shape(projector));
-                    // A map being dragged counts as pointed at wherever
-                    // the pointer has gone, so the pointer's place is asked
-                    // for as well.
-                    let pointer = map.hover_pos().filter(|at| map.rect.contains(*at))?;
-                    Some(projector.unproject(pointer.to_vec2()))
-                });
-            let pointed = map
-                .inner
-                .and_then(|pointer| HalfMesh::holding(pointer.y(), pointer.x()))
-                .and_then(|square| self.dataset.mesh_at(square));
-            if let Some(pointed) = pointed {
-                let (context, map) = (ui.ctx().clone(), map.response);
-                Tooltip::always_open(context, map.layer_id, map.id, PopupAnchor::Pointer)
-                    .gap(READOUT_GAP)
-                    .show(|ui| {
-                        // As wide for every mesh, so it does not change
-                        // sides or wrap anew from one mesh to the next.
-                        ui.set_width(READOUT_WIDTH);
-                        ui.add(self.readout(pointed))
-                    });
-            }
-        });
+        CentralPanel::default()
+            .frame(Frame::NONE)
+            .show(ui, |ui| self.show_the_map(ui));
+    }
+
+    /// The map, and beside the pointer what the file says of the mesh it is
+    /// on, where it is on one.
+    fn show_the_map(&mut self, ui: &mut Ui) {
+        let map = self.draw_the_map(ui);
+        let pointed = map
+            .inner
+            .and_then(|pointer| HalfMesh::holding(pointer.y(), pointer.x()))
+            .and_then(|square| self.dataset.mesh_at(square));
+        if let Some(pointed) = pointed {
+            self.read_out(ui, &map.response, pointed);
+        }
+    }
+
+    /// The base map with the meshes on it, and with it the place on the
+    /// ground the pointer is over, or none where the pointer is off the map.
+    fn draw_the_map(&mut self, ui: &mut Ui) -> InnerResponse<Option<Position>> {
+        let tiles = self.tiles.as_mut().map(|tiles| tiles as &mut dyn Tiles);
+        let layer = &self.layer;
+        Map::new(tiles, &mut self.memory, self.centre).show(ui, |ui, map, projector, _| {
+            ui.painter().add(layer.shape(projector));
+            // A map being dragged counts as pointed at wherever the pointer
+            // has gone, so the pointer's place is asked for as well.
+            let pointer = map.hover_pos().filter(|at| map.rect.contains(*at))?;
+            Some(projector.unproject(pointer.to_vec2()))
+        })
+    }
+
+    /// Beside the pointer on `map`, what is read out of the mesh at `pointed`
+    /// among the dataset's.
+    fn read_out(&self, ui: &Ui, map: &Response, pointed: usize) {
+        Tooltip::always_open(ui.ctx().clone(), map.layer_id, map.id, PopupAnchor::Pointer)
+            .gap(READOUT_GAP)
+            .show(|ui| {
+                // As wide for every mesh, so it does not change sides or
+                // wrap anew from one mesh to the next.
+                ui.set_width(READOUT_WIDTH);
+                ui.add(self.readout(pointed))
+            });
     }
 
     /// What is read out of the mesh at `pointed` among the dataset's: its
@@ -214,15 +229,27 @@ impl Window {
         }
     }
 
-    /// The legend of what is shown, under it a pull-down to choose from, the
-    /// weighted sum, then the total and each indicator of the file, and
-    /// under that a slider for how much of the base map the meshes cover,
-    /// from none of it to all. A choice colours the meshes anew, and so does
-    /// a move of the slider.
+    /// The legend of what is shown, under it the pull-down to choose it
+    /// from, and under that the slider for how much of the base map the
+    /// meshes cover. A choice colours the meshes anew, and so does a move of
+    /// the slider.
     fn choose_what_is_shown(&mut self, ui: &mut Ui) {
         ui.add_space(CHOICES_SPACE);
         ui.add(Legend::of(self.layer.paint()));
         ui.add_space(CHOICES_SPACE);
+        let chosen = self.choose_from_the_pull_down(ui);
+        ui.add_space(CHOICES_SPACE);
+        let opacity = self.slide_the_opacity(ui);
+        if chosen != self.shown || opacity != self.opacity {
+            self.shown = chosen;
+            self.opacity = opacity;
+            self.colour_the_meshes();
+        }
+    }
+
+    /// The pull-down under its heading, and what is chosen in it: the
+    /// weighted sum, then the total and each indicator of the file.
+    fn choose_from_the_pull_down(&self, ui: &mut Ui) -> Shown {
         ui.strong(SHOWN_LABEL);
         let series = self.dataset.series();
         let mut chosen = self.shown;
@@ -243,16 +270,23 @@ impl Window {
                     ui.selectable_value(&mut chosen, Shown::Published(at), series.name());
                 }
             });
-        ui.add_space(CHOICES_SPACE);
+        chosen
+    }
+
+    /// The slider under its heading, and how much of the base map it has the
+    /// meshes cover, from none of it to all.
+    fn slide_the_opacity(&self, ui: &mut Ui) -> u8 {
         ui.strong(OPACITY_LABEL);
         let mut opacity = self.opacity;
         ui.spacing_mut().slider_width = ui.available_width();
         ui.add(Slider::new(&mut opacity, 0..=u8::MAX).show_value(false));
-        if chosen != self.shown || opacity != self.opacity {
-            self.shown = chosen;
-            self.opacity = opacity;
-            self.layer = MeshLayer::showing(self.dataset.meshes(), self.values(), opacity);
-        }
+        opacity
+    }
+
+    /// Gives each mesh the colour of the value shown for it, over as much of
+    /// the base map as the meshes cover.
+    fn colour_the_meshes(&mut self) {
+        self.layer = MeshLayer::showing(self.dataset.meshes(), self.values(), self.opacity);
     }
 
     /// The two buttons, and under them each indicator's name over a slider
@@ -267,7 +301,7 @@ impl Window {
         ScrollArea::vertical().show(ui, |ui| self.set_each_multiplier(ui, settable));
         if self.multipliers != before {
             self.sums = self.multipliers.weighted_sums(&self.dataset);
-            self.layer = MeshLayer::showing(self.dataset.meshes(), self.values(), self.opacity);
+            self.colour_the_meshes();
         }
     }
 
