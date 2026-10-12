@@ -383,7 +383,7 @@ impl App for Window {
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
     use eframe::egui::accesskit::Role;
-    use eframe::egui::{FontFamily, FontId, Key, OutputCommand, Pos2, Rect, Shape};
+    use eframe::egui::{Color32, FontFamily, FontId, Key, OutputCommand, Pos2, Rect, Shape};
     use eframe::epaint::Vertex;
     use egui_kittest::Harness;
     use egui_kittest::kittest::{NodeT as _, Queryable as _};
@@ -453,27 +453,77 @@ mod tests {
         window.get_by_role_and_label(Role::Image, MAP_LABEL).rect()
     }
 
+    /// Each drawing of the window's meshes, with the map at `map`: the
+    /// rectangle it is clipped to, each corner of each square with its
+    /// colour, and whether it is the very shape the window's layer makes
+    /// where a map there places it. A drawing is told by having the layer's
+    /// colours corner for corner, wherever it is, as the legend's bar and
+    /// the shade at the end of a list that scrolls, triangles too, have
+    /// not. The layer and the map's memory are read after the frame and are
+    /// what it drew with: the window colours the meshes before it draws the
+    /// map, and the map moves before it draws.
+    fn drawings_of_the_meshes(
+        window: &Harness<'_, Option<Window>>,
+        map: Rect,
+    ) -> Vec<(Rect, Vec<Vertex>, bool)> {
+        let state = window.state().as_ref().expect("the harness has the window");
+        let projector = Projector::new(map, &state.memory, state.centre);
+        let expected = state.layer.shape(&projector);
+        let Shape::Mesh(placed) = &expected else {
+            panic!("the layer is not drawn as triangles");
+        };
+        let colours = |corners: &[Vertex]| corners.iter().map(|corner| corner.color).collect();
+        let layers: Vec<Color32> = colours(&placed.vertices);
+        let drawings = window.output().shapes.iter().filter_map(|clipped| {
+            let Shape::Mesh(triangles) = &clipped.shape else {
+                return None;
+            };
+            let corners = &triangles.vertices;
+            (colours(corners) == layers).then(|| {
+                (
+                    clipped.clip_rect,
+                    corners.clone(),
+                    clipped.shape == expected,
+                )
+            })
+        });
+        drawings.collect()
+    }
+
     /// What the window draws of the meshes: each corner of each square with
-    /// its colour. They are drawn on the map alone, cut off where it ends.
+    /// its colour. They are drawn once, on the map alone and cut off where
+    /// it ends.
     fn meshes_drawn(window: &Harness<'_, Option<Window>>) -> Vec<Vertex> {
-        let drawn: Vec<_> = window
+        let map = map_rect(window);
+        let drawn = drawings_of_the_meshes(window, map);
+        let [(clip, corners, in_place)] = drawn.as_slice() else {
+            panic!("the window draws the meshes {} times", drawn.len());
+        };
+        assert!(in_place, "the meshes are not where the map places them");
+        assert!(map.contains_rect(*clip), "{clip:?} in {map:?}");
+        corners.clone()
+    }
+
+    /// The legend's bar as the window draws it, four corners a rectangle:
+    /// the one shape of triangles that is not the meshes, in a window whose
+    /// list of multipliers has no need to scroll.
+    fn bar_drawn(window: &Harness<'_, Option<Window>>) -> Vec<Vertex> {
+        let meshes = meshes_drawn(window);
+        let bars: Vec<_> = window
             .output()
             .shapes
             .iter()
             .filter_map(|clipped| match &clipped.shape {
-                // Four corners a mesh: the legend's bar is triangles too.
-                Shape::Mesh(triangles) if triangles.vertices.len() == 4 * MESHES.len() => {
-                    Some((clipped.clip_rect, &triangles.vertices))
+                Shape::Mesh(triangles) if triangles.vertices != meshes => {
+                    Some(triangles.vertices.clone())
                 }
                 _ => None,
             })
             .collect();
-        let [(clip, corners)] = drawn.as_slice() else {
-            panic!("the window draws the meshes {} times", drawn.len());
+        let [bar] = bars.as_slice() else {
+            panic!("the window draws {} bars of colours", bars.len());
         };
-        let map = map_rect(window);
-        assert!(map.contains_rect(*clip), "{clip:?} in {map:?}");
-        (*corners).clone()
+        bar.clone()
     }
 
     /// The meshes lie where the view the map opens with puts their extent.
@@ -1141,17 +1191,7 @@ mod tests {
     /// legend's bar past its ground, each of 255.
     fn covered(window: &Harness<'_, Option<Window>>) -> [u8; 2] {
         let corners = meshes_drawn(window);
-        let bar = window
-            .output()
-            .shapes
-            .iter()
-            .find_map(|clipped| match &clipped.shape {
-                Shape::Mesh(triangles) if triangles.vertices.len() != 4 * MESHES.len() => {
-                    Some(triangles.vertices[4].color)
-                }
-                _ => None,
-            })
-            .expect("the window draws the legend's bar");
+        let bar = bar_drawn(window)[4].color;
         [corners[0].color.a(), bar.a()]
     }
 
@@ -1466,20 +1506,7 @@ mod tests {
     fn the_legend_puts_each_mark_under_the_colour_it_stands_for() {
         let mut window = window();
         choose(&mut window, "Total");
-        let bars: Vec<_> = window
-            .output()
-            .shapes
-            .iter()
-            .filter_map(|clipped| match &clipped.shape {
-                Shape::Mesh(triangles) if triangles.vertices.len() != 4 * MESHES.len() => {
-                    Some(triangles.vertices.clone())
-                }
-                _ => None,
-            })
-            .collect();
-        let [bar] = bars.as_slice() else {
-            panic!("the window draws {} bars of colours", bars.len());
-        };
+        let bar = bar_drawn(&window);
         // The first four corners are the bar's ground; a step of colour
         // follows for each four after them, from the left.
         let (left, right) = (bar[4], bar[bar.len() - 1]);
@@ -1670,16 +1697,21 @@ mod tests {
                 shown(&window).as_deref() == Some(WEIGHTED_SUM_LABEL),
                 "{name}: the weighted sum is not shown first"
             );
-            let squares = window
-                .output()
-                .shapes
+            let map = window
+                .query_all_by_role_and_label(Role::Image, MAP_LABEL)
+                .next();
+            let Some(map) = map else {
+                panic!("{name}: the window has no map");
+            };
+            let map = map.rect();
+            let drawings = drawings_of_the_meshes(&window, map);
+            let squares = drawings
                 .iter()
-                .filter(|clipped| match &clipped.shape {
-                    Shape::Mesh(triangles) => triangles.vertices.len() == 4 * count,
-                    _ => false,
-                })
-                .count();
-            assert!(squares == 1, "{name}: not every mesh is drawn once");
+                .map(|(_, corners, in_place)| (corners.len(), *in_place));
+            assert!(
+                squares.eq([(4 * count, true)]),
+                "{name}: not every mesh is drawn once"
+            );
 
             let last = offered[offered.len() - 1].as_str();
             let Some(pull_down) = window.query_all_by_role(Role::ComboBox).next() else {
