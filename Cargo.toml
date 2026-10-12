@@ -12,13 +12,11 @@ csv = "1.4.0"
 # Five of the default features, and not the others, which serve the web and
 # Wayland:
 # - `accesskit`: tells a screen reader what the window holds. On Linux its
-#   `accesskit_winit` has winit built for X11 and for Wayland both, and what
-#   draws the window is still built for X11 alone.
+#   `accesskit_winit` has winit built for X11 and for Wayland both.
 # - `default_fonts`: egui's own fonts, which draw what the Japanese font lacks
 # - `links`: opens a link in the browser when it is clicked
 # - `wgpu`: draws the window
-# - `x11`: has what draws the window built for X11 on Linux, where CI
-#   builds, though the tool is checked on macOS only
+# - `x11`: sets the type of the window under X11
 eframe = { version = "0.36.2", default-features = false, features = [
     "accesskit",
     "default_fonts",
