@@ -1,7 +1,8 @@
 name: Link check (weekly)
 
 # The full networked lychee run: every link in the repo, hitting the network,
-# same scope as `mise run check:links` locally. Kept out of ci.yml on purpose
+# same scope as `mise run check:links` locally but for the host the step below
+# excludes. Kept out of ci.yml on purpose
 # (mirroring why `check:links` is kept out of `qa:**`): it is too slow and
 # too flaky on external hosts to gate a PR. Runs weekly instead, where a
 # failure blocks no merge: a broken link fails the run, and GitHub notifies the
@@ -26,11 +27,11 @@ jobs:
       # so this one workflow staying different costs little.
       #
       # lib.rs is excluded here and not in `lychee.toml`, whose excludes this
-      # one adds to. From a GitHub-hosted runner it answers 403 with a
-      # Cloudflare challenge (`cf-mitigated: challenge`) whatever the user
-      # agent, as lychee and curl both got on 2026-10-13, and it answers 200
-      # to the same lychee version elsewhere, so `mise run check:links` goes
-      # on checking links to it.
+      # one adds to. A GitHub-hosted runner gets 403 from it: lychee did, and
+      # curl did with a Cloudflare challenge (`cf-mitigated: challenge`) under
+      # each user agent tried, those of lychee and curl and `Mozilla/5.0`
+      # (2026-10-13). The same lychee version gets 200 elsewhere, so
+      # `mise run check:links` goes on checking links to it.
       - uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
         with:
           args: --verbose --no-progress --config lychee.toml --exclude '^https://lib\.rs/' .

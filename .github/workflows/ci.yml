@@ -9,7 +9,8 @@ name: CI
 # since it scans staged changes and `secret-scan-gitleaks` below scans a pull
 # request's commits instead. Nor has `link-check:staged`, named there too: it
 # requests the links of staged files over the network, and a third-party host
-# should not gate a PR (link-check-weekly.yml runs every link instead).
+# should not gate a PR (link-check-weekly.yml requests the links instead, all
+# but those to a host it excludes).
 #
 # The weekly schedule re-runs this same workflow so a drift in something no PR
 # exercises surfaces even during a quiet week with no open PRs: the
