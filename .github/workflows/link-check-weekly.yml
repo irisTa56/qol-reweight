@@ -2,12 +2,12 @@ name: Link check (weekly)
 
 # The full networked lychee run: every link in the repo, hitting the network,
 # same scope as `mise run check:links` locally but for the host the step below
-# excludes. Kept out of ci.yml on purpose
-# (mirroring why `check:links` is kept out of `qa:**`): it is too slow and
-# too flaky on external hosts to gate a PR. Runs weekly instead, where a
-# failure blocks no merge: a broken link fails the run, and GitHub notifies the
-# user who last changed the `cron` line below. `jobSummary` (the action's
-# default) writes the results to the run's summary page.
+# excludes. Kept out of ci.yml on purpose (mirroring why `check:links` is kept
+# out of `qa:**`): it is too slow and too flaky on external hosts to gate a PR.
+# Runs weekly instead, where a failure blocks no merge: a broken link fails the
+# run, and GitHub notifies the user who last changed the `cron` line below.
+# `jobSummary` (the action's default) writes the results to the run's summary
+# page.
 
 on:
   schedule:
