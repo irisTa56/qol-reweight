@@ -1,0 +1,14 @@
+# What `qa:rust:deny` in `mise.toml` reads.
+
+[advisories]
+# zbus 6 took these three crates in and their author marked them unmaintained.
+# They come only through `accesskit_unix`, which eframe pulls in for
+# `accesskit` and which is still on zbus 5 in its latest release, so no update
+# here drops them. AccessKit ignores the same three until it moves to zbus 6:
+# https://github.com/AccessKit/accesskit/pull/834
+# An advisory of any other kind against these crates still fails the check.
+ignore = [
+    { id = "RUSTSEC-2026-0370", reason = "zvariant is unmaintained and merged into zbus 6, which accesskit_unix does not use yet" },
+    { id = "RUSTSEC-2026-0371", reason = "zbus_names is unmaintained and merged into zbus 6, which accesskit_unix does not use yet" },
+    { id = "RUSTSEC-2026-0372", reason = "zvariant_derive is unmaintained and merged into zbus 6, which accesskit_unix does not use yet" },
+]
