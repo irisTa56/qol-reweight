@@ -17,7 +17,7 @@ csv = "1.4.0"
 # - `default_fonts`: egui's own fonts, which draw what the Japanese font lacks
 # - `links`: opens a link in the browser when it is clicked
 # - `wgpu`: draws the window
-eframe = { version = "0.36.2", default-features = false, features = [
+eframe = { version = "0.37.0", default-features = false, features = [
     "accesskit",
     "default_fonts",
     "links",
@@ -28,7 +28,7 @@ eframe = { version = "0.36.2", default-features = false, features = [
 fontdb = { version = "0.24.0", default-features = false, features = ["fs", "memmap"] }
 thiserror = "2.0.21"
 unit-prefix = "0.5.2"
-walkers = "0.60.0"
+walkers = "0.63.0"
 
 [dev-dependencies]
 # `std` alone: it holds the strategies the tests use, text from a pattern among
@@ -40,7 +40,7 @@ proptest = { version = "1.11.0", default-features = false, features = ["std"] }
 # For macOS alone, as the tests that drive the window are: elsewhere the tool
 # has no font to state the map's sources in, and shows no map.
 [target.'cfg(target_os = "macos")'.dev-dependencies]
-egui_kittest = "0.36.2"
+egui_kittest = "0.37.0"
 
 # Off by default. `qa:rust:clippy` denies warnings, so what the lint reports
 # fails the check: a `pub` item in a private module, though not a `pub` field of
