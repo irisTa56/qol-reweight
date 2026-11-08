@@ -39,12 +39,6 @@ Before every push, check that no commit it would publish carries anything of thi
 
 - Never push to `main` directly; branch first, then open a pull request, which is squash-merged.
 
-## Delegation
-
-- Pass `run_in_background: true` explicitly on every background Agent call, although it is the default.
-  - Entire records a subagent's transcript only when that argument is passed ([entireio/cli#2556](https://github.com/entireio/cli/issues/2556)).
-  - The rule applies only where the Agent tool has that parameter, which [fork mode](https://code.claude.com/docs/en/sub-agents#turn-fork-mode-on-or-off) removes; in such a session, tell the user that subagents are not recorded.
-
 ## Writing conventions
 
 - Everything committed is written in English: code, comments, documents, and commit messages.
