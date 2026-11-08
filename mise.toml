@@ -40,7 +40,7 @@ git hook list pre-push 2>/dev/null | grep -qx secrets-push-scan || echo "warning
 # `shared-tasks:check` in CI says when the tasks on `main` differ from the pin's.
 [task_config]
 includes = [
-  "git::https://github.com/irisTa56/dotfiles.git//tasks?ref=619ee0c7f56c651cc169ac724f1f44607f15df70",
+  "git::https://github.com/irisTa56/dotfiles.git//tasks?ref=632f99ccd6800b34c936b77a643ebcdbd76d1553",
 ]
 
 # `**`, not `*`: mise's `*` matches a single task segment, so `qa:*` would leave
