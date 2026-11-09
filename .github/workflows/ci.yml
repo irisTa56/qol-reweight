@@ -52,10 +52,10 @@ concurrency:
   group: ci-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
-# Each job stops after 30 minutes rather than GitHub's 360, several times the
-# longest a run has taken (under 5 minutes, schedule runs included). A job
-# that hangs then ends within the half hour, and the PR it holds up shows a
-# check that ended rather than one still running.
+# Each job stops after 30 minutes rather than GitHub's 360: far above what a
+# run of these jobs takes, and short enough that a job that hangs ends within
+# the half hour, so the PR it holds up shows a check that ended rather than
+# one still running.
 jobs:
   markdown-lint:
     runs-on: ubuntu-latest
