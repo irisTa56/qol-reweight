@@ -344,10 +344,11 @@ impl Window {
         }
     }
 
-    /// How wide a multiplier's number field is at its widest: the top of
-    /// the range written out, inside the padding egui gives a button, and no
-    /// narrower than egui makes any field. A field wider than the room left
-    /// for it would widen the panel, and the panel would keep that width.
+    /// How wide a multiplier's number field is at its widest while it shows
+    /// a multiplier: the top of the range written out, inside the padding
+    /// egui gives a button, and no narrower than egui makes any field. A
+    /// field wider than the room left for it would widen the panel, and the
+    /// panel would keep that width.
     fn field_width(ui: &Ui) -> f32 {
         let (_, most) = Multipliers::RANGE.into_inner();
         let font = ui.style().drag_value_text_style.resolve(ui.style());
