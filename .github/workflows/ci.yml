@@ -52,9 +52,14 @@ concurrency:
   group: ci-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
+# Each job stops after 30 minutes rather than GitHub's 360: far above what a
+# run of these jobs takes, and short enough that a job that hangs ends within
+# the half hour, so the PR it holds up shows a check that ended rather than
+# one still running.
 jobs:
   markdown-lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
@@ -73,6 +78,7 @@ jobs:
   # in (gitleaks/gitleaks-action#236).
   secret-scan-gitleaks:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -95,6 +101,7 @@ jobs:
   # allows, leaves the push run's `event.before` out of the checkout.
   secret-scan-trufflehog:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -105,6 +112,7 @@ jobs:
 
   link-check-offline:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
@@ -116,6 +124,7 @@ jobs:
   # `qa:rust` is the aggregate of every `qa:rust:` task.
   rust-check:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
@@ -139,6 +148,7 @@ jobs:
   # check, and skipped on the schedule. Exit 2 (it could not tell) fails it too.
   shared-tasks-check:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     if: github.event_name != 'schedule'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
