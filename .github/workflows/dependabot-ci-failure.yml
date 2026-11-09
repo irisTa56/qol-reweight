@@ -36,7 +36,7 @@ jobs:
       - name: Comment on the PR
         run: |
           for pr in $PRS; do
-            gh pr comment "$pr" --repo "$REPO" --body "@$OWNER CI failed on this Dependabot PR, so its auto-merge is waiting: $RUN_URL"
+            gh pr comment "$pr" --repo "$REPO" --body "@$OWNER CI failed on this Dependabot PR: $RUN_URL"
           done
         env:
           # A Dependabot branch is in this repository, so the run lists its PR.
