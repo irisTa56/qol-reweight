@@ -56,7 +56,7 @@ fn latitude_at(northing: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use eframe::egui::{Rect, Vec2, pos2, vec2};
-    use walkers::{MapMemory, Projector};
+    use walkers::{MapMemory, MercatorProjection, Projector};
 
     use super::*;
     use crate::mesh::HalfMesh;
@@ -74,7 +74,7 @@ mod tests {
         let map = Rect::from_min_size(pos2(0.0, 0.0), SIZE);
         let mut memory = MapMemory::default();
         memory.set_zoom(view.zoom()).unwrap();
-        let projector = Projector::new(map, &memory, view.centre());
+        let projector = Projector::new(map, &MercatorProjection, &memory, view.centre());
         let south_west = projector.project(lat_lon(extent.south(), extent.west()));
         let north_east = projector.project(lat_lon(extent.north(), extent.east()));
         let area = Rect::from_two_pos(south_west.to_pos2(), north_east.to_pos2());

@@ -3,8 +3,8 @@
 //! sources.
 
 use eframe::egui::{
-    CentralPanel, ComboBox, Context, Frame, InnerResponse, Label, Margin, Panel, PopupAnchor,
-    Response, ScrollArea, Slider, Tooltip, Ui, ViewportBuilder, WidgetInfo, WidgetType,
+    CentralPanel, Color32, ComboBox, Context, Frame, InnerResponse, Label, Margin, Panel,
+    PopupAnchor, Response, Role, ScrollArea, Slider, Tooltip, Ui, ViewportBuilder, WidgetInfo,
 };
 use eframe::epaint::text::FontPriority;
 use eframe::{App, NativeOptions};
@@ -177,7 +177,7 @@ impl Window {
     fn show_the_map(&mut self, ui: &mut Ui) {
         let map = self.draw_the_map(ui);
         map.response
-            .widget_info(|| WidgetInfo::labeled(WidgetType::Image, true, MAP_LABEL));
+            .widget_info(|| WidgetInfo::labeled(Role::Image, true, MAP_LABEL));
         let pointed = map
             .inner
             .and_then(|pointer| HalfMesh::holding(pointer.y(), pointer.x()))
@@ -255,7 +255,7 @@ impl Window {
     /// The pull-down under its heading, and what is chosen in it: the
     /// weighted sum, then the total and each indicator of the file.
     fn choose_from_the_pull_down(&self, ui: &mut Ui) -> Shown {
-        ui.strong(SHOWN_LABEL);
+        let heading = ui.strong(SHOWN_LABEL);
         let series = self.dataset.series();
         let mut chosen = self.shown;
         let name = match chosen {
@@ -274,17 +274,20 @@ impl Window {
                 for (at, series) in series.iter().enumerate() {
                     ui.selectable_value(&mut chosen, Shown::Published(at), series.name());
                 }
-            });
+            })
+            .response
+            .labelled_by(heading.id);
         chosen
     }
 
     /// The slider under its heading, and how much of the base map it has the
     /// meshes cover, from none of it to all.
     fn slide_the_opacity(&self, ui: &mut Ui) -> u8 {
-        ui.strong(OPACITY_LABEL);
+        let heading = ui.strong(OPACITY_LABEL);
         let mut opacity = self.opacity;
         ui.spacing_mut().slider_width = ui.available_width();
-        ui.add(Slider::new(&mut opacity, 0..=u8::MAX).show_value(false));
+        ui.add(Slider::new(&mut opacity, 0..=u8::MAX).show_value(false))
+            .labelled_by(heading.id);
         opacity
     }
 
@@ -331,30 +334,50 @@ impl Window {
             ui.disable();
         }
         // The slider and its field share the line.
-        let field = ui.spacing().interact_size.x + ui.spacing().item_spacing.x;
+        let field = Self::field_width(ui) + ui.spacing().item_spacing.x;
         ui.spacing_mut().slider_width = ui.available_width() - field;
         for at in 0..self.dataset.indicators().len() {
             // A name too long for its line is cut short.
-            ui.add(Label::new(self.dataset.indicators()[at].name()).truncate());
-            let multiplier = Self::slide(ui, self.multipliers.each()[at]);
+            let name = ui.add(Label::new(self.dataset.indicators()[at].name()).truncate());
+            let multiplier = Self::slide(ui, self.multipliers.each()[at], &name);
             self.multipliers.set(at, multiplier);
         }
+    }
+
+    /// How wide a multiplier's number field is at its widest: the top of
+    /// the range written out, inside the padding egui gives a button, and no
+    /// narrower than egui makes any field. A field wider than the room left
+    /// for it would widen the panel, and the panel would keep that width.
+    fn field_width(ui: &Ui) -> f32 {
+        let (_, most) = Multipliers::RANGE.into_inner();
+        let font = ui.style().drag_value_text_style.resolve(ui.style());
+        let text = ui
+            .painter()
+            .layout_no_wrap(Self::write(most), font, Color32::PLACEHOLDER);
+        let padded = text.size().x + 2.0 * ui.spacing().button_padding.x;
+        padded.max(ui.spacing().interact_size.x)
+    }
+
+    /// A multiplier as its number field writes it.
+    fn write(multiplier: f64) -> String {
+        format!("{multiplier:.1}")
     }
 
     /// A slider with a number field, set at `multiplier`, and the multiplier
     /// it is moved to. The slider runs over the multiplier plus 1, from 1 to
     /// 11, whose logarithm has a place for a multiplier of 0, and the field
     /// writes and reads the multiplier itself.
-    fn slide(ui: &mut Ui, multiplier: f64) -> f64 {
+    fn slide(ui: &mut Ui, multiplier: f64, name: &Response) -> f64 {
         let (least, most) = Multipliers::RANGE.into_inner();
         let mut shifted = multiplier + 1.0;
         ui.add(
             Slider::new(&mut shifted, least + 1.0..=most + 1.0)
                 .logarithmic(true)
                 .step_by(Multipliers::STEP)
-                .custom_formatter(|shifted, _| format!("{:.1}", shifted - 1.0))
+                .custom_formatter(|shifted, _| Self::write(shifted - 1.0))
                 .custom_parser(|typed| Some(typed.trim().parse::<f64>().ok()? + 1.0)),
-        );
+        )
+        .labelled_by(name.id);
         shifted - 1.0
     }
 
@@ -386,7 +409,7 @@ mod tests {
     use eframe::egui::{Color32, FontFamily, FontId, Key, OutputCommand, Pos2, Rect, Shape};
     use eframe::epaint::Vertex;
     use egui_kittest::Harness;
-    use egui_kittest::kittest::{NodeT as _, Queryable as _};
+    use egui_kittest::kittest::{NodeT as _, Queryable as _, by};
 
     use std::collections::{HashMap, HashSet};
     use std::net::TcpListener;
@@ -396,7 +419,7 @@ mod tests {
     use std::time::{Duration, Instant};
 
     use walkers::sources::{Attribution, TileSource};
-    use walkers::{Projector, TileId, lat_lon};
+    use walkers::{MercatorProjection, Projector, TileId, lat_lon};
 
     use super::*;
     use crate::dataset::{Mesh, Series};
@@ -467,7 +490,7 @@ mod tests {
         map: Rect,
     ) -> Vec<(Rect, Vec<Vertex>, bool)> {
         let state = window.state().as_ref().expect("the harness has the window");
-        let projector = Projector::new(map, &state.memory, state.centre);
+        let projector = Projector::new(map, &MercatorProjection, &state.memory, state.centre);
         let expected = state.layer.shape(&projector);
         let Shape::Mesh(placed) = &expected else {
             panic!("the layer is not drawn as triangles");
@@ -538,7 +561,7 @@ mod tests {
         let view = View::of(extent);
         let mut memory = MapMemory::default();
         memory.set_zoom(view.zoom()).unwrap();
-        let projector = Projector::new(map, &memory, view.centre());
+        let projector = Projector::new(map, &MercatorProjection, &memory, view.centre());
         let south_west = projector.project(lat_lon(extent.south(), extent.west()));
         let north_east = projector.project(lat_lon(extent.north(), extent.east()));
         let expected = Rect::from_two_pos(south_west.to_pos2(), north_east.to_pos2());
@@ -954,10 +977,10 @@ mod tests {
         let before = above(&window);
         let last = many.len();
         // A name too long for its line is cut short and takes the one line.
+        // The name is the slider's label too, so the query takes in labels.
         let line = |name: &str| {
-            let named = window.query_all_by_label(name);
-            let mut labels = named.filter(|named| named.accesskit_node().role() == Role::Label);
-            labels.next().expect("the list names the indicator").rect()
+            let mut named = window.query_all(by().label(name).role(Role::Label).include_labels());
+            named.next().expect("the list names the indicator").rect()
         };
         let (long, short) = (line(&many[0].1), line("The last"));
         assert_eq!(long.height(), short.height());
@@ -1033,6 +1056,7 @@ mod tests {
                 delta: eframe::egui::vec2(0.0, -40.0),
                 phase: eframe::egui::TouchPhase::Move,
                 modifiers: eframe::egui::Modifiers::NONE,
+                source: eframe::egui::MouseWheelSource::Wheel,
             });
             window.run();
         }
@@ -1202,7 +1226,9 @@ mod tests {
     #[test]
     fn the_slider_sets_how_much_of_the_base_map_the_meshes_cover() {
         let mut window = window();
-        let label = window.get_by_label(OPACITY_LABEL).rect();
+        // The heading is the slider's label too, so the query takes in labels.
+        let heading = by().label(OPACITY_LABEL).role(Role::Label).include_labels();
+        let label = window.get(heading).rect();
         let slider = opacity_slider(&window);
         assert!(label.bottom() <= slider.top(), "{label:?} {slider:?}");
         assert_eq!(covered(&window), [OPENING_OPACITY; 2]);
