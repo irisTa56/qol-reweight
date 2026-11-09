@@ -53,7 +53,7 @@ mod tests {
     use std::f64::consts::PI;
 
     use eframe::egui::{Pos2, pos2, vec2};
-    use walkers::MapMemory;
+    use walkers::{MapMemory, MercatorProjection};
 
     use super::*;
     use crate::paint::OPENING_OPACITY;
@@ -63,13 +63,18 @@ mod tests {
     const MAP: Rect = Rect::from_min_max(pos2(0.0, 0.0), pos2(800.0, 600.0));
 
     /// A map at `zoom`, centred on the middle of the square `code` names.
-    fn centred_on(code: &str, zoom: f64) -> Projector {
+    fn centred_on(code: &str, zoom: f64) -> Projector<'static> {
         let square = HalfMesh::from_code(code).unwrap();
         let latitude = (square.south() + square.north()) / 2.0;
         let longitude = (square.west() + square.east()) / 2.0;
         let mut memory = MapMemory::default();
         memory.set_zoom(zoom).unwrap();
-        Projector::new(MAP, &memory, lat_lon(latitude, longitude))
+        Projector::new(
+            MAP,
+            &MercatorProjection,
+            &memory,
+            lat_lon(latitude, longitude),
+        )
     }
 
     /// Each square the layer draws: its rectangle on screen and its colour.

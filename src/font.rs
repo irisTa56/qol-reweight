@@ -72,10 +72,7 @@ impl JapaneseFont {
         };
         let families = [FontFamily::Proportional, FontFamily::Monospace]
             .into_iter()
-            .map(|family| InsertFontFamily {
-                family,
-                priority: priority.clone(),
-            })
+            .map(|family| InsertFontFamily { family, priority })
             .collect();
         FontInsert::new(FAMILY, data, families)
     }
