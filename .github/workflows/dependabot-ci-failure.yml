@@ -1,0 +1,47 @@
+name: Dependabot CI failure
+
+# Mention the repository owner on a Dependabot PR whose CI run failed, so the
+# failure reaches them. GitHub notifies a user of the workflow runs they
+# triggered and of no other, and Dependabot triggers the CI runs of its own
+# PRs, so without this a failing update sits with its auto-merge waiting and
+# nobody is told. A mention is a notification whatever the owner watches.
+#
+# `workflow_run` runs this file as it is on the default branch, with a token of
+# the base repository, after the CI run ends. It reads only the run's metadata
+# and never checks out the PR's code, which is what keeps that token safe to
+# hold here.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+# Enough to comment on a PR, and nothing else: a run of Dependabot's gets a
+# read-only token, but `workflow_run` gets the one this grants whoever started
+# the run it follows.
+permissions:
+  pull-requests: write
+
+jobs:
+  mention-owner:
+    runs-on: ubuntu-latest
+    # The actor is whoever triggered the run, so a run started by a push of
+    # the owner's own to a Dependabot branch is left out: GitHub notifies them
+    # of that one already.
+    if: >-
+      github.event.workflow_run.conclusion == 'failure'
+      && github.event.workflow_run.event == 'pull_request'
+      && github.event.workflow_run.triggering_actor.login == 'dependabot[bot]'
+    steps:
+      - name: Comment on the PR
+        run: |
+          for pr in $PRS; do
+            gh pr comment "$pr" --repo "$REPO" --body "@$OWNER CI failed on this Dependabot PR, so its auto-merge is waiting: $RUN_URL"
+          done
+        env:
+          # A Dependabot branch is in this repository, so the run lists its PR.
+          PRS: ${{ join(github.event.workflow_run.pull_requests.*.number, ' ') }}
+          REPO: ${{ github.repository }}
+          OWNER: ${{ github.repository_owner }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
