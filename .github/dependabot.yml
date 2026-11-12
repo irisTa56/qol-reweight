@@ -34,6 +34,12 @@ updates:
     # and most of Cargo.lock is crates those bring in.
     allow:
       - dependency-type: "all"
+    # The same 7 days as `global-min-publish-age` in .cargo/config.toml, which
+    # does not hold back a version Dependabot has already written to
+    # Cargo.lock. Without this, Dependabot waits 3 days. A security update
+    # waits for neither.
+    cooldown:
+      default-days: 7
     groups:
       crates:
         patterns: ["*"]

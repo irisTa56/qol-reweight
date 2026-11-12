@@ -1,0 +1,12 @@
+# Dependency cooldown: when cargo resolves a version that `Cargo.lock` does
+# not already hold, as `cargo update` and `cargo add` do, it passes over one
+# published to crates.io within the last 7 days, so a release that is
+# compromised or broken, and pulled within days, has gone before it gets here.
+# A version without a publish time in the index is not held back.
+# https://doc.rust-lang.org/cargo/reference/config.html#registryglobal-min-publish-age
+#
+# What `Cargo.lock` already holds stays, so `--locked` never fails on this: a
+# Dependabot update is held back by `cooldown` in .github/dependabot.yml
+# instead. A cargo older than 1.100 ignores the key and says so.
+[registry]
+global-min-publish-age = "7 days"
