@@ -51,7 +51,10 @@ unreachable_pub = "warn"
 # A crate in `[dependencies]` that the code never uses. `deny` rather than the
 # default `warn`: this is a lint of cargo's, not of rustc's, so `-D warnings`
 # in `qa:rust:clippy` leaves it a warning that passes. It does not look at
-# `[dev-dependencies]`. A cargo older than 1.100 ignores the table and says so.
+# `[dev-dependencies]`, nor at a crate another dependency also depends on, such
+# as `thiserror`, which cargo takes for one named to set its version or
+# features (rust-lang/cargo#16935). A cargo older than 1.100 ignores the table
+# and says so.
 # https://doc.rust-lang.org/cargo/reference/lints.html#unused_dependencies
 [lints.cargo]
 unused_dependencies = "deny"
