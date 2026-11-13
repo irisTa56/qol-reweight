@@ -19,12 +19,11 @@ name: CI
 # its action pulls at `latest`; the gitleaks binary, which `GITLEAKS_VERSION:
 # latest` below resolves at run time; every tool a job's task calls, which
 # mise.toml tracks at `latest` and each run installs afresh (see `cache: false`
-# below); the RustSec advisory database, which `qa:rust:deny` fetches on each
-# run, so that an advisory issued against a crate already in use shows in a
-# week with no commit; and the shared tasks on dotfiles `main`, which
-# `shared-tasks-check` compares with mise.toml's pin. GitHub disables a
-# `schedule` trigger after 60 days with no repository activity, so this canary
-# goes quiet on a dormant repository.
+# below); and the RustSec advisory database, which `qa:rust:deny` fetches on
+# each run, so that an advisory issued against a crate already in use shows in
+# a week with no commit. GitHub disables a `schedule` trigger after 60 days
+# with no repository activity, so this canary goes quiet on a dormant
+# repository.
 
 on:
   pull_request:
