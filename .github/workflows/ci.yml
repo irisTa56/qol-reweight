@@ -22,9 +22,9 @@ name: CI
 # below); the RustSec advisory database, which `qa:rust:deny` fetches on each
 # run, so that an advisory issued against a crate already in use shows in a
 # week with no commit; and the shared tasks on dotfiles `main`, which
-# `shared-tasks-check` compares with mise.toml's pin. GitHub disables a `schedule` trigger after 60 days
-# with no repository activity, so this canary goes quiet on a dormant
-# repository.
+# `shared-tasks-check` compares with mise.toml's pin. GitHub disables a
+# `schedule` trigger after 60 days with no repository activity, so this canary
+# goes quiet on a dormant repository.
 
 on:
   pull_request:
