@@ -512,15 +512,30 @@ mod tests {
         assert_eq!(dataset.series()[0].values, [1.5]);
     }
 
+    /// The refusal names the missing column as the header writes it.
     #[test]
     fn a_file_without_a_column_the_tool_reads_is_refused() {
-        let contents = "KeyCode,City,IndicatorCode,Indicator\n543823431,East,QOL,Total\n";
-        assert!(matches!(
-            Dataset::read(contents.as_bytes()),
-            Err(DatasetError::NoColumn {
-                column: Column::Value
-            })
-        ));
+        let columns = [
+            ("KeyCode", Column::KeyCode),
+            ("City", Column::City),
+            ("IndicatorCode", Column::IndicatorCode),
+            ("Indicator", Column::Indicator),
+            ("Value", Column::Value),
+        ];
+        for (name, missing) in columns {
+            let header: Vec<_> = columns
+                .iter()
+                .map(|&(other, _)| other)
+                .filter(|&other| other != name)
+                .collect();
+            let contents = format!("{}\n", header.join(","));
+            let error = Dataset::read(contents.as_bytes()).unwrap_err();
+            assert!(
+                matches!(error, DatasetError::NoColumn { column } if column == missing),
+                "{name}: {error:?}"
+            );
+            assert_eq!(error.to_string(), format!("it has no `{name}` column"));
+        }
     }
 
     #[test]
