@@ -14,7 +14,7 @@ use csv::StringRecord;
 use thiserror::Error;
 
 use super::{Dataset, Mesh, Series};
-use crate::mesh::{HalfMesh, MeshCodeError};
+use crate::half_mesh::{HalfMesh, MeshCodeError};
 
 /// The `IndicatorCode` of the rows that hold the published total.
 const TOTAL_CODE: &str = "QOL";

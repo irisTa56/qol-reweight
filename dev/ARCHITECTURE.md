@@ -17,7 +17,7 @@ Each module is built around one type, which the others use through its methods.
 Reads the command line, opens the file, finds the font, and opens the window.
 Where any of the three fails it prints why and exits without a window.
 
-### [`src/mesh.rs`](../src/mesh.rs)
+### [`src/half_mesh.rs`](../src/half_mesh.rs)
 
 `HalfMesh`, a 500 m mesh as its row and column among all such meshes: read from a nine-digit code, found from a latitude and a longitude, and giving its four edges in degrees.
 `Extent` is the area some meshes cover.

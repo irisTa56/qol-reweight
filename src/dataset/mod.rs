@@ -2,7 +2,7 @@
 //! publishes for each of them. Reading one is [`file`]'s.
 
 use crate::asset;
-use crate::mesh::{Extent, HalfMesh};
+use crate::half_mesh::{Extent, HalfMesh};
 
 mod file;
 

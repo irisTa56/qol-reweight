@@ -24,6 +24,16 @@ const ROWS_PER_DEGREE: u32 = 240;
 /// How many half grid squares one degree of longitude spans, each being 22.5".
 const COLUMNS_PER_DEGREE: u32 = 160;
 
+/// How many half grid squares a first-level square spans each way: 40' of
+/// latitude is 160 rows, and 1 degree of longitude 160 columns.
+const FIRST_LEVEL_SIDE: u32 = 160;
+/// How many half grid squares a second-level square spans each way, being an
+/// eighth of a first-level one.
+const SECOND_LEVEL_SIDE: u32 = FIRST_LEVEL_SIDE / 8;
+/// How many half grid squares a third-level square spans each way, being a
+/// tenth of a second-level one.
+const THIRD_LEVEL_SIDE: u32 = SECOND_LEVEL_SIDE / 10;
+
 /// The area some half grid squares cover between them, held as the rows and
 /// columns furthest out.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -108,11 +118,15 @@ impl HalfMesh {
         if !(1..=4).contains(&m) {
             return Err(MeshCodeError::NoSuchQuarter);
         }
-        // A first-level square is 160 rows high, a second-level one 20, and a
-        // third-level one 2; the same counts hold for columns.
         Ok(Self {
-            row: (p1 * 10 + p2) * 160 + q * 20 + r * 2 + (m - 1) / 2,
-            column: (u1 * 10 + u2) * 160 + v * 20 + w * 2 + (m - 1) % 2,
+            row: (p1 * 10 + p2) * FIRST_LEVEL_SIDE
+                + q * SECOND_LEVEL_SIDE
+                + r * THIRD_LEVEL_SIDE
+                + (m - 1) / 2,
+            column: (u1 * 10 + u2) * FIRST_LEVEL_SIDE
+                + v * SECOND_LEVEL_SIDE
+                + w * THIRD_LEVEL_SIDE
+                + (m - 1) % 2,
         })
     }
 
