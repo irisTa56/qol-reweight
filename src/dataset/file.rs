@@ -5,6 +5,7 @@
 //! every other row one indicator's value for it.
 
 use std::collections::HashMap;
+use std::fmt;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
@@ -44,6 +45,35 @@ impl Dataset {
     }
 }
 
+/// A column of a file that the tool reads.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Column {
+    KeyCode,
+    City,
+    IndicatorCode,
+    Indicator,
+    Value,
+}
+
+impl Column {
+    /// The column's name in a file's header.
+    const fn name(self) -> &'static str {
+        match self {
+            Self::KeyCode => "KeyCode",
+            Self::City => "City",
+            Self::IndicatorCode => "IndicatorCode",
+            Self::Indicator => "Indicator",
+            Self::Value => "Value",
+        }
+    }
+}
+
+impl fmt::Display for Column {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.name())
+    }
+}
+
 /// Where the columns the tool reads are in a file.
 struct Columns {
     key_code: usize,
@@ -55,24 +85,24 @@ struct Columns {
 
 impl Columns {
     fn find(headers: &StringRecord) -> Result<Self, DatasetError> {
-        let column = |name: &'static str| {
+        let at = |column: Column| {
             let mut named = headers
                 .iter()
                 .enumerate()
-                .filter(|(_, header)| *header == name)
-                .map(|(column, _)| column);
+                .filter(|(_, header)| *header == column.name())
+                .map(|(at, _)| at);
             match (named.next(), named.next()) {
-                (Some(column), None) => Ok(column),
-                (None, _) => Err(DatasetError::NoColumn { name }),
-                (Some(_), Some(_)) => Err(DatasetError::ColumnTwice { name }),
+                (Some(at), None) => Ok(at),
+                (None, _) => Err(DatasetError::NoColumn { column }),
+                (Some(_), Some(_)) => Err(DatasetError::ColumnTwice { column }),
             }
         };
         Ok(Self {
-            key_code: column("KeyCode")?,
-            city: column("City")?,
-            indicator_code: column("IndicatorCode")?,
-            indicator: column("Indicator")?,
-            value: column("Value")?,
+            key_code: at(Column::KeyCode)?,
+            city: at(Column::City)?,
+            indicator_code: at(Column::IndicatorCode)?,
+            indicator: at(Column::Indicator)?,
+            value: at(Column::Value)?,
         })
     }
 }
@@ -158,18 +188,18 @@ struct Row<'r> {
 impl Columns {
     /// Takes a row out of a record of the file.
     fn row<'r>(&self, record: &'r StringRecord, line: u64) -> Result<Row<'r>, DatasetError> {
-        let field = |column: usize| record.get(column).unwrap_or_default();
+        let field = |at: usize| record.get(at).unwrap_or_default();
         // A name the tool shows, or lists a choice under, is never blank.
-        let named = |column: usize, name: &'static str| match field(column) {
-            text if text.trim().is_empty() => Err(DatasetError::Blank { line, column: name }),
+        let named = |at: usize, column: Column| match field(at) {
+            text if text.trim().is_empty() => Err(DatasetError::Blank { line, column }),
             text => Ok(text),
         };
         Ok(Row {
             line,
             key_code: field(self.key_code),
-            city: named(self.city, "City")?,
-            indicator_code: named(self.indicator_code, "IndicatorCode")?,
-            indicator: named(self.indicator, "Indicator")?,
+            city: named(self.city, Column::City)?,
+            indicator_code: named(self.indicator_code, Column::IndicatorCode)?,
+            indicator: named(self.indicator, Column::Indicator)?,
             value: field(self.value)
                 .parse::<f64>()
                 .ok()
@@ -246,7 +276,7 @@ impl Builder {
             Some(&at) if self.meshes[at].city == row.city => Ok(at),
             Some(_) => Err(DatasetError::Disagrees {
                 line,
-                column: "City",
+                column: Column::City,
             }),
             None => {
                 let square = HalfMesh::from_code(row.key_code)
@@ -269,7 +299,7 @@ impl Builder {
             Some(&at) if self.series[at].name == row.indicator => Ok(at),
             Some(_) => Err(DatasetError::Disagrees {
                 line: row.line,
-                column: "Indicator",
+                column: Column::Indicator,
             }),
             None => {
                 self.series.push(UnfinishedSeries {
@@ -320,23 +350,29 @@ pub(crate) enum DatasetError {
         found: u64,
         expected: u64,
     },
-    #[error("it has no `{name}` column")]
-    NoColumn { name: &'static str },
-    #[error("it has more than one `{name}` column")]
-    ColumnTwice { name: &'static str },
+    #[error("it has no `{column}` column")]
+    NoColumn { column: Column },
+    #[error("it has more than one `{column}` column")]
+    ColumnTwice { column: Column },
     #[error("line {line}: its `{column}` is not what an earlier row of its mesh or indicator has")]
-    Disagrees { line: u64, column: &'static str },
+    Disagrees { line: u64, column: Column },
     #[error("line {line}: its `{column}` is blank")]
-    Blank { line: u64, column: &'static str },
-    #[error("line {line}: its `KeyCode` is not a 500 m mesh: {source}")]
+    Blank { line: u64, column: Column },
+    #[error("line {line}: its `{column}` is not a 500 m mesh: {source}", column = Column::KeyCode)]
     MeshCode { line: u64, source: MeshCodeError },
-    #[error("line {line}: its `Value` is not a number")]
+    #[error("line {line}: its `{column}` is not a number", column = Column::Value)]
     Value { line: u64 },
     #[error("line {line}: its mesh already has a value for its indicator")]
     Repeated { line: u64 },
-    #[error("it has no row whose `IndicatorCode` is `QOL`")]
+    #[error(
+        "it has no row whose `{column}` is `{TOTAL_CODE}`",
+        column = Column::IndicatorCode
+    )]
     NoTotal,
-    #[error("a mesh has no row whose `IndicatorCode` is `{indicator}`")]
+    #[error(
+        "a mesh has no row whose `{column}` is `{indicator}`",
+        column = Column::IndicatorCode
+    )]
     Incomplete { indicator: String },
 }
 
@@ -476,13 +512,30 @@ mod tests {
         assert_eq!(dataset.series()[0].values, [1.5]);
     }
 
+    /// The refusal names the missing column as the header writes it.
     #[test]
     fn a_file_without_a_column_the_tool_reads_is_refused() {
-        let contents = "KeyCode,City,IndicatorCode,Indicator\n543823431,East,QOL,Total\n";
-        assert!(matches!(
-            Dataset::read(contents.as_bytes()),
-            Err(DatasetError::NoColumn { name: "Value" })
-        ));
+        let columns = [
+            ("KeyCode", Column::KeyCode),
+            ("City", Column::City),
+            ("IndicatorCode", Column::IndicatorCode),
+            ("Indicator", Column::Indicator),
+            ("Value", Column::Value),
+        ];
+        for (name, missing) in columns {
+            let header: Vec<_> = columns
+                .iter()
+                .map(|&(other, _)| other)
+                .filter(|&other| other != name)
+                .collect();
+            let contents = format!("{}\n", header.join(","));
+            let error = Dataset::read(contents.as_bytes()).unwrap_err();
+            assert!(
+                matches!(error, DatasetError::NoColumn { column } if column == missing),
+                "{name}: {error:?}"
+            );
+            assert_eq!(error.to_string(), format!("it has no `{name}` column"));
+        }
     }
 
     #[test]
@@ -491,7 +544,9 @@ mod tests {
                         543823431,East,QOL,Total,1.5,2.5\n";
         assert!(matches!(
             Dataset::read(contents.as_bytes()),
-            Err(DatasetError::ColumnTwice { name: "Value" })
+            Err(DatasetError::ColumnTwice {
+                column: Column::Value
+            })
         ));
     }
 
@@ -586,7 +641,7 @@ mod tests {
             read(&rows),
             Err(DatasetError::Disagrees {
                 line: 6,
-                column: "City"
+                column: Column::City
             })
         ));
 
@@ -596,7 +651,7 @@ mod tests {
             read(&rows),
             Err(DatasetError::Disagrees {
                 line: 5,
-                column: "Indicator"
+                column: Column::Indicator
             })
         ));
     }
@@ -710,14 +765,14 @@ mod tests {
         #[test]
         fn a_row_with_a_blank_name_is_refused(blank in r"\s{0,3}", column in 0..3usize) {
             let mut rows = small();
-            let name = match column {
-                0 => { rows[2].city = blank; "City" }
-                1 => { rows[2].indicator_code = blank; "IndicatorCode" }
-                _ => { rows[2].indicator = blank; "Indicator" }
+            let named = match column {
+                0 => { rows[2].city = blank; Column::City }
+                1 => { rows[2].indicator_code = blank; Column::IndicatorCode }
+                _ => { rows[2].indicator = blank; Column::Indicator }
             };
             prop_assert!(
-                matches!(read(&rows), Err(DatasetError::Blank { line: 4, column }) if column == name),
-                "{}", name
+                matches!(read(&rows), Err(DatasetError::Blank { line: 4, column }) if column == named),
+                "{}", named
             );
         }
 
