@@ -174,9 +174,11 @@ mod tests {
         if value == 0.0 {
             return 0.0;
         }
-        // The exponent of a finite number that is not zero is a small
-        // whole number.
-        #[expect(clippy::cast_possible_truncation)]
+        #[expect(
+            clippy::as_conversions,
+            clippy::cast_possible_truncation,
+            reason = "the exponent of a finite number that is not zero is a small whole number"
+        )]
         let first = value.abs().log10().floor() as i32;
         10f64.powi(first - 9)
     }

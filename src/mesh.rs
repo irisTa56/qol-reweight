@@ -90,6 +90,10 @@ pub(crate) struct HalfMesh {
 
 impl HalfMesh {
     /// Reads a nine-digit half grid square code.
+    #[expect(
+        clippy::many_single_char_names,
+        reason = "the digits take the letters the grid square standard names them by"
+    )]
     pub(crate) fn from_code(code: &str) -> Result<Self, MeshCodeError> {
         if !code.bytes().all(|b| b.is_ascii_digit()) {
             return Err(MeshCodeError::NotNineDigits);
@@ -115,6 +119,12 @@ impl HalfMesh {
     /// The square that holds a point, given in degrees, or none where the
     /// point is south of the equator or west of 100 degrees east, which no
     /// code reaches. A point on the edge two squares share is in either.
+    #[expect(
+        clippy::as_conversions,
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "a float becomes an integer only by `as`, which saturates as the comment says"
+    )]
     pub(crate) fn holding(latitude: f64, longitude: f64) -> Option<Self> {
         let row = (latitude * f64::from(ROWS_PER_DEGREE)).floor();
         let column = ((longitude - 100.0) * f64::from(COLUMNS_PER_DEGREE)).floor();
@@ -295,6 +305,7 @@ mod tests {
         /// The four quarters of a third-level square tile it: 1 and 2 along
         /// the south, 3 and 4 above them.
         #[test]
+        #[expect(clippy::float_cmp, reason = "squares that share an edge give it the same coordinate")]
         fn the_quarters_of_a_square_meet(d in valid_digits()) {
             let [sw, se, nw, ne] = [1, 2, 3, 4].map(|m| mesh(&Digits { m, ..d }.code()));
             prop_assert_eq!(sw.south(), se.south());

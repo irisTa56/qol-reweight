@@ -24,6 +24,6 @@ mod tests {
         let file = include_str!("../assets/data-source.txt");
         let text = super::text!("data-source.txt");
         assert_eq!(file.strip_suffix('\n'), Some(text));
-        assert!(!text.is_empty());
+        assert_ne!(text, "");
     }
 }

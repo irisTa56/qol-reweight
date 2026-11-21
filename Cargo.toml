@@ -45,8 +45,45 @@ egui_kittest = "0.37.0"
 # Off by default. `qa:rust:clippy` denies warnings, so what the lint reports
 # fails the check: a `pub` item in a private module, though not a `pub` field of
 # a `pub(crate)` struct, nor an item of the crate root.
+# The lints from BeautifulRust's `lints/lints.toml`, less those it marks as
+# fitting a library only, with `clippy.toml` beside this file taken whole.
+# `upstream:pin-check` says when the upstream files change at this pin; what
+# changes there is taken by hand, since `-D warnings` in `qa:rust:clippy`
+# would turn any lint added upstream into a failed commit.
+# upstream: git::https://github.com/morganlinton/BeautifulRust.git//lints?ref=b9718436d77ee7bcf17cdcb6aa27628feb95d97a
 [lints.rust]
+unsafe_op_in_unsafe_fn = "warn"
+missing_debug_implementations = "warn"
 unreachable_pub = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "warn"
+expect_used = "allow"
+panic_in_result_fn = "warn"
+missing_assert_message = "warn"
+allow_attributes = "warn"
+allow_attributes_without_reason = "warn"
+undocumented_unsafe_blocks = "warn"
+multiple_unsafe_ops_per_block = "warn"
+fn_params_excessive_bools = "warn"
+struct_excessive_bools = "warn"
+clone_on_ref_ptr = "warn"
+redundant_clone = "warn"
+rc_buffer = "warn"
+string_add = "warn"
+wildcard_imports = "warn"
+dbg_macro = "warn"
+todo = "warn"
+as_conversions = "warn"
+cast_possible_truncation = "warn"
+cast_sign_loss = "warn"
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+module_inception = "allow"
+enum_glob_use = "allow"
 
 # A crate in `[dependencies]` that the code never uses. `deny` rather than the
 # default `warn`: this is a lint of cargo's, not of rustc's, so `-D warnings`
