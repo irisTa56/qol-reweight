@@ -33,6 +33,13 @@ impl Scale {
         sizes.sort_by(f64::total_cmp);
         // The smallest size that at least `COVERED` of the sizes do not
         // exceed.
+        #[expect(
+            clippy::as_conversions,
+            clippy::cast_possible_truncation,
+            clippy::cast_precision_loss,
+            clippy::cast_sign_loss,
+            reason = "a count of values is exact as a float, and the product is between zero and it"
+        )]
         let covered = (sizes.len() as f64 * COVERED).ceil() as usize;
         let smallest = covered
             .checked_sub(1)
@@ -171,9 +178,17 @@ mod tests {
         /// smallest size that enough of the values do not exceed, which is
         /// as far as rounding to two figures can take it.
         #[test]
+        #[expect(clippy::float_cmp, reason = "the largest number is kept exactly")]
         fn the_reach_is_two_figures_near_the_size_that_covers_enough(
             values in vec(value(), 1..200),
         ) {
+            #[expect(
+                clippy::as_conversions,
+                clippy::cast_possible_truncation,
+                clippy::cast_precision_loss,
+                clippy::cast_sign_loss,
+                reason = "a count of values is exact as a float, and the product is between zero and it"
+            )]
             let enough = (values.len() as f64 * COVERED).ceil() as usize;
             let mut sizes: Vec<f64> = values.iter().map(|v| v.abs()).collect();
             sizes.sort_by(f64::total_cmp);

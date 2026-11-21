@@ -24,8 +24,11 @@ impl View {
         // Midway between the edges as the map draws them, which for the
         // northern and southern ones is not midway between their latitudes:
         // the base map is in the Web Mercator projection.
-        let latitude = latitude_at((northing(extent.north()) + northing(extent.south())) / 2.0);
-        let longitude = (extent.west() + extent.east()) / 2.0;
+        let latitude = latitude_at(f64::midpoint(
+            northing(extent.north()),
+            northing(extent.south()),
+        ));
+        let longitude = f64::midpoint(extent.west(), extent.east());
         Self {
             centre: lat_lon(latitude, longitude),
             zoom: OPENING_ZOOM,

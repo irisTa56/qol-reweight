@@ -36,7 +36,7 @@ impl MeshLayer {
 
     /// The squares as `projector` places them on screen, four corners each in
     /// the order of the meshes.
-    pub(crate) fn shape(&self, projector: &Projector) -> Shape {
+    pub(crate) fn shape(&self, projector: &Projector<'_>) -> Shape {
         let mut triangles = Triangles::default();
         for &(square, colour) in &self.squares {
             let south_west = projector.project(lat_lon(square.south(), square.west()));
@@ -65,8 +65,8 @@ mod tests {
     /// A map at `zoom`, centred on the middle of the square `code` names.
     fn centred_on(code: &str, zoom: f64) -> Projector<'static> {
         let square = HalfMesh::from_code(code).unwrap();
-        let latitude = (square.south() + square.north()) / 2.0;
-        let longitude = (square.west() + square.east()) / 2.0;
+        let latitude = f64::midpoint(square.south(), square.north());
+        let longitude = f64::midpoint(square.west(), square.east());
         let mut memory = MapMemory::default();
         memory.set_zoom(zoom).unwrap();
         Projector::new(
@@ -78,7 +78,7 @@ mod tests {
     }
 
     /// Each square the layer draws: its rectangle on screen and its colour.
-    fn drawn(totals: &[(&str, f64)], projector: &Projector) -> Vec<(Rect, Color32)> {
+    fn drawn(totals: &[(&str, f64)], projector: &Projector<'_>) -> Vec<(Rect, Color32)> {
         let dataset = dataset_of_totals(totals);
         let layer = MeshLayer::showing(
             dataset.meshes(),

@@ -190,7 +190,7 @@ impl Window {
     /// The base map with the meshes on it, and with it the place on the
     /// ground the pointer is over, or none where the pointer is off the map.
     fn draw_the_map(&mut self, ui: &mut Ui) -> InnerResponse<Option<Position>> {
-        let tiles = self.tiles.as_mut().map(|tiles| tiles as &mut dyn Tiles);
+        let tiles = self.tiles.as_mut().map(|tiles| -> &mut dyn Tiles { tiles });
         let layer = &self.layer;
         Map::new(tiles, &mut self.memory, self.centre).show(ui, |ui, map, projector, _| {
             ui.painter().add(layer.shape(projector));
@@ -303,10 +303,11 @@ impl Window {
     /// weighted sum is shown, and none can be set where it is not.
     fn set_the_multipliers(&mut self, ui: &mut Ui) {
         let before = self.multipliers.clone();
-        let settable = self.shown == Shown::WeightedSum;
-        ui.add_enabled_ui(settable, |ui| self.set_every_multiplier(ui));
+        ui.add_enabled_ui(self.multipliers_settable(), |ui| {
+            self.set_every_multiplier(ui);
+        });
         ui.add_space(CHOICES_SPACE);
-        ScrollArea::vertical().show(ui, |ui| self.set_each_multiplier(ui, settable));
+        ScrollArea::vertical().show(ui, |ui| self.set_each_multiplier(ui));
         if self.multipliers != before {
             self.sums = self.multipliers.weighted_sums(&self.dataset);
             self.colour_the_meshes();
@@ -327,10 +328,15 @@ impl Window {
         });
     }
 
+    /// Whether a multiplier can be set: only where the weighted sum is shown.
+    fn multipliers_settable(&self) -> bool {
+        self.shown == Shown::WeightedSum
+    }
+
     /// Each indicator's name over its slider. Where the multipliers are not
-    /// `settable` the sliders take nothing, and the list still scrolls.
-    fn set_each_multiplier(&mut self, ui: &mut Ui, settable: bool) {
-        if !settable {
+    /// settable the sliders take nothing, and the list still scrolls.
+    fn set_each_multiplier(&mut self, ui: &mut Ui) {
+        if !self.multipliers_settable() {
             ui.disable();
         }
         // The slider and its field share the line.
@@ -413,6 +419,7 @@ mod tests {
     use egui_kittest::kittest::{NodeT as _, Queryable as _, by};
 
     use std::collections::{HashMap, HashSet};
+    use std::fmt::Write as _;
     use std::net::TcpListener;
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -1433,9 +1440,11 @@ mod tests {
             "KeyCode,PrefectureCode,CityCode,Prefecture,City,IndicatorCode,Indicator,Value\n",
         );
         for code in MESHES {
-            file.push_str(&format!(
-                "{code},00,00000,a prefecture,{city},QOL,Total,{value}\n"
-            ));
+            writeln!(
+                file,
+                "{code},00,00000,a prefecture,{city},QOL,Total,{value}"
+            )
+            .unwrap();
         }
         let dataset = Dataset::read(file.as_bytes()).expect("a file made to be read");
         let mut window = window_on(dataset);
@@ -1471,9 +1480,7 @@ mod tests {
             "KeyCode,PrefectureCode,CityCode,Prefecture,City,IndicatorCode,Indicator,Value\n",
         );
         for (code, city) in MESHES.iter().zip(["Ab", "Ab", long]) {
-            file.push_str(&format!(
-                "{code},00,00000,a prefecture,{city},QOL,Total,1\n"
-            ));
+            writeln!(file, "{code},00,00000,a prefecture,{city},QOL,Total,1").unwrap();
         }
         let read = || Dataset::read(file.as_bytes()).expect("a file made to be read");
 
@@ -1497,9 +1504,11 @@ mod tests {
             "KeyCode,PrefectureCode,CityCode,Prefecture,City,IndicatorCode,Indicator,Value\n",
         );
         for code in MESHES {
-            file.push_str(&format!(
-                "{code},00,00000,a prefecture,a city,QOL,Total,{value}\n"
-            ));
+            writeln!(
+                file,
+                "{code},00,00000,a prefecture,a city,QOL,Total,{value}"
+            )
+            .unwrap();
         }
         let dataset = Dataset::read(file.as_bytes()).expect("a file made to be read");
         let mut window = window_on(dataset);
@@ -1602,15 +1611,14 @@ mod tests {
         }
     }
 
-    /// Whether the fonts lack a character of `text`, with the Japanese font
-    /// after egui's own or not there at all. egui tells a missing character
-    /// by the font that draws the mark for one, which is the first font, so
-    /// with the Japanese font first it would report every character of that
-    /// font as missing.
-    fn lacks(text: &str, with_the_font: bool) -> bool {
+    /// Whether the fonts lack a character of `text`, with the Japanese
+    /// `font` after egui's own, or with egui's alone where there is none.
+    /// egui tells a missing character by the font that draws the mark for
+    /// one, which is the first font, so with the Japanese font first it would
+    /// report every character of that font as missing.
+    fn lacks(text: &str, font: Option<JapaneseFont>) -> bool {
         let mut harness = Harness::new_ui(|_| {});
-        if with_the_font {
-            let font = JapaneseFont::installed().expect("macOS has the font");
+        if let Some(font) = font {
             harness.ctx.add_font(font.into_insert(FontPriority::Lowest));
         }
         harness.run();
@@ -1640,7 +1648,8 @@ mod tests {
             basemap::SHORELINE_CREDIT,
         ];
         for text in stated {
-            assert!(!lacks(text, true), "{text}");
+            let font = JapaneseFont::installed().expect("macOS has the font");
+            assert!(!lacks(text, Some(font)), "{text}");
         }
     }
 
@@ -1648,7 +1657,7 @@ mod tests {
     #[test]
     fn without_the_font_the_statements_cannot_be_drawn() {
         for text in [DATA_LABEL, dataset::SOURCE, BASE_MAP_LABEL, basemap::SOURCE] {
-            assert!(lacks(text, false), "{text}");
+            assert!(lacks(text, None), "{text}");
         }
     }
 
@@ -1656,6 +1665,7 @@ mod tests {
     /// independent reading of the file finds.
     #[test]
     #[ignore = "reads the real files in the folder QOL_REWEIGHT_REAL_FILES names"]
+    #[expect(clippy::float_cmp, reason = "a value is shown exactly as published")]
     fn a_real_file_is_offered_and_drawn_as_it_reads() {
         for path in real_files() {
             let name = path.display();

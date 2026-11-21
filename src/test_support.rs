@@ -1,5 +1,6 @@
 //! What the tests of more than one module make their input with.
 
+use std::fmt::Write as _;
 use std::path::PathBuf;
 
 use proptest::prelude::*;
@@ -79,10 +80,12 @@ pub(crate) fn dataset_of(codes: &[&str], series: &[(&str, &str, &[f64])]) -> Dat
     );
     for (indicator_code, name, values) in series {
         for (code, value) in codes.iter().zip(*values) {
-            file.push_str(&format!(
-                "{code},00,00000,a prefecture,{},{indicator_code},{name},{value}\n",
+            writeln!(
+                file,
+                "{code},00,00000,a prefecture,{},{indicator_code},{name},{value}",
                 city_of(code)
-            ));
+            )
+            .unwrap();
         }
     }
     Dataset::read(file.as_bytes()).expect("a file made to be read")
