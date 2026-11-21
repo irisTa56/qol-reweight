@@ -40,7 +40,7 @@ git hook list pre-push 2>/dev/null | grep -qx secrets-push-scan || echo "warning
 # `upstream:pin-check` in CI says when the tasks on `main` differ from the pin's.
 [task_config]
 includes = [
-  "git::https://github.com/irisTa56/dotfiles.git//tasks?ref=b0a7a86a75bac8abefb7f8d32815e05be01906a2",
+  "git::https://github.com/irisTa56/dotfiles.git//tasks?ref=1a53947d488d30c66e12917faf12f03d91187a9a",
 ]
 
 # `**`, not `*`: mise's `*` matches a single task segment, so `qa:*` would leave
