@@ -153,11 +153,14 @@ jobs:
   # upstream change reaches no pull request here by itself. The permissions and
   # the token are for `--bump`, which pushes a moved pin to a branch of its own
   # and opens its pull request when the check fails (dotfiles
-  # `tasks/README.md`, `upstream:pin-check`). The tasks' pin goes to
-  # `upstream-pin-bump`, which a merge alone finishes. The lints' pins go to
+  # `tasks/README.md`, `upstream:pin-check`). The lints' pins go to
   # `upstream-pin-bump-lints` as a draft, since the change they point to is
   # taken into Cargo.toml and clippy.toml by hand on that branch before it is
-  # marked ready (dev/decisions/0003). Opening either also needs the
+  # marked ready (dev/decisions/0003). Only the pull request a run opens is a
+  # draft: a later move pushed onto one already marked ready wants its change
+  # taken in too before the merge. Every other pin, the tasks' in mise.toml and
+  # any added later, goes to `upstream-pin-bump` as an ordinary pull request,
+  # which for the tasks a merge alone finishes. Opening either also needs the
   # repository setting "Allow GitHub Actions to create and approve pull
   # requests", which grants approval as well; without it the run deletes the
   # branch it pushed and exits 2.
@@ -173,10 +176,10 @@ jobs:
         with:
           cache: false # as in `markdown-lint`
           install: false # the task installs the one release it runs itself
-      - run: mise run upstream:pin-check -- --bump mise.toml
+      - run: mise run upstream:pin-check -- --bump ':(exclude)Cargo.toml' ':(exclude)clippy.toml'
         env:
           GITHUB_TOKEN: ${{ github.token }}
       - run: mise run upstream:pin-check -- --bump --draft --branch-suffix lints Cargo.toml clippy.toml
-        if: ${{ !cancelled() }} # whatever the include's pin did
+        if: ${{ !cancelled() }} # whatever the run above found
         env:
           GITHUB_TOKEN: ${{ github.token }}
