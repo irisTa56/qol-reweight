@@ -92,8 +92,9 @@ description = "Run Rust tests"
 run = "cargo test --locked"
 
 # Fails on a crate the RustSec advisory database names, within what cargo-deny
-# checks by default, which is neither every kind of advisory nor every entry
-# of `Cargo.lock`:
+# checks under `deny.toml`, which is not every kind of advisory: an unmaintained
+# crate fails wherever it sits in `Cargo.lock`, an unsound one only where
+# Cargo.toml names it, as cargo-deny's default has it:
 # https://embarkstudios.github.io/cargo-deny/checks/advisories/cfg.html
 #
 # Here, and not in CI alone, so that the commit that brings such a crate in

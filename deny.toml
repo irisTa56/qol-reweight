@@ -1,6 +1,11 @@
 # What `qa:rust:deny` in `mise.toml` reads.
 
 [advisories]
+# Reports an unmaintained crate wherever it sits in the dependency graph,
+# rather than only among the crates Cargo.toml names, which is cargo-deny's
+# default; most of `Cargo.lock` is crates those bring in. The entries below
+# ignore such crates, and would match no advisory under the default.
+unmaintained = "all"
 # zbus 6 took these three crates in and their author marked them unmaintained.
 # They come only through `accesskit_unix`, which eframe pulls in for
 # `accesskit`, and stay until it moves to zbus 6; AccessKit ignores the same
