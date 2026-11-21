@@ -24,7 +24,7 @@ Where any of the three fails it prints why and exits without a window.
 
 ### [`src/dataset/`](../src/dataset/mod.rs)
 
-`Dataset`, a file in memory: its meshes, each with its code, its square, and its municipality, and its series, the total first and then each indicator, each with one value for every mesh.
+`Dataset`, a file in memory: its meshes, each with its code, its square, and its municipality, and, apart from each other, the published total and each indicator, each with one value for every mesh.
 [`file.rs`](../src/dataset/file.rs) reads a CSV file into one, and refuses a file that is not laid out as the platform's are, naming the line.
 
 ### [`src/multipliers.rs`](../src/multipliers.rs)

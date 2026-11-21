@@ -81,9 +81,10 @@ const SOURCES_MARGIN: Margin = Margin::symmetric(8, 10);
 enum Shown {
     /// Each mesh's weighted sum.
     WeightedSum,
-    /// What the file publishes, as the series at this place among the
-    /// dataset's: the total, or an indicator.
-    Published(usize),
+    /// The total the file publishes.
+    Total,
+    /// The indicator at this place among the dataset's.
+    Indicator(usize),
 }
 
 impl Shown {
@@ -231,7 +232,7 @@ impl Window {
         let value = self.values()[pointed];
         match self.shown {
             Shown::WeightedSum => Readout::summed(mesh, value),
-            Shown::Published(_) => Readout::published(mesh, value),
+            Shown::Total | Shown::Indicator(_) => Readout::published(mesh, value),
         }
     }
 
@@ -240,7 +241,8 @@ impl Window {
     fn values(&self) -> &[f64] {
         match self.shown {
             Shown::WeightedSum => &self.sums,
-            Shown::Published(at) => self.dataset.series()[at].values(),
+            Shown::Total => self.dataset.total().values(),
+            Shown::Indicator(at) => self.dataset.indicators()[at].values(),
         }
     }
 
@@ -266,11 +268,13 @@ impl Window {
     /// weighted sum, then the total and each indicator of the file.
     fn choose_from_the_pull_down(&self, ui: &mut Ui) -> Shown {
         let heading = ui.strong(SHOWN_LABEL);
-        let series = self.dataset.series();
+        let total = self.dataset.total();
+        let indicators = self.dataset.indicators();
         let mut chosen = self.shown;
         let name = match chosen {
             Shown::WeightedSum => WEIGHTED_SUM_LABEL,
-            Shown::Published(at) => series[at].name(),
+            Shown::Total => total.name(),
+            Shown::Indicator(at) => indicators[at].name(),
         };
         // Closed, it takes one line whatever the file holds, and a name too
         // long for that line is cut short.
@@ -281,8 +285,9 @@ impl Window {
             .truncate()
             .show_ui(ui, |ui| {
                 ui.selectable_value(&mut chosen, Shown::WeightedSum, WEIGHTED_SUM_LABEL);
-                for (at, series) in series.iter().enumerate() {
-                    ui.selectable_value(&mut chosen, Shown::Published(at), series.name());
+                ui.selectable_value(&mut chosen, Shown::Total, total.name());
+                for (at, indicator) in indicators.iter().enumerate() {
+                    ui.selectable_value(&mut chosen, Shown::Indicator(at), indicator.name());
                 }
             })
             .response
@@ -1731,11 +1736,11 @@ mod tests {
             offered.extend(indicators);
 
             let dataset = Dataset::open(path.as_os_str()).expect("the tool reads the file");
-            let names: Vec<_> = dataset.series().iter().map(Series::name).collect();
+            let names: Vec<_> = dataset.published().map(Series::name).collect();
             assert!(names == offered, "{name}: the choices are not the file's");
             let codes: Vec<_> = dataset.meshes().iter().map(Mesh::code).collect();
             assert!(codes == meshes, "{name}: the meshes are not the file's");
-            for series in dataset.series() {
+            for series in dataset.published() {
                 for (mesh, shown) in dataset.meshes().iter().zip(series.values()) {
                     let published = values[&(mesh.code().to_owned(), series.name().to_owned())];
                     assert!(

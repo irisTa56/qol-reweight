@@ -14,7 +14,8 @@ pub(crate) const SOURCE: &str = asset::text!("data-source.txt");
 #[derive(Debug, PartialEq)]
 pub(crate) struct Dataset {
     meshes: Vec<Mesh>,
-    series: Vec<Series>,
+    total: Series,
+    indicators: Vec<Series>,
 }
 
 /// A mesh of the file.
@@ -83,15 +84,21 @@ impl Dataset {
             .expect("a file that reads has a mesh")
     }
 
-    /// The published total, then each indicator of the file.
-    pub(crate) fn series(&self) -> &[Series] {
-        &self.series
+    /// The published total.
+    pub(crate) fn total(&self) -> &Series {
+        &self.total
     }
 
-    /// Each indicator of the file, in the order [`Dataset::series`] has
-    /// them after the total.
+    /// Each indicator of the file, in the order it first names them.
     pub(crate) fn indicators(&self) -> &[Series] {
-        self.series.get(1..).unwrap_or_default()
+        &self.indicators
+    }
+
+    /// Everything the file publishes: the total, then each indicator. Only
+    /// the tests that hold a dataset against its file read it in one run.
+    #[cfg(test)]
+    pub(crate) fn published(&self) -> impl Iterator<Item = &Series> {
+        std::iter::once(&self.total).chain(&self.indicators)
     }
 }
 
@@ -110,7 +117,12 @@ mod tests {
             .collect();
         Dataset {
             meshes,
-            series: Vec::new(),
+            total: Series {
+                code: String::new(),
+                name: String::new(),
+                values: Vec::new(),
+            },
+            indicators: Vec::new(),
         }
     }
 
