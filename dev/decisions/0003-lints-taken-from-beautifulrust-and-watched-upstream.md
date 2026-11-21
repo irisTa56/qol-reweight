@@ -9,10 +9,10 @@
 
 - `lints.toml` marks some of its lints as fitting a library and says an application can drop them: `missing_docs`, `missing_panics_doc`, `missing_errors_doc`, `exhaustive_enums`, `print_stdout`, and `print_stderr`.
   - The tool is a binary only, and `src/main.rs` writes its usage and its errors with `eprintln!`, which `print_stderr` would flag.
-- Under the rest, with `clippy.toml` as it stands, the code had 34 warnings (`cargo clippy --all-targets`, run 2026-11-21).
+- Under the rest, with `clippy.toml` as it stands, the code drew warnings at 34 places (`cargo clippy --all-targets`, run 2026-11-21).
   - The most frequent were casts between floats and integers that the code means, which the lints ask to be stated with `#[expect]` and a reason.
 - `qa:rust:clippy` runs clippy with `-D warnings` and is part of the gate every commit passes ([`mise.toml`](../../mise.toml)), so any lint added to the set fails commits until the code meets it.
-- Cargo's `[lints]` table has no way to take its entries from another file or from a URL ([the manifest's `lints` section](https://doc.rust-lang.org/cargo/reference/manifest.html#the-lints-section), checked 2026-11-21).
+- Cargo's `[lints]` table takes entries from elsewhere only from a workspace root's `[workspace.lints]`, not from a file such as `lints.toml` or from a URL ([the manifest's `lints` section](https://doc.rust-lang.org/cargo/reference/manifest.html#the-lints-section) and [the workspace's](https://doc.rust-lang.org/cargo/reference/workspaces.html#the-lints-table), checked 2026-11-21).
 - dotfiles' `upstream:pin-check`, which this repository's CI already runs, says when a path pinned in an upstream repository differs between the pinned commit and the upstream's default branch, and opens a pull request moving the pin ([its documentation](https://github.com/irisTa56/dotfiles/blob/main/tasks/README.md#upstreampin-check), checked 2026-11-21).
 
 ## Decision
@@ -22,9 +22,10 @@ A marker beside the lints pins `lints/` at the commit they were taken from, so `
 
 ## Rejected alternatives
 
-- **Taking the library lints too**: `print_stderr` would flag how the tool reports its errors, and the rest check items exported from a library, which a binary has none of.
+- **Taking the library lints too**: upstream marks them as fitting a library; here `print_stderr` would flag how the tool reports its errors, `missing_docs` would ask for documentation of the crate itself, and the other four flag nothing (`cargo clippy --all-targets` with the six added, run 2026-11-21).
 - **Following the upstream files as they change**: Cargo cannot take the lints from the upstream file, and a copy refreshed by a job would turn each lint added upstream into failed commits until the code meets it, while the pull request `upstream:pin-check` opens leaves the timing to the maintainer.
-- **Only clippy's `pedantic` group, as dotfiles' own crates set it**: it leaves out the lints that check the skill's rules on panics, suppressions, casts and bool parameters, so a review would have to check those by reading, on the judgment, not checked against any source, that a rule checked by a machine is broken less than one checked by a reader.
+- **A job that opens a pull request with the upstream files copied over this repository's**: it leaves the timing to the maintainer as well, but the copy here leaves out part of the upstream file, so a job writing the upstream files over it would put back the six lints left out unless it knew what to leave out: the lints are taken in a way no patch can be applied to automatically.
+- **Only clippy's `pedantic` group, as dotfiles' own crates set it**: it leaves out the lints on panics and on suppressions, which are in clippy's `restriction` group, and `as_conversions`, and keeps the default under which `fn_params_excessive_bools` lets a function take three `bool` parameters (`clippy-driver -W help`, checked 2026-11-21), so a review would have to check those by reading, on the judgment, not checked against any source, that a rule checked by a machine is broken less than one checked by a reader.
 
 ## Consequences
 
