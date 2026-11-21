@@ -177,7 +177,65 @@ mod tests {
     use proptest::prelude::*;
 
     use super::*;
-    use crate::test_support::{Digits, digits, valid_digits};
+    use crate::test_support::valid_code;
+
+    /// The digits of a half grid square code, named as this module's
+    /// documentation names them.
+    #[derive(Clone, Copy, Debug)]
+    struct Digits {
+        pp: u32,
+        uu: u32,
+        q: u32,
+        v: u32,
+        r: u32,
+        w: u32,
+        m: u32,
+    }
+
+    impl Digits {
+        fn code(self) -> String {
+            let Self {
+                pp,
+                uu,
+                q,
+                v,
+                r,
+                w,
+                m,
+            } = self;
+            format!("{pp:02}{uu:02}{q}{v}{r}{w}{m}")
+        }
+    }
+
+    /// Any nine digits, with the second-level digits and the quarter drawn
+    /// from the ranges given.
+    fn digits(
+        second_level: impl Strategy<Value = (u32, u32)>,
+        quarter: impl Strategy<Value = u32>,
+    ) -> impl Strategy<Value = Digits> {
+        (
+            0..100u32,
+            0..100u32,
+            second_level,
+            0..10u32,
+            0..10u32,
+            quarter,
+        )
+            .prop_map(|(pp, uu, (q, v), r, w, m)| Digits {
+                pp,
+                uu,
+                q,
+                v,
+                r,
+                w,
+                m,
+            })
+    }
+
+    /// The digits of any half grid square.
+    fn valid_digits() -> impl Strategy<Value = Digits> {
+        digits((0..8u32, 0..8u32), 1..=4u32)
+    }
 
     fn mesh(code: &str) -> HalfMesh {
         HalfMesh::from_code(code).unwrap_or_else(|e| panic!("{code}: {e}"))
@@ -314,6 +372,12 @@ mod tests {
             prop_assert_eq!(nw.west(), sw.west());
             prop_assert_eq!(ne.south(), se.north());
             prop_assert_eq!(ne.west(), se.west());
+        }
+
+        /// The codes other modules' tests draw are ones this module reads.
+        #[test]
+        fn every_code_the_other_tests_draw_is_read(code in valid_code()) {
+            prop_assert!(HalfMesh::from_code(&code).is_ok(), "{code}");
         }
 
         /// Text in any script, digits of other scripts, and ASCII digits that
