@@ -1,5 +1,6 @@
-# BeautifulRust's `lints/clippy.toml`, its settings taken whole at the pin beside
-# the lints in Cargo.toml.
+# BeautifulRust's `lints/clippy.toml`, its settings taken whole; the lints in
+# Cargo.toml say how its changes upstream are watched and taken.
+# upstream: git::https://github.com/morganlinton/BeautifulRust.git//lints/clippy.toml?ref=b9718436d77ee7bcf17cdcb6aa27628feb95d97a
 
 # Flag any function with a bool parameter, not just functions with four or more.
 # A bool argument is unreadable at the call site (report(true)) and can't grow a

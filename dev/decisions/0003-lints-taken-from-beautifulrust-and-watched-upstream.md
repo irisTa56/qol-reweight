@@ -18,7 +18,7 @@
 ## Decision
 
 `Cargo.toml` sets the lints of `lints/lints.toml` less the six it marks as fitting a library, and `clippy.toml` takes the settings of `lints/clippy.toml` whole.
-A marker beside the lints pins `lints/` at the commit they were taken from, so `upstream:pin-check` reports a change there, and the pull request it opens is where the change is taken into this repository's files by hand, with the code changed to meet it.
+A marker beside each pins its upstream file at the commit it was taken from, so `upstream:pin-check` reports a change to either file, and not to the rest of `lints/`, and the pull request it opens is where the change is taken into this repository's files by hand, with the code changed to meet it.
 
 ## Rejected alternatives
 
@@ -32,4 +32,5 @@ A marker beside the lints pins `lints/` at the commit they were taken from, so `
 - **Dependencies added**: none to the build; the lint set follows BeautifulRust's choices, and the pin makes `upstream:pin-check` fetch that repository.
 - **Risks**:
   - A rule this repository disagrees with may arrive upstream; the bump pull request shows it, and the local copy may leave it out, which the pin does not prevent, since it compares the upstream with itself.
+  - A clippy update can fail the gate as well, since the `all` and `pedantic` groups grow with it and the toolchain is not pinned (`mise.toml` installs the latest Rust); `upstream:pin-check` does not announce it.
   - `clippy.toml` sets `max-fn-params-bools = 0`, so a function with a `bool` parameter fails the gate, including one in a test.
