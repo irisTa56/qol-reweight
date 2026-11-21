@@ -1,5 +1,5 @@
-# BeautifulRust clippy configuration. Copy to your crate or workspace root, next to
-# Cargo.toml, alongside the [lints] block from lints.toml.
+# BeautifulRust's `lints/clippy.toml`, its settings taken whole at the pin beside
+# the lints in Cargo.toml.
 
 # Flag any function with a bool parameter, not just functions with four or more.
 # A bool argument is unreadable at the call site (report(true)) and can't grow a
