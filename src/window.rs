@@ -2,9 +2,12 @@
 //! at, beside it what its colours show, and under them the statements of its
 //! sources.
 
+use std::fmt;
+
 use eframe::egui::{
     CentralPanel, Color32, ComboBox, Context, Frame, InnerResponse, Label, Margin, Panel,
-    PopupAnchor, Response, Role, ScrollArea, Slider, Tooltip, Ui, ViewportBuilder, WidgetInfo,
+    PopupAnchor, Response, Role, ScrollArea, Slider, Tooltip, Ui, ViewportBuilder, Widget,
+    WidgetInfo,
 };
 use eframe::epaint::text::FontPriority;
 use eframe::{App, NativeOptions};
@@ -81,6 +84,13 @@ enum Shown {
     /// What the file publishes, as the series at this place among the
     /// dataset's: the total, or an indicator.
     Published(usize),
+}
+
+impl Shown {
+    /// Whether a multiplier can be set: only where the weighted sum is shown.
+    fn lets_multipliers_be_set(self) -> bool {
+        self == Self::WeightedSum
+    }
 }
 
 pub(crate) struct Window {
@@ -303,7 +313,7 @@ impl Window {
     /// weighted sum is shown, and none can be set where it is not.
     fn set_the_multipliers(&mut self, ui: &mut Ui) {
         let before = self.multipliers.clone();
-        ui.add_enabled_ui(self.multipliers_settable(), |ui| {
+        ui.add_enabled_ui(self.shown.lets_multipliers_be_set(), |ui| {
             self.set_every_multiplier(ui);
         });
         ui.add_space(CHOICES_SPACE);
@@ -328,64 +338,26 @@ impl Window {
         });
     }
 
-    /// Whether a multiplier can be set: only where the weighted sum is shown.
-    fn multipliers_settable(&self) -> bool {
-        self.shown == Shown::WeightedSum
-    }
-
     /// Each indicator's name over its slider. Where the multipliers are not
     /// settable the sliders take nothing, and the list still scrolls.
     fn set_each_multiplier(&mut self, ui: &mut Ui) {
-        if !self.multipliers_settable() {
+        if !self.shown.lets_multipliers_be_set() {
             ui.disable();
         }
         // The slider and its field share the line.
-        let field = Self::field_width(ui) + ui.spacing().item_spacing.x;
+        let (_, most) = Multipliers::RANGE.into_inner();
+        let field = Written(most).field_width(ui) + ui.spacing().item_spacing.x;
         ui.spacing_mut().slider_width = ui.available_width() - field;
         for at in 0..self.dataset.indicators().len() {
             // A name too long for its line is cut short.
             let name = ui.add(Label::new(self.dataset.indicators()[at].name()).truncate());
-            let multiplier = Self::slide(ui, self.multipliers.each()[at], &name);
+            let mut multiplier = self.multipliers.each()[at];
+            ui.add(MultiplierSlider {
+                multiplier: &mut multiplier,
+            })
+            .labelled_by(name.id);
             self.multipliers.set(at, multiplier);
         }
-    }
-
-    /// How wide a multiplier's number field is at its widest while it shows
-    /// a multiplier: the top of the range written out, inside the padding
-    /// egui gives a button, and no narrower than egui makes any field. A
-    /// field wider than the room left for it would widen the panel, and the
-    /// panel would keep that width.
-    fn field_width(ui: &Ui) -> f32 {
-        let (_, most) = Multipliers::RANGE.into_inner();
-        let font = ui.style().drag_value_text_style.resolve(ui.style());
-        let text = ui
-            .painter()
-            .layout_no_wrap(Self::write(most), font, Color32::PLACEHOLDER);
-        let padded = text.size().x + 2.0 * ui.spacing().button_padding.x;
-        padded.max(ui.spacing().interact_size.x)
-    }
-
-    /// A multiplier as its number field writes it.
-    fn write(multiplier: f64) -> String {
-        format!("{multiplier:.1}")
-    }
-
-    /// A slider with a number field, set at `multiplier`, and the multiplier
-    /// it is moved to. The slider runs over the multiplier plus 1, from 1 to
-    /// 11, whose logarithm has a place for a multiplier of 0, and the field
-    /// writes and reads the multiplier itself.
-    fn slide(ui: &mut Ui, multiplier: f64, name: &Response) -> f64 {
-        let (least, most) = Multipliers::RANGE.into_inner();
-        let mut shifted = multiplier + 1.0;
-        ui.add(
-            Slider::new(&mut shifted, least + 1.0..=most + 1.0)
-                .logarithmic(true)
-                .step_by(Multipliers::STEP)
-                .custom_formatter(|shifted, _| Self::write(shifted - 1.0))
-                .custom_parser(|typed| Some(typed.trim().parse::<f64>().ok()? + 1.0)),
-        )
-        .labelled_by(name.id);
-        shifted - 1.0
     }
 
     /// Each statement after a label that says what it is the source of.
@@ -399,6 +371,60 @@ impl Window {
             ui.hyperlink_to(basemap::SOURCE, basemap::TILE_LIST);
             ui.small(basemap::SHORELINE_CREDIT);
         });
+    }
+}
+
+/// A slider with a number field for one multiplier, which it sets. The
+/// slider runs over the multiplier plus [`SHIFT`], from 1 to 11, whose
+/// logarithm has a place for a multiplier of 0, and the field writes and
+/// reads the multiplier itself.
+struct MultiplierSlider<'a> {
+    multiplier: &'a mut f64,
+}
+
+/// What the slider adds to a multiplier to run over it on a logarithmic
+/// scale.
+const SHIFT: f64 = 1.0;
+
+impl Widget for MultiplierSlider<'_> {
+    fn ui(self, ui: &mut Ui) -> Response {
+        let (least, most) = Multipliers::RANGE.into_inner();
+        let mut shifted = *self.multiplier + SHIFT;
+        let response = ui.add(
+            Slider::new(&mut shifted, least + SHIFT..=most + SHIFT)
+                .logarithmic(true)
+                .step_by(Multipliers::STEP)
+                .custom_formatter(|shifted, _| Written(shifted - SHIFT).to_string())
+                .custom_parser(|typed| Some(typed.trim().parse::<f64>().ok()? + SHIFT)),
+        );
+        *self.multiplier = shifted - SHIFT;
+        response
+    }
+}
+
+/// A multiplier as its number field writes it: to
+/// [`Multipliers::DECIMALS`] figures after the point.
+struct Written(f64);
+
+impl Written {
+    /// How wide a number field is that shows this: the text inside the
+    /// padding egui gives a button, and no narrower than egui makes any
+    /// field. Written for the top of the range, it is the field at its
+    /// widest; a field wider than the room left for it would widen the
+    /// panel, and the panel would keep that width.
+    fn field_width(&self, ui: &Ui) -> f32 {
+        let font = ui.style().drag_value_text_style.resolve(ui.style());
+        let text = ui
+            .painter()
+            .layout_no_wrap(self.to_string(), font, Color32::PLACEHOLDER);
+        let padded = text.size().x + 2.0 * ui.spacing().button_padding.x;
+        padded.max(ui.spacing().interact_size.x)
+    }
+}
+
+impl fmt::Display for Written {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:.*}", Multipliers::DECIMALS, self.0)
     }
 }
 

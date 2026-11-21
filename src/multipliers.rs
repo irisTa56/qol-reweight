@@ -21,6 +21,9 @@ impl Multipliers {
     /// How far one multiplier is from the next: a tenth.
     pub(crate) const STEP: f64 = 0.1;
 
+    /// The figures after the point that a multiplier has, at [`Self::STEP`].
+    pub(crate) const DECIMALS: usize = 1;
+
     /// Every indicator of `dataset` at 1, its weight in the published data.
     pub(crate) fn ones_for(dataset: &Dataset) -> Self {
         Self::all_at(1.0, dataset)
@@ -75,6 +78,21 @@ mod tests {
     use crate::test_support::{dataset_of, real_files};
 
     const MESHES: [&str; 2] = ["543823431", "543823432"];
+
+    /// Every multiplier a step reaches is written in full by
+    /// [`Multipliers::DECIMALS`] figures after the point, so its number
+    /// field rounds none of them.
+    #[test]
+    fn the_figures_written_hold_every_step() {
+        let places = i32::try_from(Multipliers::DECIMALS).expect("a few figures");
+        let steps = Multipliers::STEP * 10f64.powi(places);
+        assert!(
+            (steps - steps.round()).abs() < 1e-9,
+            "a step of {} needs more than {} figures",
+            Multipliers::STEP,
+            Multipliers::DECIMALS
+        );
+    }
 
     /// The total is no indicator: a file whose total is not the sum of its
     /// indicators has the sum all the same.
