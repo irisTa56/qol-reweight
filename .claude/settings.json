@@ -1,4 +1,7 @@
 {
+  "skillOverrides": {
+    "rust-best-practices": "on"
+  },
   "hooks": {
     "PostToolUse": [
       {
