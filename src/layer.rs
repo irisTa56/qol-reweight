@@ -80,11 +80,7 @@ mod tests {
     /// Each square the layer draws: its rectangle on screen and its colour.
     fn drawn(totals: &[(&str, f64)], projector: &Projector<'_>) -> Vec<(Rect, Color32)> {
         let dataset = dataset_of_totals(totals);
-        let layer = MeshLayer::showing(
-            dataset.meshes(),
-            dataset.series()[0].values(),
-            OPENING_OPACITY,
-        );
+        let layer = MeshLayer::showing(dataset.meshes(), dataset.total().values(), OPENING_OPACITY);
         let Shape::Mesh(triangles) = layer.shape(projector) else {
             panic!("the layer is not drawn as triangles");
         };

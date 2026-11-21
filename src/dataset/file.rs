@@ -314,23 +314,25 @@ impl Builder {
         }
     }
 
-    /// The file, with the total first, if every mesh has every series.
+    /// The file, its total apart from its indicators, if every mesh has
+    /// every series.
     fn finish(mut self) -> Result<Dataset, DatasetError> {
         let total = *self
             .series_at
             .get(TOTAL_CODE)
             .ok_or(DatasetError::NoTotal)?;
         let total = self.series.remove(total);
-        self.series.insert(0, total);
         let mesh_count = self.meshes.len();
-        let series = self
+        let total = total.finish(mesh_count)?;
+        let indicators = self
             .series
             .into_iter()
             .map(|series| series.finish(mesh_count))
             .collect::<Result<_, _>>()?;
         Ok(Dataset {
             meshes: self.meshes,
-            series,
+            total,
+            indicators,
         })
     }
 }
@@ -479,8 +481,7 @@ mod tests {
         );
 
         let series: Vec<_> = dataset
-            .series()
-            .iter()
+            .published()
             .map(|s| (s.code.as_str(), s.name.as_str(), s.values.as_slice()))
             .collect();
         assert_eq!(
@@ -509,7 +510,7 @@ mod tests {
                         1.5,x,Total,QOL,East,543823431\n";
         let dataset = Dataset::read(contents.as_bytes()).unwrap();
         assert_eq!(dataset.meshes()[0].code, "543823431");
-        assert_eq!(dataset.series()[0].values, [1.5]);
+        assert_eq!(dataset.total().values, [1.5]);
     }
 
     /// The refusal names the missing column as the header writes it.
@@ -799,10 +800,10 @@ mod tests {
             prop_assert_eq!(dataset.meshes().len(), content.meshes.len());
             prop_assert_eq!(&read_meshes, &written_meshes);
 
-            prop_assert_eq!(&dataset.series()[0].code, TOTAL_CODE);
-            prop_assert_eq!(dataset.series().len(), content.indicators.len());
+            prop_assert_eq!(&dataset.total().code, TOTAL_CODE);
+            prop_assert_eq!(dataset.published().count(), content.indicators.len());
             for (i, (code, name)) in content.indicators.iter().enumerate() {
-                let series = dataset.series().iter().find(|s| s.code == *code).unwrap();
+                let series = dataset.published().find(|s| s.code == *code).unwrap();
                 prop_assert_eq!(&series.name, name);
                 for (m, (key_code, _)) in content.meshes.iter().enumerate() {
                     let at = dataset.meshes().iter().position(|x| x.code == *key_code).unwrap();
