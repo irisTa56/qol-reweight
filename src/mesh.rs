@@ -177,6 +177,7 @@ mod tests {
     use proptest::prelude::*;
 
     use super::*;
+    use crate::test_support::valid_code;
 
     /// The digits of a half grid square code, named as this module's
     /// documentation names them.
@@ -371,6 +372,12 @@ mod tests {
             prop_assert_eq!(nw.west(), sw.west());
             prop_assert_eq!(ne.south(), se.north());
             prop_assert_eq!(ne.west(), se.west());
+        }
+
+        /// The codes other modules' tests draw are ones this module reads.
+        #[test]
+        fn every_code_the_other_tests_draw_is_read(code in valid_code()) {
+            prop_assert!(HalfMesh::from_code(&code).is_ok(), "{code}");
         }
 
         /// Text in any script, digits of other scripts, and ASCII digits that

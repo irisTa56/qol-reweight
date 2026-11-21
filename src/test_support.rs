@@ -7,9 +7,8 @@ use proptest::prelude::*;
 
 use crate::dataset::Dataset;
 
-/// The code of any half grid square: two-digit `pp` and `uu`, then `q` and `v`
-/// from 0 to 7, `r` and `w` from 0 to 9, and the quarter `m` from 1 to 4, as
-/// `mesh`'s documentation names the digits.
+/// The code of any half grid square, each digit in the range `mesh`'s
+/// documentation gives it.
 pub(crate) fn valid_code() -> impl Strategy<Value = String> {
     "[0-9]{4}[0-7]{2}[0-9]{2}[1-4]"
 }
