@@ -4,7 +4,7 @@ use std::f64::consts::PI;
 
 use walkers::{Position, lat_lon};
 
-use crate::mesh::Extent;
+use crate::half_mesh::Extent;
 
 /// The zoom level the map opens at, which shows a city and what lies around
 /// it. Its user zooms in from there to the scale a neighbourhood shows at,
@@ -62,7 +62,7 @@ mod tests {
     use walkers::{MapMemory, MercatorProjection, Projector};
 
     use super::*;
-    use crate::mesh::HalfMesh;
+    use crate::half_mesh::HalfMesh;
 
     const SIZE: Vec2 = vec2(800.0, 600.0);
 

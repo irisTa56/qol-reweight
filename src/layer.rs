@@ -5,7 +5,7 @@ use eframe::epaint::Mesh as Triangles;
 use walkers::{Projector, lat_lon};
 
 use crate::dataset::Mesh;
-use crate::mesh::HalfMesh;
+use crate::half_mesh::HalfMesh;
 use crate::paint::Paint;
 
 /// Each mesh's square, and the colour it is filled with.

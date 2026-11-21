@@ -7,7 +7,7 @@ use proptest::prelude::*;
 
 use crate::dataset::Dataset;
 
-/// The code of any half grid square, each digit in the range `mesh`'s
+/// The code of any half grid square, each digit in the range `half_mesh`'s
 /// documentation gives it.
 pub(crate) fn valid_code() -> impl Strategy<Value = String> {
     "[0-9]{4}[0-7]{2}[0-9]{2}[1-4]"
