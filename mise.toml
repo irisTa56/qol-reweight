@@ -33,14 +33,14 @@ git hook list pre-push 2>/dev/null | grep -qx secrets-push-scan || echo "warning
 """
 
 # `secrets:commit-scan` (per commit, gitleaks), `secrets:push-scan` (per push,
-# trufflehog), `link-check:staged` (per commit, lychee over the network) and
+# trufflehog), `links:commit-check` (per commit, lychee over the network) and
 # `upstream:pin-check` come from dotfiles' shared task library, whose
 # `tasks/README.md` is what to read before touching this: why `ref` is a full
 # sha on its `main`, and what an include that fails to load takes with it.
 # `upstream:pin-check` in CI says when the tasks on `main` differ from the pin's.
 [task_config]
 includes = [
-  "git::https://github.com/irisTa56/dotfiles.git//tasks?ref=29847ac1755180a8c52d433795dacf523ca6385f",
+  "git::https://github.com/irisTa56/dotfiles.git//tasks?ref=e51e67c07c95fa66a23fcd4e3a1dc5a9a4728efa",
 ]
 
 # `**`, not `*`: mise's `*` matches a single task segment, so `qa:*` would leave
@@ -48,7 +48,7 @@ includes = [
 # they sit outside `qa:`.
 [tasks.pre-commit]
 description = "Run all pre-commit checks"
-depends = ["qa:**", "secrets:commit-scan", "link-check:staged"]
+depends = ["qa:**", "secrets:commit-scan", "links:commit-check"]
 
 [tasks."qa:md"]
 description = "Lint markdown files"
@@ -116,8 +116,8 @@ run = [
 ]
 
 # Not in `qa:**`: a full-repo external link check is too slow and
-# network-bound for pre-commit; `link-check:staged` requests only the links of
+# network-bound for pre-commit; `links:commit-check` requests only the links of
 # the files a commit stages.
-[tasks."check:links"]
+[tasks."links:check"]
 description = "Check links in the repo"
 run = "lychee -v --config lychee.toml ."
