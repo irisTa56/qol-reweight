@@ -6,7 +6,7 @@
 # pins nothing and is never committed.
 mise.lock
 
-# Tool caches. lychee's is written by the shared `link-check:staged` task.
+# Tool caches. lychee's is written by the shared `links:commit-check` task.
 .rumdl_cache/
 .lycheecache
 
