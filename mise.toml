@@ -105,9 +105,9 @@ run = "cargo test --locked"
 # In two steps so that it runs without a network, as the rest of `qa:**` does.
 # The first may fail: it fetches the database, for 20 seconds at most since a
 # network that answers nothing would otherwise hold the commit, and the crates.
-# The second reads only what is already under `~/.cargo`; `--offline` is the
-# only switch cargo-deny 0.20 has for that. `timeout` is GNU coreutils', which
-# macOS has only once it is installed.
+# The second reads only what is already under `~/.cargo`, which `--offline`
+# makes it do. `timeout` is GNU coreutils', which macOS has only once it is
+# installed.
 [tasks."qa:rust:deny"]
 description = "Check the dependencies against the RustSec advisories"
 run = [
